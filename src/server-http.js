@@ -6,6 +6,19 @@ import { createMcpServer } from './create-server.js';
 const PORT = parseInt(process.env.MCP_HTTP_PORT || process.argv[2] || '3000');
 const HOST = process.env.MCP_HTTP_HOST || '127.0.0.1';
 
+// When binding to all interfaces, validate Host header ourselves to prevent DNS rebinding.
+// The SDK's allowedHosts option runs after Hono's Node→WebStandard conversion which
+// may mangle the header, so we check it at the raw Node.js layer instead.
+const ALLOWED_HOSTS = process.env.MCP_ALLOWED_HOSTS
+  ? process.env.MCP_ALLOWED_HOSTS.split(',').map(h => h.trim().toLowerCase())
+  : null; // null = localhost-only binding, no check needed
+
+function isHostAllowed(req) {
+  if (!ALLOWED_HOSTS) return true;
+  const host = (req.headers['host'] || '').toLowerCase();
+  return ALLOWED_HOSTS.includes(host);
+}
+
 // sessionId → StreamableHTTPServerTransport
 const sessions = new Map();
 
@@ -27,6 +40,17 @@ const httpServer = createServer(async (req, res) => {
     return;
   }
 
+  if (!isHostAllowed(req)) {
+    res.writeHead(403, { 'Content-Type': 'text/plain' });
+    res.end('Forbidden: Host not allowed');
+    return;
+  }
+
+  // Hono (used internally by the MCP SDK) validates the Host header by comparing
+  // against a URL-parsed hostname which is always lowercased. Normalize here so
+  // mixed-case .local / LAN hostnames (e.g. "Pi-iMac.local") pass validation.
+  if (req.headers.host) req.headers.host = req.headers.host.toLowerCase();
+
   try {
     const sessionId = req.headers['mcp-session-id'];
 
@@ -34,7 +58,6 @@ const httpServer = createServer(async (req, res) => {
       const body = await readBody(req);
 
       if (!sessionId) {
-        // New session: client sending initialize (or first request)
         const newId = randomUUID();
         const transport = new StreamableHTTPServerTransport({
           sessionIdGenerator: () => newId,
@@ -79,4 +102,7 @@ process.stderr.write('   Ensure your usage complies with TradingView\'s Terms of
 
 httpServer.listen(PORT, HOST, () => {
   process.stderr.write(`MCP HTTP server listening on http://${HOST}:${PORT}/mcp\n`);
+  if (ALLOWED_HOSTS) {
+    process.stderr.write(`Allowed hosts: ${ALLOWED_HOSTS.join(', ')}\n`);
+  }
 });
