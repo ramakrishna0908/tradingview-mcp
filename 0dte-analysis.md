@@ -1,7 +1,11 @@
 # 0DTE Game Plan — QQQ · SPX · META · TSLA
 
-**Session: 2026-07-15 (intraday snapshot, mid-session).** Separate from the swing tracker
+**Session: 2026-07-15 — REFRESHED (later intraday).** Separate from the swing tracker
 (`analysisstocks.md`) — this file is intraday, level-based, and goes stale within the session.
+
+> 🔄 **Refresh update:** Puts are working. **SPX broke its CPR floor (7535)**, **TSLA broke S1 (393.2)**
+> heading to S2, **QQQ ground into S2 (710.8)** at new lows. **META tapped R3 (686.06) and rejected again** —
+> still the lone holdout but capped and now 115% of ATR spent. Tape stayed heavy; VWAPs barely moved.
 
 > ⚠️ **Expiry reality check:** Only **QQQ and SPX have true same-day (0DTE) expirations today (Wed 7/15).**
 > **META and TSLA do NOT list daily expiries** — nearest is the **Fri 7/17 weekly (~2 DTE)**. So for those
@@ -28,14 +32,15 @@ stack that actually drives same-day options:
 
 | Sym | 0DTE? | Px | VWAP | vs VWAP | CPR (BC–TC) | vs CPR | ATR used | **Bias** | Trigger line |
 |-----|-------|----|------|---------|-------------|--------|----------|----------|--------------|
-| **QQQ** | ✅ today | 713.1 | ~717 | **below** ▼ | 718.3–719.2 | below ▼ | ~83% | 🔴 **PUTS** | fade rallies 715–718; tgt S2 710.8 |
-| **SPX** | ✅ today | 7544 | ~7563 | **below** ▼ | 7535–7541 | at top ◆ | ~56% | 🔴 **PUTS-lean** | short <7535 CPR; tgt S1 7519 |
-| **META** | ❌ Fri 7/17 | 684.6 | ~675 | **above** ▲ | 657.8–660.0 | far above ▲ | ~111% | 🟡 **don't chase** | fade R3 686→676, or buy VWAP 675 dip |
-| **TSLA** | ❌ Fri 7/17 | 393.4 | ~399 | **below** ▼ | 397.0–398.5 | below ▼ | ~77% | 🔴 **PUTS** | break S1 393.2 → 390/386 |
+| **QQQ** | ✅ today | 711.9 | ~717 | **below** ▼ | 718.3–719.2 | below ▼ | ~86% | 🔴 **PUTS→target** | at S2 710.8; break→S3 707.3, else cover |
+| **SPX** | ✅ today | 7535 | ~7560 | **below** ▼ | 7535–7541 | **broke floor** ▼ | ~62% | 🔴 **PUTS active** | lost 7535 CPR; tgt S1 7519→S2 7494 |
+| **META** | ❌ Fri 7/17 | 684.2 | ~676 | **above** ▲ | 657.8–660.0 | far above ▲ | ~115% | 🟡 **don't chase** | rej R3 686 again; fade→676, or buy 676 dip |
+| **TSLA** | ❌ Fri 7/17 | 392.1 | ~398 | **below** ▼ | 397.0–398.5 | below ▼ | ~85% | 🔴 **PUTS active** | broke S1 393.2; tgt S2 390.3→S3 385.8 |
 
-**One-liner:** Tape is heavy — 3 of 4 below VWAP. Cleanest **0DTE put = TSLA** (bull-trap reversal, room
-to fall) and **SPX** (below VWAP, most ATR left). QQQ puts are late (ATR nearly spent — sell rallies only).
-**META is the trap** — a huge up-day at R3, above VWAP but >1 ATR extended: chasing calls is buying the top.
+**One-liner:** Puts paid — SPX, TSLA and QQQ all pushed to their downside triggers/targets. **QQQ is now
+*at* S2 710.8** (take-profit / needs a fresh break for more). **SPX just lost its CPR** — freshest continuation
+(most ATR left, S1 7519 open). **TSLA broke S1**, running to S2 390. **META** still won't break — capped at
+R3 686 but exhausted (115% ATR); fade-to-676 is the play, not chasing calls.
 
 ---
 
@@ -43,15 +48,15 @@ to fall) and **SPX** (below VWAP, most ATR left). QQQ puts are late (ATR nearly 
 
 | Indicator | **QQQ** ✅ | **SPX** ✅ | **META** (2DTE) | **TSLA** (2DTE) |
 |-----------|-----------|-----------|-----------------|-----------------|
-| **Price** | 713.07 | 7543.96 | 684.59 | 393.42 |
-| **Session VWAP** | ~717 | ~7563 | ~675 | ~399 |
+| **Price** | 711.92 | 7535.42 | 684.17 | 392.07 |
+| **Session VWAP** | ~717 | ~7560 | ~676 | ~398 |
 | **vs VWAP** | ▼ below | ▼ below | ▲ above | ▼ below |
 | **CPR — TC** | 719.23 | 7540.84 | 659.95 | 398.49 |
 | **CPR — Pivot** | 718.77 | 7538.09 | 658.86 | 397.72 |
 | **CPR — BC** | 718.32 | 7535.34 | 657.78 | 396.95 |
 | **CPR width** | 0.9 (narrow) | 5.5 (v.narrow) | 2.2 (mod) | 1.5 (mod) |
 | **CPR signal** | trend day | strong trend | trend (up) | trend (rev) |
-| **vs CPR** | ▼ below | ◆ at top | ▲ far above | ▼ below |
+| **vs CPR** | ▼ below | ▼ broke floor | ▲ far above | ▼ below |
 | **R3** | 731.16 | 7607.15 | 686.13 | 408.14 |
 | **R2** | 726.72 | 7582.30 | 676.31 | 405.18 |
 | **R1** | 723.21 | 7562.94 | 668.68 | 400.68 |
@@ -62,17 +67,18 @@ to fall) and **SPX** (below VWAP, most ATR left). QQQ puts are late (ATR nearly 
 | **PDL** | 714.34 | 7513.23 | 649.05 | 394.76 |
 | **PDC** | 719.69 | 7543.59 | 661.04 | 396.18 |
 | **Today Open** | 723.85 | 7571.72 | 663.60 | 399.40 |
-| **Today High** | 724.36 | 7581.50 | 685.21 | 406.59 |
-| **Today Low** | 712.06 | 7536.99 | 656.66 | 393.15 |
+| **Today High** | 724.36 | 7581.50 | 686.06 | 406.59 |
+| **Today Low** | 711.64 | 7532.06 | 656.66 | 391.81 |
 | **OR (15m)** | 719.5–724.1 | 7559.7–7580.8 | 656.7–662.4 | 399.4–406.6 |
 | **OR break** | ▼ down | ▼ down | ▲ up | ▼ down (trap) |
 | **ATR (daily)** | 14.74 | 79.38 | 25.61 | 17.48 |
-| **ATR used** | ~83% | ~56% | ~111% | ~77% |
+| **ATR used** | ~86% | ~62% | ~115% | ~85% |
 | **Daily RSI** | 48.8 | 57.0 | 66.2 | 47.6 |
 | **Daily CMF** | −0.08 | −0.02 | −0.02 | −0.02 |
 | **0DTE today?** | ✅ yes | ✅ yes | ❌ Fri 7/17 | ❌ Fri 7/17 |
-| **BIAS** | 🔴 PUTS | 🔴 PUTS-lean | 🟡 don't chase | 🔴 PUTS |
-| **Trigger** | fade 715–718→710.8 | short <7535→7519 | fade 686→676 | break 393.2→390 |
+| **BIAS** | 🔴 PUTS→tgt | 🔴 PUTS active | 🟡 don't chase | 🔴 PUTS active |
+| **Trigger** | at S2 710.8→707.3 | lost 7535→7519 | rej R3 686→676 | broke S1→390.3 |
+| **Status** | at target | fresh breakdown | capped/exhausted | working →S2 |
 
 *VWAP + ATR-used computed from today's 5-min bars, mid-session — approximate. Pivots/CPR exact from prior-day HLC.*
 
@@ -141,3 +147,9 @@ Matches the swing read (capped below cloud) — today confirmed it by rejecting 
 4. **True 0DTE (QQQ/SPX) = brutal theta/gamma** — be right on direction fast or cut; no "hold and hope."
    META/TSLA are 2-day, slightly more forgiving but still decaying.
 5. **Levels are snapshots** — recompute VWAP/pivots as the session evolves; this is a mid-session read.
+6. **Below-CPR VWAP-reclaim = CALL trigger, NOT a fade.** ⚠️ Recurring miss (SPX 7532→7560, META 626→651
+   on 7/17). When price is *below CPR* but **reclaims session VWAP on above-average volume and then holds
+   a retest of it**, that is a mean-reversion LONG signal — buy the reclaim/retest-hold, don't wait to
+   fade the next resistance. Below-CPR is day-frame *context*, not a veto on the reclaim. The put only
+   triggers if price *loses* VWAP again. Rule of thumb: reclaim + hold VWAP = call; lose VWAP = put —
+   let the VWAP test pick the side, and stop defaulting to "below CPR → fade."
