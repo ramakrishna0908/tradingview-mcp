@@ -18,6 +18,41 @@ New watchlist adds: **LUNR** and **MU**.
 
 ---
 
+## 🎯 Next-Week Game Plan (week of Jul 20) — prices as of 07-17 late session
+
+**The one pivot that governs everything: QQQ 695, below cloud (708) + below basis, RSI 42 — index
+in a pullback, but leaders' CMF is positive (accumulation into weakness).**
+- QQQ **reclaims 708** → risk-on, the accumulation longs rip.
+- QQQ **loses 686–690** (today's low / VWAP) → risk-off, the puts pay.
+- Trade the leaders in the direction QQQ resolves.
+
+### 🟢 Best LONG setups (ranked)
+1. **AMD 494 — cleanest divergence long.** CMF **+0.20** (heaviest accum), tagged 505 intraday, closed
+   at the 493–497 reclaim line. Trigger **hold/reclaim 497 → 517 → 533 basis.** No earn till Aug 5 =
+   full runway. ATR 37 pays. Best R/R.
+2. **NVDA 203 — accumulation, tight risk.** CMF +0.17, holding 201.9–202.5 cluster. Buy **202 dip-hold**
+   or **206 VWAP reclaim → 213–215.** Stop <201.9. No earn till late Aug.
+3. **AAPL 333 — leader, buy the dip.** RSI 71, CMF +0.16, only name above cloud. Extended at BB-up 338 —
+   **don't chase; buy pullback to 308–312.** Earn Jul 31.
+4. **MSFT 395 — constructive but clock ticking.** CMF +0.18; **>400 VWAP → 408 → 424.** Earn **Jul 29** =
+   ~1-week swing before de-risk.
+5. **MU 895 — speculative reversal.** Hammer off 804, reclaim **906–920** confirms. ATR **85** = tiny size.
+
+### 🔴 Best SHORT setups
+1. **HOOD 101 — freshest short.** -11% breakdown, RSI rolled 61→47, <basis, CMF flat-neg. Fade <100 or
+   bounce 105 → **96 → 88.** Earn Jul 30.
+2. **MRVL 189 — fade bounces.** CMF -0.22, below cloud, 185 target hit; RSI 36 nearing os → fade rips
+   200–214 → **162**, don't chase the low. No earn till Aug 28.
+3. **MSTR 94 — worst flow (-0.21)**, below cloud/basis; fade rips 103–109. ⚠️ BTC gap, small size.
+- **Avoid shorting** ORCL/NFLX/CRWV/LUNR — RSI 27–36, too oversold.
+
+### ⚡ Earnings landmines next week — trade the reaction, not the anticipation
+- **Jul 22 double: GOOGL + TSLA.** GOOGL 344 = CMF +0.18 accum *into* the print but below cloud (reclaim
+  356 post-earn = long). TSLA 384 = weak/flat CMF into a binary; IV jacked, wait for the reaction.
+- **Jul 29 wall opens: META + MSFT** — those longs are ~1-week trades max before de-risking.
+
+---
+
 ## 📋 Master Technical Table (07-17 EOD)
 
 Cols: BB = Bollinger (Low/Basis/Up) · VWAP = Q2-anchored · Cloud = Ichimoku SpanA/B ·
