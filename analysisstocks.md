@@ -144,3 +144,38 @@ Mega-cap cluster Jul 29–Aug 1 (META/MSFT/AAPL/AMZN) = four pivots one window. 
 5. **Oversold ≠ buy** — ORCL (RSI 28, CMF -0.42), NFLX/CRWV/LUNR (RSI 27-33): knives get more
    oversold. Buy the *turn* (CMF flip / level reclaim), not the RSI.
 6. **ORCL standing watch** — alert the moment CMF crosses positive (currently -0.42, no flip). Buy trigger.
+
+---
+
+## 🗓️ Options Decision Journal (positional, 75–120 DTE)
+
+**Read this before each new options review. Preserve prior entries. Roll status forward
+(WAIT→ENTER/AVOID, then ENTER→outcome) as triggers hit or fail.**
+
+### 2026-07-17 — Positional review (target: October monthly ≈91 DTE; Nov if more runway)
+**Market gate:** QQQ 695, below cloud. Longs live only on **QQQ >708 reclaim**; **<686–690 = risk-off**.
+**Structure rule:** all defined-risk **debit spreads** (earnings fall inside the hold — cap IV crush + premium).
+
+**ACTIVE SETUPS — all WAIT (each needs its trigger; none entered):**
+
+| # | Sym | Bias | Trigger | Spread (level-based) | Target | Invalidation | Earn (in-window) | Status |
+|---|-----|------|---------|----------------------|--------|--------------|------------------|--------|
+| 🥇1 **BEST** | AMD | CALL | daily close **>497** (tagged 505 intraday, closed 494.6) | long ~497 / short ~533 (or 517) Oct | 517→533→573 | close <461.7 (cloud-base) | ~Aug 5 | WAIT |
+| 🥈2 | AAPL | CALL | dip **308–312 hold**, or close **>339** | long ~310 dip (or ATM) / short above 338, Oct | 312→338→ext | close <304 (cloud) | ~Jul 31 | WAIT |
+| 🥉3 | MRVL | PUT | fade bounce **200–214**, or close **<178–180** | long ~185–190 / short ~162, Oct | 162→lower | close >214 | ~Aug 28 | WAIT |
+
+**REJECTED / NO-TRADE this cycle:**
+- **NVDA** CALL — clean alt long (202 dip / 206 reclaim, CMF +0.17); held as backup to AAPL. WAIT.
+- **GOOGL** — CMF +0.18 but **Jul 22 earnings imminent**; no pre-earnings entry. AVOID (revisit on reaction).
+- **TSLA** — weak + Jul 22 binary. NO TRADE.
+- **ORCL** PUT — right direction, RSI 28 oversold = bad put entry; it's a *long*-watch on the CMF flip. WAIT.
+- **MU** — ATR 85 too wide for a sane defined-risk spread. WAIT.
+- **HOOD/MSTR** — good swing shorts but better as shorter-dated; not top-3 for the 75–120 DTE horizon.
+
+**Lessons carried in:** (1) below-cloud + strong CMF = accumulation → favor longs on the *reclaim*, not fades
+(rule 6). (2) Don't chase oversold knives (ORCL/NFLX/CRWV/LUNR). (3) Debit spreads over naked longs when
+earnings sit in the hold.
+**Outcomes:** none yet (all WAIT).
+**Next actions (Mon 07-20 refresh):** check **AMD 497** close, **AAPL** dip to 310, **MRVL** bounce to 200–214,
+**ORCL CMF** flip; re-gate all longs on **QQQ 708 / 686**. Update this journal with any trigger hit → move to
+ENTER and log fill level; if invalidation hits first → log AVOIDED and why.
