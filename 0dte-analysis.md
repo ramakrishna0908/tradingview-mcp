@@ -153,3 +153,28 @@ Matches the swing read (capped below cloud) — today confirmed it by rejecting 
    fade the next resistance. Below-CPR is day-frame *context*, not a veto on the reclaim. The put only
    triggers if price *loses* VWAP again. Rule of thumb: reclaim + hold VWAP = call; lose VWAP = put —
    let the VWAP test pick the side, and stop defaulting to "below CPR → fade."
+
+---
+
+## 🗓️ Intraday Decision Journal (true-0DTE only: QQQ / SPX)
+
+**Read before each intraday run. Preserve history. Log the trigger that fired + the outcome each session.**
+
+### 2026-07-20 (Mon) — afternoon read (~4.3h in / ~2h to close)
+**Data freshness: VERIFIED** — 5-min ΣvolumeSPX 1,334M ≈ daily 1,333M; last bars current. Afternoon → gamma/theta accelerating.
+**Setup shape (both):** opened at highs → faded below session VWAP → sitting near session lows just above CPR. Sellers control intraday; CPR is the floor. Both in CPR↔VWAP no-man's-land.
+
+| | Price | VWAP | vs | CPR | SessH/L | OR | ATR used |
+|---|-------|------|----|----|---------|-----|----------|
+| **SPX** | 7467.4 | ~7483.5 | ▼ | **7460.1–7464.9 (on it)** | 7513/7461 | 7489–7513 ↓broke | ~65% |
+| **QQQ** | 699.6 | ~701.7 | ▼ | 694.5–695.1 (above) | 705.8/698.1 | 701.8–705.5 ↓broke | ~52% |
+
+**BEST — SPX (v.narrow CPR = trend day; most fuel + big target):**
+- PUT (primary): trigger **5-min close <7460** (take 7461.4 low) + vol → **S1 7426.5** (stretch 7395); invalid = 5-min close >7465.
+- CALL (alt, rule 6): reclaim + hold **>VWAP 7483.5** → R1 7493.7 → 7513; invalid = lose 7483.
+**BACKUP — QQQ:** PUT <698.1 → CPR/PDC 695 (thin ~4.5pt); CALL reclaim >701.7 → 702.8/705.8.
+
+**Decision: NO TRADE at read time** — mid-range chop; require the break + volume. Contracts = defined-risk debit spreads ATM-to-trigger/short-at-target; no far-OTM lottos in the PM. TP half at first target, time-stop 3 bars, max loss = level invalidation or −40% premium. No-trade if: chop inside CPR↔VWAP, break on no volume, last 30–45 min, or data unverifiable (→WAIT FOR REFRESH).
+**Rules applied:** #1 VWAP=boss (both below→short-lean), #2 narrow-CPR trend day (trade the break), #3 ATR-used (SPX>QQQ fuel), #6 reclaim=call not fade.
+**Entries taken:** none (plan only). **Outcome:** _pending — log which trigger fired (7460 break vs 7483 reclaim) and result next run._
+**Lesson watch:** don't force the mid-range; the edge is the CPR break or the VWAP reclaim, nothing in between.
