@@ -153,6 +153,15 @@ Matches the swing read (capped below cloud) — today confirmed it by rejecting 
    fade the next resistance. Below-CPR is day-frame *context*, not a veto on the reclaim. The put only
    triggers if price *loses* VWAP again. Rule of thumb: reclaim + hold VWAP = call; lose VWAP = put —
    let the VWAP test pick the side, and stop defaulting to "below CPR → fade."
+7. **A winning 0DTE trade is NEVER allowed to become a loser — scale, don't wait for the bullseye.**
+   ⚠️ Cost a full round-trip on 7/20 (SPX put 7460→7440, held for S1 7426, popped back to a loss). Targets
+   are **magnets, not guarantees** — pivots frequently undershoot (S1 never printed; PDL 7431 was the real
+   floor). The exit protocol: **(a)** bank half/third at the **first interim level** (halfway point or PDL/PDH),
+   not at the final pivot; **(b)** move the stop to **breakeven the moment you're +½-way to target**; **(c)**
+   **trail** the runner below each lower-high (let the pop stop you out *green*); **(d)** set the final target
+   **IN FRONT of the pivot** (PDL 7431, not S1 7426 — front-run the crowd's algo); **(e)** near a target,
+   *tighten* (proximity = higher reversal risk), and in the **afternoon with ATR mostly spent, take what it
+   gives**. Collecting the trade is a separate skill from calling it — the read was right; only the exit lost.
 
 ---
 
@@ -176,5 +185,8 @@ Matches the swing read (capped below cloud) — today confirmed it by rejecting 
 
 **Decision: NO TRADE at read time** — mid-range chop; require the break + volume. Contracts = defined-risk debit spreads ATM-to-trigger/short-at-target; no far-OTM lottos in the PM. TP half at first target, time-stop 3 bars, max loss = level invalidation or −40% premium. No-trade if: chop inside CPR↔VWAP, break on no volume, last 30–45 min, or data unverifiable (→WAIT FOR REFRESH).
 **Rules applied:** #1 VWAP=boss (both below→short-lean), #2 narrow-CPR trend day (trade the break), #3 ATR-used (SPX>QQQ fuel), #6 reclaim=call not fade.
-**Entries taken:** none (plan only). **Outcome:** _pending — log which trigger fired (7460 break vs 7483 reclaim) and result next run._
-**Lesson watch:** don't force the mid-range; the edge is the CPR break or the VWAP reclaim, nothing in between.
+**Entries taken:** SPX PUT on the **7460 break** (primary setup — fired as planned).
+**Outcome:** ✅ thesis correct → SPX dropped to **7440** (~20 of the ~34 pts to S1 7426, ~60% of the move). ❌ **but held the full runner waiting for the exact S1 7426 print; it stalled ~7440, popped back up, and round-tripped the gain into a LOSS.** Target undershot S1 (never touched 7426) — as PDL 7431 warned.
+**Mistake:** all-or-nothing exit on the final pivot; no scale-out, no breakeven stop, no trail. Let a real winner become a loser.
+**Lesson → new rule 7 (below):** targets are magnets not guarantees; **half-off at halfway/PDL, stop to breakeven once +½ to target, trail the runner, and aim the final exit IN FRONT of the pivot (PDL 7431, not S1 7426).** With that: half booked ~7443, runner trailed out ~7440–7448 = fully green, zero give-back. Same read, same entry — exit discipline was the whole difference.
+**Also:** don't force the mid-range; the edge is the CPR break or the VWAP reclaim, nothing in between (this held — the break was the right trigger).
