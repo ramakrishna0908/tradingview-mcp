@@ -1,11 +1,19 @@
 # Analysis Stocks — History & Next-Move Tracker
 
-Rolling `full analysis`. **Latest refresh: 2026-07-21.** Prior: 07-17. (Master table = 07-21; narrative below is 07-17 context.)
+Rolling `full analysis`. **Latest refresh: 2026-07-22.** Prior: 07-21, 07-17. (Master table = 07-22; narrative below is 07-17 context.)
 
 **Scoring:** RSI >60 +1 / >50 +0.5 / <50 -0.5 / <40 -1 · above BB basis +1 / below -1 ·
 CMF >0.1 +0.5 / <-0.1 -0.5. **CMF is the leading tell** — green candle + neg/flat CMF =
 distribution into strength = fade/wait; positive CMF = the dip-buys. Score is a snapshot;
 the *trend of CMF + cloud/VWAP position* is the prediction.
+
+**Volume / RVOL (added 07-22) — the confirmation layer.** RVOL = last completed daily bar volume ÷
+~21-day avg (via `data_get_ohlcv summary count=21`; stable intraday since it uses closed bars). CMF tells you
+*flow direction*; RVOL tells you *conviction* — **a level break or breakout is only tradable if it happens on
+RVOL ≥ ~1×.** Break on <1× volume = drift/trap, likely to reclaim. Rally into resistance on *declining* volume =
+exhaustion (fade). ⚠️ `quote_get`/Volume-study numbers are intraday *partial* totals — do NOT use for RVOL;
+only `data_get_ohlcv` per-bar volume is valid. **Standing refresh: RVOL becomes a master-table column, backfilled
+for all names at each EOD run when full-day volume is final.**
 
 **07-17 close — reversal day, not a red day.** Broad risk-off tape (14 of 22 red on score), but
 two tells flip the read: (1) the beaten-down semis/mega-caps held **strongly positive CMF while
@@ -53,40 +61,62 @@ in a pullback, but leaders' CMF is positive (accumulation into weakness).**
 
 ---
 
-## 📋 Master Technical Table (07-21)
+## 📋 Master Technical Table (07-22)
 
-**07-21 theme:** crypto/high-beta risk-on (COIN +14%, MSTR +8%, HOOD +6%, BMNR +6%) — but watch flow
-(COIN flat, MSTR -0.17 = short-cover). Leaders held (AAPL +0.20, MSFT **+0.23**, AMD cleared cloud).
-⚠️ NVDA slipped back <VWAP; HOOD short invalidated; MRVL short re-armed. GOOGL+TSLA earn **TMRW ~Jul 22**.
-QQQ gate still <cloud 711. ORCL CMF -0.42, watch not triggered.
+**07-22 theme: dispersion — AI hardware rips, software/crypto-proxies fade.** AMD +4% (550, tagged 553,
+>533 break confirmed), DELL **+11%** (445, cleared cloud), NVDA clean **>206 reclaim HELD** (207.7, CMF
+surged +0.21), MU +5% (967, reclaimed cloud). Meanwhile MSFT rejected 400 VWAP (-2.7% to 388.7), META
+lost cloud (-3% to 629) into earn, AMZN lost cloud, PLTR rejected 135 (-5.5%), COIN faded the 179 wall
+(-5%), MSTR fade played (103.8→98.6). AAPL leader intact, CMF surged **+0.25**. GOOGL+TSLA report **TODAY
+after close** — both flat-to-weak into the print. QQQ gate **still <cloud 711** (706.8). ORCL CMF -0.36
+(improved from -0.42 but **NO flip** — watch untriggered).
 
 Cols: BB = Bollinger (Low/Basis/Up) · VWAP = Q2-anchored · Cloud = Ichimoku SpanA/B ·
 Pos = price vs cloud (▲above / ◆in / ▼below) · Put = put-setup grade (see ranking below).
 
 | Sym | Px | RSI/MA | CMF | ATR | BB L/Basis/Up | VWAP | Cloud A/B | Pos | Score | Put | Bias · Next |
 |-----|----|--------|-----|-----|---------------|------|-----------|-----|-------|-----|-------------|
-| **AAPL** | 324.65 | 61.9/63.3 | **+0.20** | 8.0 | 273.9/308.3/342.7 | 291.8 | 313.0/304.4 | ▲ | +2.5 | — | 🟢Long · leader, CMF↑ strengthening; consolidating 324, earn ~Jul 31 |
-| **MSFT** | 399.69 | 54.5/50.4 | **+0.23** | 11.8 | 358.9/383.9/408.9 | 400.4 | 383.6/407.8 | ◆ | +2.0 | — | 🟢Long · **strongest CMF on board**; >400 VWAP→408→424, earn ~Jul 29 |
-| **COIN** | 178.76 | 60.2/49.3 | +0.03 | 10.2 | 142.6/158.7/174.9 | 179.3 | 162.5/180.8 | ◆ | +2.0 | — | 🚀+14% crypto rip >BB-up; **flat flow at 179-181 wall — don't chase** |
-| **AMZN** | 247.62 | 51.4/52.0 | +0.07 | 7.2 | 229.7/243.1/256.5 | 248.8 | 245.0/251.7 | ◆ | +1.5 | — | 🟢Hold · in cloud <VWAP 248.8; >252→262, earn ~Jul 31 |
-| **META** | 648.64 | 57.4/59.0 | +0.03 | 24.8 | 524.4/612.9/701.4 | 614.6 | 622.4/613.1 | ▲ | +1.5 | — | 🟡Grind · above cloud, flat flow into earn ~Jul 29 |
-| **PLTR** | 134.11 | 54.7/53.0 | +0.05 | 6.5 | 108.9/126.3/143.7 | 135.2 | 126.2/135.0 | ◆ | +1.5 | — | 🟡At the 135 wall; >135 breaks→143, earn ~Aug 4 |
-| **BMNR** | 17.04 | 57.8/47.1 | +0.03 | 1.1 | 12.8/14.9/17.0 | 18.6 | 15.5/18.1 | ◆ | +1.5 | — | ⚪Crypto pop at BB-up 17; thin |
-| **BABA** | 117.94 | 59.6/48.9 | -0.09 | 4.1 | 87.8/106.0/124.1 | 121.5 | 111.1/119.4 | ◆ | +1.5 | — | 🟡RSI strong but CMF neg; capped 119-121 |
-| **NVDA** | 204.51 | 49.8/49.2 | **+0.12** | 7.2 | 190.1/201.6/213.0 | 206.0 | 203.9/213.2 | ◆ | +1.0 | — | ⚠️**slipped back <VWAP 206**; testing 202-204 (still +CMF); >206→213 |
-| **AMD** | 527.95 | 52.2/52.5 | **+0.12** | 36.6 | 489.7/530.1/570.6 | 417.8 | 519.8/489.1 | ▲ | 0.0 | — | 🟢**Cleared cloud** 513→528 (tagged 535); at basis 530, >533→570, earn ~Aug 5 |
-| **MSTR** | 103.77 | 49.0/39.9 | **-0.17** | 7.6 | 84.0/94.9/105.7 | 131.3 | 103.0/139.4 | ◆ | 0.0 | ⚠️ | 🔴+8% into cloud but **CMF -0.17 = short-cover**; fade 105-109 if flow stays neg (BTC gap) |
-| **HOOD** | 106.62 | 53.1/60.0 | -0.06 | 6.7 | 92.9/106.9/120.9 | 88.6 | 106.6/96.6 | ◆ | -0.5 | ❌ | ⚠️**Short INVALIDATED** +6% reclaimed cloud/basis; neutral now, earn ~Jul 30 |
-| **GOOGL** | 349.34 | 44.2/48.7 | **+0.16** | 11.3 | 338.3/355.1/371.9 | 359.4 | 355.7/369.4 | ▼ | -1.0 | — | 🟢+CMF into **earn TMRW ~Jul 22**; reclaim 356→cloud, trade the reaction |
-| **DELL** | 401.42 | 49.9/55.4 | **+0.15** | 31.1 | 378.7/417.6/456.4 | 333.8 | 415.8/344.5 | ◆ | -1.0 | — | 🟡+4%, CMF flipped +0.15; <basis 418, ATR 31 |
-| **QQQ** | 705.41 | 46.6/48.4 | -0.03 | 14.7 | 694.6/714.5/734.4 | 690.5 | 711.3/717.5 | ▼ | -1.5 | 🛡️ | 🌐Backdrop · **gate: still <cloud 711** (705 closing in), RSI<50 |
-| **TSLA** | 378.81 | 43.2/48.0 | -0.08 | 16.4 | 362.9/395.0/427.1 | 395.6 | 396.0/411.0 | ▼ | -1.5 | ⚠️ | 🔴Weak <cloud into **earn TMRW ~Jul 22**; <368→air |
-| **NFLX** | 67.83 | 29.5/39.0 | -0.03 | 2.7 | 67.9/73.1/78.4 | 84.3 | 72.0/78.3 | ▼ | -2.0 | ⚫os | ⚫Post-earn oversold at BB-low; don't chase short |
-| **MRVL** | 204.80 | 41.4/42.8 | **-0.18** | 21.2 | 174.3/240.5/306.7 | 230.9 | 234.4/243.9 | ▼ | -2.0 | 🎯**re-armed** | 🔴**Short re-armed** · bounced into 200-214 fade zone + CMF re-worsened -0.18→162 |
-| **MU** | 919.00 | 47.2/46.7 | **-0.11** | **82.9** | 793.5/995.4/1197.3 | 806.4 | 974.6/941.3 | ▼ | -2.0 | — | 🟡Recovered 919 but CMF turned neg; <cloud 941, need 941 reclaim+flip. ⚠️ATR 83 |
-| **CRWV** | 76.96 | 37.2/36.6 | **-0.17** | 7.0 | 67.4/87.0/106.5 | 104.6 | 88.5/103.4 | ▼ | -2.5 | ⚫os | ⚫Broken/oversold, below cloud |
-| **ORCL** | 124.97 | 31.0/28.8 | **-0.42** | 8.1 | 117.3/140.0/162.8 | 169.4 | 146.1/185.1 | ▼ | -2.5 | ⚫os | ⚫Knife · **CMF -0.42, watch NOT triggered**; buy only on CMF flip or 135 reclaim |
-| **LUNR** | 14.28 | 30.2/30.9 | **-0.35** | 1.9 | 12.1/17.4/22.7 | 27.3 | 18.2/29.7 | ▼ | -2.5 | ⚫os | ⚫Knife, flow deepened -0.35; no signal |
+| **AAPL** | 324.98 | 61.6/64.3 | **+0.25** | 8.0 | 275.2/310.0/344.8 | 292.2 | 313.9/304.4 | ▲ | +2.5 | — | 🟢Long · leader, **CMF surged to +0.25** (top of board); coiling 325, earn ~Jul 31 |
+| **AMD** | 550.00 | 55.7/52.6 | **+0.16** | 36.7 | 491.1/532.5/573.9 | 419.3 | 519.8/489.1 | ▲ | +2.0 | — | 🟢**>533 break confirmed** 528→550 (tagged 553); >BB-basis, next 570 BB-up, earn ~Aug 5 |
+| **NVDA** | 207.67 | 52.6/50.1 | **+0.21** | 6.9 | 190.1/202.1/214.0 | 206.0 | 203.9/213.2 | ◆ | +2.0 | — | 🟢**Clean >206 reclaim HELD** (207.7>VWAP), CMF surged +0.12→+0.21; 214 = triple-res, earn late-Aug |
+| **DELL** | 445.00 | 58.1/55.2 | **+0.15** | 32.4 | 378.3/418.6/458.8 | 334.8 | 415.8/348.4 | ▲ | +2.0 | — | 🟢**+11% breakout** 401→445, cleared cloud/basis, CMF +0.15; watch 458 BB-up. ATR 32 |
+| **BMNR** | 17.71 | 61.1/48.8 | +0.09 | 1.1 | 12.6/15.0/17.5 | 18.6 | 15.9/18.1 | ◆ | +2.0 | — | ⚪Crypto pop >BB-up 17.5, RSI 61; thin |
+| **COIN** | 169.55 | 54.0/49.7 | +0.05 | 10.1 | 143.0/159.2/175.3 | 179.2 | 163.7/180.8 | ◆ | +1.5 | — | 🟡**Faded 179 wall** as flagged (178.8→169.6); flat flow, in cloud, earn ~Jul 30 |
+| **META** | 629.41 | 52.1/58.4 | +0.03 | 24.5 | 530.8/616.0/701.3 | 614.9 | 634.6/613.1 | ◆ | +1.5 | — | 🟡**Lost cloud** -3% (648→629) into earn ~Jul 29; flat flow, VWAP 615 = floor |
+| **BABA** | 116.10 | 56.3/51.1 | -0.10 | 4.0 | 88.0/106.7/125.3 | 121.4 | 111.7/119.4 | ◆ | +1.5 | — | 🟡RSI ok but CMF -0.10 neg; capped 119-121, in cloud |
+| **MSFT** | 388.71 | 48.3/50.4 | **+0.21** | 11.8 | 360.1/384.6/409.0 | 400.3 | 385.0/407.8 | ◆ | +1.0 | — | 🟡**Rejected 400 VWAP** (-2.7% to 388.7) but CMF still +0.21; needs 400 reclaim, earn ~Jul 29 |
+| **AMZN** | 243.90 | 47.5/52.0 | +0.06 | 7.0 | 230.8/243.6/256.3 | 248.7 | 246.3/251.1 | ▼ | +0.5 | — | 🟡Lost cloud+VWAP (247.6→243.9) to basis; flat flow, need >248 reclaim, earn ~Jul 31 |
+| **MSTR** | 98.57 | 44.5/40.5 | **-0.15** | 7.4 | 84.6/94.5/104.4 | 130.9 | 103.2/139.4 | ▼ | 0.0 | ⚠️ | 🔴**Fade played** (103.8→98.6), CMF -0.15 confirmed short-cover; <cloud, fade rips 103-104 (BTC gap) |
+| **HOOD** | 105.14 | 51.6/59.0 | -0.05 | 6.5 | 93.0/107.0/120.9 | 88.7 | 107.2/96.6 | ◆ | -0.5 | ❌ | ⚠️Neutral, in cloud <basis 107; short still invalid, earn ~Jul 30 |
+| **MU** | 967.19 | 50.8/46.9 | -0.02 | **82.6** | 795.6/993.7/1191.8 | 808.6 | 965.3/945.2 | ▲ | -0.5 | — | 🟡**Reclaimed cloud** +5% (919→967), CMF flat -0.02 (from -0.11); <basis 994, need flow flip. ⚠️ATR 83 |
+| **GOOGL** | 348.02 | 43.7/48.1 | **+0.11** | 10.8 | 338.3/355.1/371.9 | 359.3 | 355.7/369.4 | ▼ | -1.0 | — | 🟡+CMF but weak <cloud into **earn TODAY a/c**; 356 reclaim = long, trade the reaction |
+| **QQQ** | 706.81 | 47.2/48.1 | +0.05 | 14.2 | 694.4/714.3/734.3 | 690.6 | 711.3/717.5 | ▼ | -1.5 | 🛡️ | 🌐Backdrop · **gate: still <cloud 711** (706.8 knocking), RSI<50, CMF flat |
+| **TSLA** | 377.55 | 42.8/46.9 | -0.03 | 15.9 | 362.3/394.8/427.3 | 395.5 | 396.0/411.0 | ▼ | -1.5 | ⚠️ | 🔴Weak <cloud, flat CMF into **earn TODAY a/c**; binary, IV rich, <368→air |
+| **PLTR** | 126.67 | 45.8/52.7 | +0.08 | 6.5 | 110.0/126.7/143.5 | 135.2 | 126.2/135.0 | ◆ | -1.5 | — | 🟡**Rejected 135 wall** -5.5% (134→126.7) to basis/cloud-base; hold 126 or fail→110, earn ~Aug 4 |
+| **ARM** | 286.95 | 44.1/42.7 | -0.07 | 27.4 | 250.1/309.9/369.8 | 285.3 | 316.8/326.8 | ▼ | -1.5 | — | 🔴Downtrend −22% (390→243→bounce), below cloud; **reclaimed 285 VWAP pivot but bounce on light vol (RVOL 0.78×↓; capitulation was 1.3-1.5×)**, CMF -0.07. Capped 310-327 wall → scalp 285→310 *only on vol expansion*, else fade the wall. ATR 27. Confirm earn ~early Aug |
+| **NFLX** | 70.09 | 37.4/39.2 | +0.06 | 2.7 | 67.7/73.0/78.4 | 84.0 | 72.0/78.3 | ▼ | -2.0 | ⚫os | ⚫Oversold bounce (67.8→70.1), CMF flipped +0.06; still <cloud, stabilizing not turning |
+| **MRVL** | 211.41 | 43.7/42.3 | **-0.11** | 20.6 | 172.7/237.3/301.9 | 230.7 | 231.7/243.9 | ▼ | -2.0 | 🎯**armed** | 🔴**At fade-zone top** (bounced to 211, into 200-214), CMF -0.11; fade rejection→162, invalid >234 |
+| **CRWV** | 83.24 | 44.4/37.5 | **-0.12** | 7.1 | 68.6/86.0/103.3 | 104.2 | 87.6/101.1 | ▼ | -2.0 | ⚫os | ⚫Oversold bounce +8% (77→83), CMF -0.12 still neg; <cloud/basis, earn ~Aug 12 |
+| **ORCL** | 126.38 | 32.7/29.3 | **-0.36** | 7.8 | 118.1/138.2/158.3 | 168.8 | 145.3/185.1 | ▼ | -2.5 | ⚫os | ⚫Knife · **CMF -0.36, watch NOT triggered** (improved from -0.42); buy only on flip or 135 reclaim |
+| **SPCX** | 122.93 | 36.7/— | **-0.22** | 11.9 | 115.3/145.2/175.0 | ~166 | (IPO/incompl) | ▼ | -2.5 | ⚫ | ⚫IPO, CMF deepened -0.18→-0.22; near 119.4 floor / BB-low 115, weak. Price-action only |
+| **LUNR** | 14.19 | 30.9/30.5 | **-0.31** | 1.8 | 11.9/17.1/22.2 | 27.2 | 17.6/29.7 | ▼ | -2.5 | ⚫os | ⚫Knife (flat 14.2), CMF -0.31; <cloud, no signal |
+
+---
+
+## 🔊 Volume Conviction — RVOL (07-22, trigger names)
+
+RVOL = last completed daily bar volume ÷ ~21-day avg. Confirms/invalidates the level triggers above.
+Full 23-name backfill lands at next EOD refresh (needs final full-day volume).
+
+| Sym | RVOL | 5-day vol trend | Read on the trigger |
+|-----|------|-----------------|---------------------|
+| **AMD** | **1.05×** | rising into breakout (23→29M) | ✅ New-highs breakout on **>avg** volume — confirmed, no caveat |
+| **MRVL** | 0.75× | **declining** thru bounce (35→30→25→22M) | ✅ Rally into 200-214 fade zone on **fading** volume = exhaustion → **strengthens the short**; fade 214 rejection |
+| **NVDA** | 0.79× | reclaim bar was 1.04×, 215-test pacing ~0.75× | ⚠️ Accumulation had volume; **215 poke NOT yet volume-confirmed** — needs ≥1× to trust breakout |
+| **META** | **0.49×** | declining (22→10→9M) | ⚠️ 5-day bleed on **very light** volume — a **<613 break on <1× = trap risk**, likely reclaim |
+
+**Rule:** trade the break only on RVOL ≥ ~1×. AMD confirmed; MRVL fade strengthening; NVDA/META triggers
+need a volume expansion to be trusted (both currently sub-1× = suspect).
 
 ---
 
@@ -149,6 +179,11 @@ Mega-cap cluster Jul 29–Aug 1 (META/MSFT/AAPL/AMZN) = four pivots one window. 
 5. **Oversold ≠ buy** — ORCL (RSI 28, CMF -0.42), NFLX/CRWV/LUNR (RSI 27-33): knives get more
    oversold. Buy the *turn* (CMF flip / level reclaim), not the RSI.
 6. **ORCL standing watch** — alert the moment CMF crosses positive (currently -0.42, no flip). Buy trigger.
+7. **Volume confirms the break (RVOL ≥ ~1×)** — CMF = flow direction, RVOL = conviction. A level break or
+   breakout on <1× volume is drift/trap (likely reclaim); a rally into resistance on *declining* volume is
+   exhaustion (fade). 07-22 proof: AMD broke to new highs on 1.05× (real), MRVL bounced into its fade zone on
+   fading 0.75× (weak), while NVDA's 215 test and META's 613 threat are both sub-1× = not yet trustworthy.
+   ⚠️ Use `data_get_ohlcv` per-bar volume for RVOL — `quote_get`/Volume-study values are intraday partials.
 
 ---
 
@@ -224,3 +259,18 @@ support) — chase-avoidance > thesis-strength when locating fresh entries. RS-a
 **Outcomes:** AMD & prior NVDA triggers were correct; NVDA reclaim didn't hold (partial). HOOD backup avoided cleanly. No new fills (gate unmet → half-size; earnings tomorrow → no pre-print adds).
 **Lesson:** a reclaim needs to *hold the retest* (rule 6) — NVDA tagged 206 then failed, so it reverts to WAIT, not a chase. Extending winner (AMD) rotates "best" to whoever has the cleanest *next* trigger.
 **Next (07-22):** AMD 533 break/505 dip; NVDA clean 206 hold vs 202 dip; AAPL 310/342; MRVL 205–214 fade; **QQQ 711 gate**; trade **GOOGL/TSLA earnings reaction** (not the anticipation); ORCL CMF.
+
+### 2026-07-22 — Roll-forward (both triggers ran; AI-hardware breakout day; GOOGL/TSLA earn tonight)
+**Gate:** QQQ **706.8**, still <cloud 711 (knocking) — half-size still in force. Tape = **dispersion**: AI hardware (AMD/NVDA/DELL/MU) ripped while software (MSFT/META/AMZN/PLTR) and crypto-proxies (COIN/MSTR) faded.
+- **AMD CALL** (#1) — **✅ >533 break confirmed and RAN**: 528→**550** (tagged 553), CMF held +0.16, clear of cloud/basis. Entry window (505–517 pullback / 533 break) has now extended to 550 = **don't chase**; next structural add only on a 528–533 retest-hold, target 570 BB-up. Thesis fully validated.
+- **NVDA CALL** (#2→promote) — **✅ clean >206 reclaim HELD** (207.7 > VWAP 206), the hold the 07-21 note demanded; CMF **surged +0.12→+0.21**. Re-triggered → **ENTER (½)**, long ~204–207 / short ≥213–214 (triple-res) Oct, invalid <201.9. Cleanest fresh R/R on the board → **new co-#1 with AMD** (AMD extended, NVDA at entry).
+- **AAPL CALL** (#3) — still **WAIT**; 325, no 308–312 dip, no >342 break. CMF **surged to +0.25** (top of board), leader intact. Best "buy the dip" hold.
+- **DELL** — **new bullish flag**: +11% to 445, cleared cloud/basis, CMF +0.15. Not a spread candidate (ATR 32 wide) but a momentum long-watch; >458 BB-up extends.
+- **MSFT** — rejected 400 VWAP (399.7→388.7) but CMF still +0.21; **on-deck long only >400 reclaim**, earn ~Jul 29 caps runway.
+- **MRVL PUT** — **at fade-zone top** (bounced to 211.4, into 200–214), CMF -0.11 (not yet <-0.20). → fade a **205–214 rejection** → 162, invalid >234. Active short-watch, no earn till Aug 28.
+- **MSTR** — fade played (103.8→98.6), CMF -0.15 confirms; short-dated fade of 103–104 rips only.
+- **ORCL** watch — CMF **-0.36** (improved from -0.42 but **still negative — NO flip**); no trade, buy only on flip or 135 reclaim.
+**Ranking now:** 🥇AMD (extended — retest-add only) / NVDA (fresh ENTER-½ at support) · 🥉AAPL (WAIT dip). MRVL = armed short-watch; DELL/MSFT = long-watch.
+**Outcomes:** AMD & NVDA both triggered as forecast and NVDA's reclaim held this time (vs 07-21 failure) — the rule-6 "hold the retest" filter worked. No new fills logged (gate <711 → half-size; **GOOGL+TSLA earn tonight** → no pre-print adds).
+**Lesson:** a winner that keeps running (AMD 497→513→550) hands "best fresh entry" to whoever just triggered at support (NVDA 207) — chase-avoidance keeps rotating the book to the cleanest R/R.
+**Next (07-23):** trade **GOOGL/TSLA reaction** (356 reclaim = GOOGL long; TSLA <368 = short / >411 = squeeze); NVDA hold 206 / 214 break; AMD 533 retest-add; AAPL 310/342; MRVL 205–214 fade; **QQQ 711 gate**; MSFT 400 reclaim; ORCL CMF flip.

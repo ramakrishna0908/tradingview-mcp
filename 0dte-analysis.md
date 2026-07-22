@@ -1,16 +1,18 @@
 # 0DTE Game Plan — QQQ · SPX · META · TSLA
 
-**Session: 2026-07-15 — REFRESHED (later intraday).** Separate from the swing tracker
+**Session: 2026-07-22 (Wed) — REFRESHED 13:25 ET (~2.5h to close).** Separate from the swing tracker
 (`analysisstocks.md`) — this file is intraday, level-based, and goes stale within the session.
 
-> 🔄 **Refresh update:** Puts are working. **SPX broke its CPR floor (7535)**, **TSLA broke S1 (393.2)**
-> heading to S2, **QQQ ground into S2 (710.8)** at new lows. **META tapped R3 (686.06) and rejected again** —
-> still the lone holdout but capped and now 115% of ATR spent. Tape stayed heavy; VWAPs barely moved.
+> ✅ **Data freshness (VERIFIED):** last 5-min bars stamped 13:20–13:25 ET = current. **SPX fully verified** —
+> Σ5-min vol 1.377B ≈ daily tape 1.375B. ⚠️ **QQQ price/levels verified but volume DEGRADED** — Σ5-min 1.54M
+> vs 14.1M daily tape (single-venue BATS feed) → use QQQ *relative* volume only; lean on SPX volume as the tell.
 
-> ⚠️ **Expiry reality check:** Only **QQQ and SPX have true same-day (0DTE) expirations today (Wed 7/15).**
-> **META and TSLA do NOT list daily expiries** — nearest is the **Fri 7/17 weekly (~2 DTE)**. So for those
-> two, "0DTE" means a Friday-expiry contract held over ~2 days: less gamma/theta knife-edge than a true
-> 0DTE, but still fast decay. Treat QQQ/SPX as pure intraday scalps; META/TSLA as 2-day directional.
+> 🔄 **Read flip vs prior session:** tape is **bid, not offered.** Both true-0DTE names are **ABOVE VWAP and
+> ABOVE CPR** on narrow-CPR trend days after a morning shakeout-and-reclaim (SPX dipped <CPR to 7486 then
+> reclaimed VWAP+CPR = textbook rule-6 CALL). **Bias = CALLS, not puts.** Fuel left (SPX 52% / QQQ 43% ATR used).
+
+> ⚠️ **Expiry reality check:** Only **QQQ and SPX have true same-day (0DTE) expirations today.** **META and TSLA
+> do NOT list daily expiries** — **excluded** from today's 0DTE selection per the true-expiry-only rule.
 
 ## Method — indicators that matter for 0DTE
 Swing indicators (daily RSI, weekly cloud) are noise on 0DTE. This plan is built on the intraday level
@@ -32,110 +34,93 @@ stack that actually drives same-day options:
 
 | Sym | 0DTE? | Px | VWAP | vs VWAP | CPR (BC–TC) | vs CPR | ATR used | **Bias** | Trigger line |
 |-----|-------|----|------|---------|-------------|--------|----------|----------|--------------|
-| **QQQ** | ✅ today | 711.9 | ~717 | **below** ▼ | 718.3–719.2 | below ▼ | ~86% | 🔴 **PUTS→target** | at S2 710.8; break→S3 707.3, else cover |
-| **SPX** | ✅ today | 7535 | ~7560 | **below** ▼ | 7535–7541 | **broke floor** ▼ | ~62% | 🔴 **PUTS active** | lost 7535 CPR; tgt S1 7519→S2 7494 |
-| **META** | ❌ Fri 7/17 | 684.2 | ~676 | **above** ▲ | 657.8–660.0 | far above ▲ | ~115% | 🟡 **don't chase** | rej R3 686 again; fade→676, or buy 676 dip |
-| **TSLA** | ❌ Fri 7/17 | 392.1 | ~398 | **below** ▼ | 397.0–398.5 | below ▼ | ~85% | 🔴 **PUTS active** | broke S1 393.2; tgt S2 390.3→S3 385.8 |
+| **SPX** | ✅ today | 7515.8 | 7510.1 | **above** ▲ | 7491.6–7503.3 | above ▲ | ~52% | 🟢 **CALL (best)** | >7527 R1 break→R2 7545, or 7510 VWAP dip-hold |
+| **QQQ** | ✅ today | 708.8 | 707.0 | **above** ▲ | 706.4–708.1 | above ▲ | ~43% | 🟢 **CALL (backup)** | >710 PDH break→R1 711.8, or 707 VWAP dip-hold |
+| **META** | ❌ weekly | — | — | — | — | — | — | ⛔ **not 0DTE** | excluded — no daily expiry |
+| **TSLA** | ❌ weekly | — | — | — | — | — | — | ⛔ **not 0DTE** | excluded — no daily expiry |
 
-**One-liner:** Puts paid — SPX, TSLA and QQQ all pushed to their downside triggers/targets. **QQQ is now
-*at* S2 710.8** (take-profit / needs a fresh break for more). **SPX just lost its CPR** — freshest continuation
-(most ATR left, S1 7519 open). **TSLA broke S1**, running to S2 390. **META** still won't break — capped at
-R3 686 but exhausted (115% ATR); fade-to-676 is the play, not chasing calls.
+**One-liner:** Both true-0DTE names are **bid above VWAP + CPR** on narrow-CPR trend days = **CALL bias** — but
+both are **coiling mid-range just under resistance** (SPX <R1 7527/sessH 7526; QQQ <PDH 710/sessH 709.65). The
+trade is the **trigger, not the current print.** **SPX = best vehicle** (fully-verified data incl. volume, most
+fuel, clean R2 7545 target). **QQQ = backup** (degraded volume feed, tiny 6-pt range). At 7516/708.8 = **NO
+TRADE** until a VWAP-retest-hold or an R1/PDH break on volume.
 
 ---
 
 ## 📋 All-Indicators Master Table
 
-| Indicator | **QQQ** ✅ | **SPX** ✅ | **META** (2DTE) | **TSLA** (2DTE) |
-|-----------|-----------|-----------|-----------------|-----------------|
-| **Price** | 711.92 | 7535.42 | 684.17 | 392.07 |
-| **Session VWAP** | ~717 | ~7560 | ~676 | ~398 |
-| **vs VWAP** | ▼ below | ▼ below | ▲ above | ▼ below |
-| **CPR — TC** | 719.23 | 7540.84 | 659.95 | 398.49 |
-| **CPR — Pivot** | 718.77 | 7538.09 | 658.86 | 397.72 |
-| **CPR — BC** | 718.32 | 7535.34 | 657.78 | 396.95 |
-| **CPR width** | 0.9 (narrow) | 5.5 (v.narrow) | 2.2 (mod) | 1.5 (mod) |
-| **CPR signal** | trend day | strong trend | trend (up) | trend (rev) |
-| **vs CPR** | ▼ below | ▼ broke floor | ▲ far above | ▼ below |
-| **R3** | 731.16 | 7607.15 | 686.13 | 408.14 |
-| **R2** | 726.72 | 7582.30 | 676.31 | 405.18 |
-| **R1** | 723.21 | 7562.94 | 668.68 | 400.68 |
-| **S1** | 715.26 | 7518.73 | 651.23 | 393.22 |
-| **S2** | 710.82 | 7493.88 | 641.41 | 390.26 |
-| **S3** | 707.31 | 7474.52 | 633.78 | 385.76 |
-| **PDH** | 722.29 | 7557.44 | 666.50 | 402.22 |
-| **PDL** | 714.34 | 7513.23 | 649.05 | 394.76 |
-| **PDC** | 719.69 | 7543.59 | 661.04 | 396.18 |
-| **Today Open** | 723.85 | 7571.72 | 663.60 | 399.40 |
-| **Today High** | 724.36 | 7581.50 | 686.06 | 406.59 |
-| **Today Low** | 711.64 | 7532.06 | 656.66 | 391.81 |
-| **OR (15m)** | 719.5–724.1 | 7559.7–7580.8 | 656.7–662.4 | 399.4–406.6 |
-| **OR break** | ▼ down | ▼ down | ▲ up | ▼ down (trap) |
-| **ATR (daily)** | 14.74 | 79.38 | 25.61 | 17.48 |
-| **ATR used** | ~86% | ~62% | ~115% | ~85% |
-| **Daily RSI** | 48.8 | 57.0 | 66.2 | 47.6 |
-| **Daily CMF** | −0.08 | −0.02 | −0.02 | −0.02 |
-| **0DTE today?** | ✅ yes | ✅ yes | ❌ Fri 7/17 | ❌ Fri 7/17 |
-| **BIAS** | 🔴 PUTS→tgt | 🔴 PUTS active | 🟡 don't chase | 🔴 PUTS active |
-| **Trigger** | at S2 710.8→707.3 | lost 7535→7519 | rej R3 686→676 | broke S1→390.3 |
-| **Status** | at target | fresh breakdown | capped/exhausted | working →S2 |
+| Indicator | **SPX** ✅ (best) | **QQQ** ✅ (backup) |
+|-----------|------------------|---------------------|
+| **Price** | 7515.83 | 708.84 |
+| **Session VWAP** | 7510.05 | 707.04 |
+| **vs VWAP** | ▲ above +5.78 | ▲ above +1.80 |
+| **CPR — TC** | 7503.33 | 708.12 |
+| **CPR — Pivot** | 7497.46 | 707.27 |
+| **CPR — BC** | 7491.59 | 706.42 |
+| **CPR width** | 11.74 (0.16%) narrow | 1.70 (0.24%) narrow |
+| **CPR signal** | trend day | trend day |
+| **vs CPR** | ▲ above | ▲ above |
+| **R3** | 7574.50 | 719.00 |
+| **R2** | 7544.91 | 714.52 |
+| **R1** | 7527.05 | 711.75 |
+| **S1** | 7479.60 | 704.50 |
+| **S2** | 7450.01 | 700.02 |
+| **S3** | 7432.15 | 697.25 |
+| **PDH** | 7515.31 | 710.05 |
+| **PDL** | 7467.86 | 702.80 |
+| **PDC** | 7509.20 | 708.97 |
+| **Today Open** | 7497.47 | 703.62 |
+| **Today High** | 7525.94 | 709.65 |
+| **Today Low** | 7485.84 | 703.57 |
+| **OR (15m)** | 7485.84–7502.51 | 703.57–705.90 |
+| **OR break** | ▲ up (reclaim) | ▲ up (reclaim) |
+| **ATR (daily)** | 77.04 | 14.24 |
+| **ATR used** | ~52% | ~43% |
+| **Daily RSI** | 53.5 | 47.9 |
+| **Daily CMF** | +0.12 | +0.06 |
+| **0DTE today?** | ✅ yes | ✅ yes |
+| **BIAS** | 🟢 CALL (best) | 🟢 CALL (backup) |
+| **Trigger** | >7527 R1 → R2 7545 | >710 PDH → R1 711.75 |
+| **Status** | above VWAP/CPR, coiling <R1 | above VWAP/CPR, coiling <PDH |
 
-*VWAP + ATR-used computed from today's 5-min bars, mid-session — approximate. Pivots/CPR exact from prior-day HLC.*
+*VWAP + ATR-used computed from today's 5-min bars (SPX Σvol reconciles to daily tape; QQQ volume single-venue).
+Pivots/CPR exact from prior-day (7/21) HLC. META/TSLA excluded — no true 0DTE expiry.*
 
 ---
 
-## QQQ — 🔴 PUTS (true 0DTE)
-**Px 713.07** · Open 723.85 / H 724.36 / L 712.06 · Range 12.3 (~83% of 14.7 ATR — mostly spent)
+## SPX — 🟢 CALL / BEST (true 0DTE — SPXW)
+**Px 7515.83** · Open 7497.47 / H 7525.94 / L 7485.84 · Range 40.1 (~52% of 77 ATR — **fuel left**)
 
-- **CPR:** BC 718.32 / P 718.77 / TC 719.23 — **width 0.9 pt (0.13%) = narrow → trend day.** ✓ (down-trend)
-- **Pivots:** R1 723.21 · R2 726.72 · R3 731.16 | **S1 715.26 · S2 710.82 · S3 707.31**
-- **PDH/PDL/PDC:** 722.29 / 714.34 / 719.69
-- **VWAP ~717** · **OR 15m** 719.5–724.1 (broke below = downside)
-- **Structure:** opened at R1, rejected, broke CPR *and* S1 → clean bearish trend day. Below VWAP.
+- **CPR:** BC 7491.59 / P 7497.46 / TC 7503.33 — **width 11.7 pt (0.16%) = narrow → trend day.**
+- **Pivots:** R1 7527.05 · R2 7544.91 · R3 7574.50 | S1 7479.60 · S2 7450.01 · S3 7432.15
+- **PDH/PDL/PDC:** 7515.31 / 7467.86 / 7509.20 — **price reclaimed PDH & PDC (bullish).**
+- **VWAP 7510.05 (price +5.78 above)** · **OR 15m** 7485.84–7502.51 (opened low, broke **above** = reclaim)
+- **Structure:** opened 7497 → shook out to **7486 (below CPR, near S1)** → **reclaimed VWAP + CPR** and ran to
+  session high **7525.9 (just under R1 7527)** — textbook rule-6 below-CPR-VWAP-reclaim → CALL. Now coiling
+  7515–7525 under R1 with slight lower-highs (mild momentum cooldown near resistance).
 
-**Play:** Puts, but **don't chase 713** — ~83% of ATR is used. Best entry = **rally into the 715.3–718 supply
-stack (S1 / VWAP 717 / CPR)** that rejects → puts targeting **S2 710.82 → S3 707.31.** **Invalidation:** 15-min
-reclaim & hold **>717 VWAP / back into CPR 718.3** flips it neutral-long toward R1 723.
+**Play (CALL):** Two triggers — **(a) primary/dip-buy:** pullback to **VWAP 7510 that holds** (5-min close stays
+>7510) → long back to R1 7527 → **R2 7544.9**; **(b) momentum:** **5-min close >7527 (R1/sessH) on rising
+volume** → R2 7544.9, stretch R3. **Invalidation:** 5-min close **<7510 VWAP** = stand down; **<7503 CPR-TC**
+confirms failure → no longs. Best vehicle today — fully-verified data, most ATR left, clean 7545 target.
 
-## SPX — 🔴 PUTS-lean (true 0DTE)
-**Px 7543.96** · Open 7571.72 / H 7581.50 / L 7536.99 · Range 44.5 (~56% of 79 ATR — **fuel left**)
+## QQQ — 🟢 CALL / BACKUP (true 0DTE)
+**Px 708.84** · Open 703.62 / H 709.65 / L 703.57 · Range 6.1 (~43% of 14.2 ATR — quiet grind)
 
-- **CPR:** BC 7535.34 / P 7538.09 / TC 7540.84 — **width 5.5 pt (0.07%) = very narrow → strong trend day.**
-- **Pivots:** R1 7562.94 · R2 7582.30 · R3 7607.15 | **S1 7518.73 · S2 7493.88 · S3 7474.52**
-- **PDH/PDL/PDC:** 7557.44 / 7513.23 / 7543.59
-- **VWAP ~7563 (≈ R1)** · **OR 15m** 7559.7–7580.75 (broke below) · tagged **R2 7582 at open & rejected**
-- **Structure:** below VWAP, grinding down, holding just above CPR (7540). Weaker than it looks.
+- **CPR:** BC 706.42 / P 707.27 / TC 708.12 — width 1.70 pt (0.24%) narrow → trend day.
+- **Pivots:** R1 711.75 · R2 714.52 · R3 719.00 | S1 704.50 · S2 700.02 · S3 697.25
+- **PDH/PDL/PDC:** 710.05 / 702.80 / 708.97
+- **VWAP 707.04 (price +1.80 above)** · **OR 15m** 703.57–705.90 (opened at low, broke **above** = reclaim)
+- **Structure:** same shape as SPX — opened at the low 703.57, climbed through VWAP + CPR, now coiling under
+  **PDH 710.05 / sessH 709.65.** Tight 6-pt range = low volatility. ⚠️ intraday volume feed degraded.
 
-**Play:** The **CPR 7535 is the hinge.** Short/puts on **loss of 7535** → **S1 7518.73 → S2 7493.88** (more ATR
-room than QQQ). Or fade a pop into **VWAP 7563 / R1** that rejects. **Flip long only** on a reclaim **>7563 VWAP**
-→ R2 7582 retest. Very narrow CPR says pick a side on the break and let it run — don't fade inside 7535–7541.
+**Play (CALL, backup):** **>710.05 PDH break** (5-min close, ideally with SPX confirming) → **R1 711.75** → R2
+714.5; or **707 VWAP dip-hold** → 709.65/710. **Invalidation:** 5-min close **<707 VWAP / <706.4 CPR-BC.**
+Backup only — smaller target, tiny range, and volume can't be trusted for confirmation (defer to SPX's tape).
 
-## META — 🟡 DON'T CHASE (no 0DTE — Fri 7/17, ~2 DTE)
-**Px 684.59** · Open 663.6 / H 685.21 / L 656.66 · Range 28.6 (**~111% of 25.6 ATR — exhausted**)
-
-- **CPR:** BC 657.78 / P 658.86 / TC 659.95 — width 2.2 pt (0.33%)
-- **Pivots:** R1 668.68 · R2 676.31 · **R3 686.13** | S1 651.23 · S2 641.41 · S3 633.78
-- **PDH/PDL/PDC:** 666.50 / 649.05 / 661.04
-- **VWAP ~675** · **OR 15m** 656.7–662.4 (broke above, trended up all day) · **double-rejection at 685**
-- **Structure:** ran the *entire* pivot ladder to **R3 686**, ~10 pts above VWAP, >1 ATR up. Strong but stretched.
-
-**Play:** **Calls into R3 686 = buying the top** — over 1 ATR spent, double top at 685, flat daily CMF.
-Two honest setups: **(a)** break *and hold* **>686** on volume → momentum calls to blue sky (low-prob late-day
-extension); **(b)** rejection at **685–686 → put/fade to R2 676 → VWAP 675.** Cleanest non-chase = **wait for a
-pullback to VWAP ~675 to hold**, then a Friday call with room. Don't market-buy 684.
-
-## TSLA — 🔴 PUTS (no 0DTE — Fri 7/17, ~2 DTE)
-**Px 393.42** · Open 399.40 / H 406.59 / L 393.15 · Range 13.4 (~77% of 17.5 ATR)
-
-- **CPR:** TC 396.95 / P 397.72 / BC 398.49 — width 1.5 pt (0.39%); *(TC<BC ordering — CPR band 396.95–398.49)*
-- **Pivots:** R1 400.68 · R2 405.18 · R3 408.14 | **S1 393.22 · S2 390.26 · S3 385.76**
-- **PDH/PDL/PDC:** 402.22 / 394.76 / 396.18
-- **VWAP ~399** · **OR 15m** 399.4–406.6 (spiked above **then reversed below** = bull-trap)
-- **Structure:** rejected R2/R3 (405–408, = daily cloud/+1σ wall), reversed the whole range, now pinned at **S1 393.2**.
-
-**Play:** Bearish reversal. **S1 393.2 (= today's low 393.15) is the line.** **Break & hold <393** → puts to
-**S2 390.26 → S3 385.76.** **Invalidation:** reclaim **CPR 397–398.5 / VWAP 399** → squeeze back to R1 400.68.
-Matches the swing read (capped below cloud) — today confirmed it by rejecting 405–408.
+## META / TSLA — ⛔ EXCLUDED (no true 0DTE today)
+Neither lists a same-day expiry (weekly-only). Per the true-expiry-only rule they are **out of scope for today's
+0DTE selection** — see the swing tracker (`analysisstocks.md`) for their multi-day read.
 
 ---
 
@@ -190,3 +175,32 @@ Matches the swing read (capped below cloud) — today confirmed it by rejecting 
 **Mistake:** all-or-nothing exit on the final pivot; no scale-out, no breakeven stop, no trail. Let a real winner become a loser.
 **Lesson → new rule 7 (below):** targets are magnets not guarantees; **half-off at halfway/PDL, stop to breakeven once +½ to target, trail the runner, and aim the final exit IN FRONT of the pivot (PDL 7431, not S1 7426).** With that: half booked ~7443, runner trailed out ~7440–7448 = fully green, zero give-back. Same read, same entry — exit discipline was the whole difference.
 **Also:** don't force the mid-range; the edge is the CPR break or the VWAP reclaim, nothing in between (this held — the break was the right trigger).
+
+### 2026-07-22 (Wed) — midday read 13:25 ET (~2.5h to close)
+**Data freshness: VERIFIED** — 5-min bars stamped 13:20–13:25 ET (current). **SPX Σ5-min vol 1.377B ≈ daily 1.375B ✓** (fully verified). ⚠️ **QQQ Σ5-min 1.54M vs 14.1M daily** = single-venue BATS feed → QQQ absolute-volume DEGRADED, used relative-only + deferred to SPX tape. File was stale on entry (master table 7/15, last journal 7/20) → recomputed everything from prior-day (7/21) HLC + today's 5-min bars.
+**Setup shape (both):** opened at/below CPR, **shook out to the lows then reclaimed VWAP + CPR** and trended up to session highs — bid tape, **rule-6 below-CPR-VWAP-reclaim = CALL** (not the puts the stale file implied). Both now coiling mid-range just under first resistance.
+
+| | Price | VWAP | vs | CPR (BC–TC) | vs | SessH/L | OR15m | ATR used |
+|---|-------|------|----|-------------|----|---------|-------|----------|
+| **SPX** | 7515.8 | 7510.1 | ▲ +5.8 | 7491.6–7503.3 | above | 7525.9/7485.8 | 7485.8–7502.5 ↑reclaim | ~52% |
+| **QQQ** | 708.8 | 707.0 | ▲ +1.8 | 706.4–708.1 | above | 709.65/703.57 | 703.6–705.9 ↑reclaim | ~43% |
+
+**BEST — SPX CALL (narrow-CPR trend day, above VWAP+CPR, most fuel, fully-verified data):**
+- Primary (dip-buy): **VWAP 7510 retest that holds** (5-min close >7510) → R1 7527 → **R2 7544.9**; invalid = 5-min close <7510 (<7503 CPR confirms).
+- Momentum (alt): **5-min close >7527 (R1/sessH) on rising volume** → R2 7544.9, stretch R3 7574; invalid = fail back <7510.
+**BACKUP — QQQ CALL:** >710.05 PDH (SPX-confirmed) → R1 711.75 / R2 714.5; or 707 VWAP hold. Invalid <707/706.4. Degraded volume feed = confirmation via SPX only.
+
+**Decision: NO TRADE at read time (7516 / 708.8 = mid-range between VWAP and R1).** Bias is CALL, but price sits in the no-man's-land the edge lives outside of — require the **VWAP-hold dip** or the **R1/PDH break on volume**. Late-session cooldown (SPX lower-highs under R1) argues for the dip-buy over chasing the breakout.
+**Contract-selection method (no chain data invented):** true 0DTE = **SPXW same-day** / QQQ same-day. Use **defined-risk debit CALL spread** — long ~ATM at the trigger, short at the target pivot (SPX long ~7515–7520 / short ~7545; QQQ long ~709 / short ~714) — caps 0DTE theta/gamma. ATM-to-1-strike-ITM for delta; **no far-OTM lottos in the PM.** Size so max loss (full debit) ≤ 1R.
+**Profit-taking (rule 7):** bank half at the **first interim level** (SPX ~7527 break-retest or the +50%-to-target ~7536), **stop to breakeven once +½ to target**, **trail** under each 5-min lower-high, set final exit **in front of** R2 (7540, not 7545); tighten into the close.
+**Max-loss rules:** hard exit on 5-min close back **below VWAP** (7510 SPX / 707 QQQ); **−40% premium** stop; **3-bar time stop** if no follow-through — whichever first.
+**No-trade conditions:** mid-range chop (current); break on no volume (esp. QQQ — needs SPX confirm); after ~15:15 ET (theta cliff, no new entries); reclaim/break fails the retest; range stays compressed on light volume (no edge); data unverifiable on next check → **WAIT FOR REFRESH**.
+**Rules applied:** #1 VWAP=boss (both above → long side), #2 narrow-CPR trend day (trade the break, don't fade inside), #3 ATR-used (SPX 52% > QQQ 43% fuel; both have room), #6 below-CPR-VWAP-reclaim = CALL (the whole flip vs the stale put file), #7 scale-don't-wait on the exit.
+**Entries taken:** NONE — NO TRADE taken all session (correctly).
+**Outcome (resolved ~15:05 ET, live-watched):** After the 13:25 read, SPX **rolled from 7526 back to VWAP** and then **chopped 7503–7512 for ~90 min** (13:30–15:05) — **never reclaimed 7512** (CALL trigger never fired) and **never held a VWAP dip** (price sat *below* VWAP the whole time = failing, not holding). The 7503 fail line (CPR-top) was tested repeatedly (lows 7503.51 / 7503.56 / 7503.25) and held by a hair, then **broke ~15:05** (15:00 closed 7503.58, 15:05 traded 7501.37). **CALL setup = DEAD.** The downside break was **NOT taken as a put** — too late (15:05, past the ~15:15 theta cutoff) and too weak (limp break out of dead low-vol chop, no volume thrust). QQQ never triggered either (>710 not reclaimed). **Net: watched from 13:25→15:05, zero trades, no loss.**
+**Successful signal:** the *discipline* was the win — the read flagged "coiling mid-range = NO TRADE until the trigger," and the trigger never came. Waiting avoided a chop-day loser (a forced long into the VWAP failure would have bled out).
+**Mistake avoided:** did **not** force the mid-range and did **not** chase the marginal late-day 7503 break into the close (rule: edge is the reclaim/break with momentum, not the ooze).
+**Recurring lesson reinforced:** *"below VWAP but glued to it = failing, not holding."* A dip only counts as a hold when a 5-min bar **closes back above** VWAP — SPX never did, so there was never a long. When a name chops directly on VWAP for 45+ min without reclaiming, it's a NO-TRADE tell, not a pending setup.
+**Next-session rule added:** if the primary trigger hasn't fired by ~90 min of the read AND price is in low-vol chop, **stand down early** — don't babysit a dead range into the theta cliff; re-engage only on a fresh session catalyst.
+**Mistake to avoid (carried from 7/20):** don't chase the mid-range and don't hold a runner for the exact pivot; front-run R2 at 7540 and scale.
+**Next-session rule reinforced:** always recompute levels from *current* 5-min bars before acting — this file was 5 sessions stale and had the **wrong directional bias (puts)**; the refresh flipped it to calls. Stale 0DTE levels are worse than none.
