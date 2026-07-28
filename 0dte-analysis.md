@@ -204,3 +204,39 @@ Neither lists a same-day expiry (weekly-only). Per the true-expiry-only rule the
 **Next-session rule added:** if the primary trigger hasn't fired by ~90 min of the read AND price is in low-vol chop, **stand down early** — don't babysit a dead range into the theta cliff; re-engage only on a fresh session catalyst.
 **Mistake to avoid (carried from 7/20):** don't chase the mid-range and don't hold a runner for the exact pivot; front-run R2 at 7540 and scale.
 **Next-session rule reinforced:** always recompute levels from *current* 5-min bars before acting — this file was 5 sessions stale and had the **wrong directional bias (puts)**; the refresh flipped it to calls. Stale 0DTE levels are worse than none.
+
+### 2026-07-24 (Fri) — gap-down continuation day · TWO confirmed setups, both worked
+**Data freshness: VERIFIED** each check (SPX Σ5-min ≈ daily tape; QQQ single-venue BATS = relative-vol only, lean on SPX). Levels recomputed from 7/23 final HLC + today's 5-min. (7/23 itself = NO-TRADE opening-range chop, not logged.)
+**Context:** GOOGL/TSLA earnings-fallout continued → SPX gapped down and opened **7406 right on its pivot with a *very narrow CPR 7410–7413 = trend-day setup***; QQQ gapped to new lows. **The governing tell all day: QQQ leads, SPX confirms** — trade only when *both* agree; QQQ-only breaks faked out twice.
+
+| | Pivot | OR | S1 | yLo | R1 |
+|---|-------|-----|-----|-----|-----|
+| **SPX** | 7411 | 7406.29–7421.15 | 7372.82 | 7376 | 7446.94 |
+| **QQQ** | 692.80 | 688.50–692.45 | 686.95 | 687.79 | 697.82 |
+
+**SETUP 1 — Morning PUT (9:55):** both broke OR lows together (SPX <7406→7397, QQQ <688.5→new low 686) — narrow-CPR SPX broke *down* = trend-day, both <VWAP. **Entry on the break.** → **QQQ hit 685 target-1 (banked per rule 7).** SPX weak follow-through (7402→7397.9 then bounced); the QQQ-leads/SPX-lags **divergence flagged the cover**, and **SPX reclaimed pivot 7411 → covered the rest.** **Partial win, no give-back.**
+**SETUP 2 — Midday CALL (11:05):** SPX chopped 7397–7422 for ~90 min; QQQ kept making new lows (683.5) **but SPX held 7397 three times** — waiting for the SPX confirm <7397 (never came) avoided the fake-out. Then **bear-trap reversal**: QQQ's new low was a trap → V-reversed to 688; **SPX broke >7422 → 7433.** **Entry on the >7422 break.** → gave **~11 pts (7422→7433)**, then **stalled short of R1 7447** with QQQ diverging (faded back <VWAP). **Banked partial per rule 7**; still alive (>VWAP 7411) when the watch was stopped ~11:15.
+**Entries taken:** Morning PUT (OR-low break, covered on SPX pivot-reclaim = partial win) · Midday CALL (range-high break, +11 pts banked, stalled).
+**Outcome:** both confirmed range-breaks paid a scaled partial; both then reverted (the divergence each time signaled the exit). **Two green partials, zero give-back.** The mid-range (7397–7422) was correctly NO-TRADE the whole time between.
+**Successful signal:** **breadth confirmation** — the two winning trades were the ones where *both* indices agreed (both broke OR lows for the PUT; SPX confirmed the range-high for the CALL). The two losers-avoided were **QQQ-only breaks** (new lows with SPX holding) = bear traps.
+**Recurring lesson reinforced (new #8 candidate):** **on a divergent tape, require the lagging index to confirm the leader before entry, and treat the leader's *un*confirmed new extreme as a trap** — QQQ printed new lows twice while SPX held 7397; both reversed. Also: rule-7 scale-at-first-target banked both partials *before* the divergence-driven stalls each time.
+**Next-session rule:** on a QQQ-leads/SPX-holds day, the *range* is the trade — fade QQQ-only breaks, act only on the joint break (both OR-lows, or SPX range-high). Recompute pivots from the prior close first (7/24 was a trend-day-setup that turned into a range once SPX defended 7397).
+
+### 2026-07-27 (Mon) — gap-up-and-fade · ONE clean setup (gap-fade PUT), whole move captured
+**Data freshness: VERIFIED** (SPX Σ5-min ≈ daily tape; QQQ single-venue). Levels from 7/24 final HLC + today's 5-min.
+**Context:** relief-bounce Monday — SPX **gapped UP** (Fri close 7412 → open 7464 → high 7480), QQQ same. Both then **faded below their opening ranges and below VWAP = sell-the-gap.** The RS-name relief bounce (MSTR/COIN +5.9%, MSFT +2.4%) was being distributed at the index.
+
+| | Pivot | CPR (TC–BC) | OR | S1 | Fri-Lo (gap-fill) |
+|---|-------|-------------|-----|-----|-----|
+| **SPX** | 7423.16 | 7417.58–7428.76 | 7458.88–7480.58 | 7385.35 | 7396.53 |
+| **QQQ** | — | — | 687.73–692.29 | — | — |
+
+**SETUP — Gap-fade PUT (10:20):** both faded <OR and <VWAP after the gap; SPX faded to its **CPR (7428.76)**, tested it once (day low 7428.89) and held, **then broke it** — 10:20 closed **7421.50 <CPR** *with* QQQ confirming **fresh new lows (682)** = the joint break. **Entry on the break.** → hit **~7410 target-1 (banked per rule 7)**, ran to the **full gap-fill: low 7395.09 = Friday's 7396.53 low exactly.** **~30 SPX pts** from the CPR break; QQQ 683.7 → 678. Banked bulk at 7410, runner front-ran the fill at 7400.
+**Entries taken:** Gap-fade PUT (CPR break, joint-confirmed) — scaled 7410 / 7400, closed into the 7395 gap-fill.
+**Outcome:** **clean win, whole move captured (~30 pts), scaled out before ATR exhausted.** Post-fill = chop 7388–7404, no further setup (no VWAP-reclaim bounce, no S1 <7385 break). NO-TRADE after.
+**Successful signal:** (1) **sell-the-gap-fade** (gap up → fade <OR <VWAP); (2) **the joint break** — waited for SPX to confirm the CPR loss rather than take QQQ-only new lows (the 7/24 rule, worked again); (3) **ATR-used as the exit-timer** — flagged 66% → 87% → **102%** into the fill and scaled out; the gap-fill *is* the target and ~100% ATR = take profit, don't reach.
+**Recurring lesson reinforced:** **on a gap-fill PUT, ATR-used is the take-profit gauge** — as it hits ~100% the gap has filled and mean-reversion risk spikes; bank into it, don't chase the last points. The joint-break requirement (SPX confirms the level, QQQ leads) remains the entry filter.
+**Next-session rule:** post-gap-fill with ATR spent → digestion/bounce > continuation; next edge = VWAP-reclaim bounce (CALL) or S1 break, neither triggered today. **EARNINGS WEEK: MSFT/META Wed 7/29, HOOD/COIN Thu 7/30, AAPL/AMZN Thu 7/31** — index will be gap/reaction-driven; recompute pivots each morning from the prior close.
+**Afternoon update (11:30→13:20, live-watched, NO further trade):** the post-fill "digestion" turned into a **slow trend-down bleed** — SPX chopped 7388–7421 then leaked to marginal new lows at **S1 7385** (low 7384.72); QQQ ground to ~677. **But it was a grind, not a flush** — decelerating momentum, and **ATR reached ~122% used** (7480→7385). Correctly **stood down**: no decisive S1 break (grind ≠ momentum), no VWAP-reclaim bounce (VWAP ~7420, price never reclaimed). **Zero afternoon trades — the right call** (pressing a 122%-ATR short into a slow bleed = the exact poor-R/R chase to avoid).
+**Afternoon lesson:** **a marginal-new-low *grind* on 100%+ ATR is NOT a fresh short** — a continuation needs a *momentum flush* (volume + acceleration), not a slow leak; sitting out an exhausted range is a win. The clean edge was the morning gap-fade; everything after was correctly no-trade.
+**Notable single-name (context):** **NVDA crashed −6% (208→195.6) through ALL support to its 200-EMA (191) — but CMF held +0.23** = accumulation-into-weakness (bullish divergence, NOT distribution). Not a short into that; a buy-the-*reclaim* setup (198.5/200 with flow holding, stop <191). Flagged as the name to watch into the AI-hardware-complex crack (AMD/MU also down).
