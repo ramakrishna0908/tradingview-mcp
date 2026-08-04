@@ -1,6 +1,6 @@
 # Analysis Stocks — History & Next-Move Tracker
 
-Rolling `full analysis`. **Latest refresh: 2026-07-28.** Prior: 07-27, 07-24, 07-23, 07-22, 07-21, 07-17. (Master table = 07-28; narrative below is 07-17 context.)
+Rolling `full analysis`. **Latest refresh: 2026-08-04.** Prior: 08-03, 07-31 (NVDA), 07-29, 07-28, 07-27, 07-24, 07-23, 07-22, 07-21, 07-17. (Master table = 08-04; narrative below is 07-17 context.)
 
 **Scoring:** RSI >60 +1 / >50 +0.5 / <50 -0.5 / <40 -1 · above BB basis +1 / below -1 ·
 CMF >0.1 +0.5 / <-0.1 -0.5. **CMF is the leading tell** — green candle + neg/flat CMF =
@@ -61,49 +61,53 @@ in a pullback, but leaders' CMF is positive (accumulation into weakness).**
 
 ---
 
-## 📋 Master Technical Table (07-28, ~10:15 ET intraday)
+## 📋 Master Technical Table (08-04)
 
-**07-28 theme: AI-hardware / high-beta WASHOUT; AAPL the lone survivor.** Capitulation-type down day in the
-momentum complex — **AMD −12%, DELL −16%, MU −11%, MRVL −13% (nearly hit the 162 short target), CRWV −10%,
-NBIS −14% (blew past the 175 target), HOOD −8%, ARM −7.5%, INTC −7%, LUNR −9%.** QQQ broke **<BB-low, RSI 34** =
-index deteriorating. **Survivors: AAPL (337, +0.7% green, CMF +0.39 — the ONLY strong name), MSFT (+2.0 into
-earn Wed), BABA (+2.5% off cloud support), NFLX (+4.8%, RSI crossed >MA = accum-tell TURNED UP).** **NVDA at its
-line:** 193.7 = the 200-EMA/BB-low (191), CMF +0.17 (divergence holding but fading from +0.23) — hold+reclaim =
-pays, lose 191 w/ CMF rolling = dead. ORCL new lows, **CMF −0.34, still NO flip.** Shorts paid: MRVL/NBIS both
-hit target. ⚠️ **EARN: MSFT+META Wed 7/29 (tmrw), HOOD+COIN Thu 7/30, AAPL+AMZN Thu 7/31.** (Snapshot ~10:15 ET.)
-
+**08-04 theme: everything gapped up — but the semi rip is a SQUEEZE, not accumulation.** Broad risk-on: QQQ +3%
+broke out above the cloud (+1.5 from −1.5). **PLTR reported and gapped +22.6%** — the +CMF accumulation I tracked
+(+0.17→+0.24) front-ran the print *perfectly* (big validation of the CMF-tell). Semis exploded — **AMD +8.4%, MU
++9.3%, MRVL +16.8%, ARM +14.9%, INTC +10.4%, DELL +12.4%, CRWV +14%** — BUT here's the read that matters: **every
+one of those semi rips still has NEGATIVE/flat CMF** (AMD −0.08, MRVL −0.18, CRWV −0.11, ARM −0.12, INTC −0.16,
+MU −0.05, DELL −0.05) = **green candle + neg CMF = short-covering squeeze, NOT accumulation → don't chase.** The
+names with *real* positive flow are the mega-caps + bottoming set: **NVDA +0.15 (at the 211 shelf), MSFT +0.14,
+BMNR +0.19, NFLX +0.28, AAPL +0.26, META +0.15, PLTR +0.24.** ⚠️ **AMD earns TOMORROW 8/5** — it ripped +8.4%
+into the print on −0.08 flow (landmine). **AAPL divergence still alive** (CMF +0.26, holding 305) but hasn't
+reclaimed cloud 309 = untriggered. **ORCL watch: CMF −0.13 (improved from −0.19) but STILL negative — ripping to
+BB-up 147 on negative flow = squeeze, NO flip, no buy trigger.**
 
 Cols: BB = Bollinger (Low/Basis/Up) · VWAP = Q2-anchored · Cloud = Ichimoku SpanA/B ·
 Pos = price vs cloud (▲above / ◆in / ▼below) · Put = put-setup grade (see ranking below).
 
 | Sym | Px | RSI/MA | CMF | ATR | BB L/Basis/Up | VWAP | Cloud A/B | Pos | Score | Put | Bias · Next |
 |-----|----|--------|-----|-----|---------------|------|-----------|-----|-------|-----|-------------|
-| **AAPL** | 337.33 | 67.5/65.2 | **+0.39** | 8.1 | 294.2/319.8/345.5 | 293.8 | 319.7/308.3 | ▲ | +2.5 | — | 🟢**THE lone survivor — +0.7% green, CMF +0.39, new highs** while everything crashes. **Earn Thu 7/31 = the risk** |
-| **MSFT** | 396.40 | 53.4/50.4 | **+0.13** | 11.8 | 374.9/389.1/403.3 | 399.9 | 384.6/407.8 | ◆ | +2.0 | — | 🟢+1.4% holding in cloud >basis. **Earn Wed 7/29 (tmrw)** |
-| **BABA** | 115.77 | 55.1/56.8 | 0.00 | 3.7 | 94.3/110.3/126.2 | 121.2 | 111.8/119.4 | ◆ | +1.5 | — | 🟢**+2.5% off the cloud support** (pullback-buy paid); non-US RS holdout |
-| **BMNR** | 16.77 | 52.8/51.7 | **+0.10** | 1.3 | 13.3/15.7/18.1 | 18.5 | 16.0/17.7 | ◆ | +1.5 | — | ⚪−5% but held cloud >basis; thin |
-| **NFLX** | 73.59 | 49.9/37.6 | **+0.16** | 2.6 | 66.7/72.6/78.5 | 83.3 | 70.8/78.3 | ◆ | +1.0 | — | 🟢**+4.8%, reclaimed cloud/basis, RSI crossed >MA** — accum-tell TURNED UP |
-| **COIN** | 162.62 | 49.6/49.4 | +0.05 | 9.8 | 150.2/161.8/173.4 | 178.7 | 163.7/180.8 | ▼ | +0.5 | — | 🟡Holding at basis. **Earn Thu 7/30** |
-| **NVDA** | 193.69 | 40.4/51.0 | **+0.17** | 7.4 | 191.5/203.5/215.5 | 206.0 | 202.9/213.2 | ▼ | -1.0 | — | ⚠️**AT the 200-EMA/BB-low (191)** — the line; CMF +0.17 (divergence holding, fading from +0.23). Hold+reclaim = pays; lose 191 w/ CMF rolling = dead |
-| **PLTR** | 119.61 | 41.4/50.0 | **+0.15** | 7.1 | 118.7/129.0/139.4 | 134.8 | 125.0/135.0 | ▼ | -1.0 | — | 🟡−6.4% to BB-low but CMF +0.15 (accum holds); earn ~Aug 4 |
-| **MSTR** | 94.70 | 43.3/41.4 | +0.02 | 7.1 | 88.6/95.8/103.0 | 129.6 | 99.0/137.4 | ▼ | -1.5 | — | 🔴−2.5%, gave back the bounce <basis |
-| **DELL** | 365.16 | 41.5/53.8 | -0.06 | 33.7 | 372.1/419.0/465.8 | 337.8 | 409.0/348.4 | ◆ | -1.5 | — | 🔴**−16% CRASH** (436→365, <BB-low); breakout fully broke |
-| **META** | 594.22 | 43.6/55.7 | +0.02 | 23.0 | 561.0/624.7/688.5 | 614.6 | 624.8/613.1 | ▼ | -1.5 | ⚠️ | 🔴<cloud, lost 600. **Earn Wed 7/29 (tmrw)** |
-| **QQQ** | 668.27 | 34.4/45.1 | -0.07 | 14.3 | 674.5/707.7/741.0 | 690.5 | 698.8/708.3 | ▼ | -2.0 | 🛡️ | 🌐**Broke <BB-low, RSI 34** — index deteriorating hard |
-| **AMD** | 447.67 | 38.3/50.9 | -0.05 | 38.3 | 469.7/527.1/584.6 | 423.4 | 509.7/489.1 | ▼ | -2.0 | — | 🔴**−12% CRASH**, <BB-low, CMF flipped neg; former leader fully broke |
-| **GOOGL** | 326.85 | 37.4/42.9 | -0.07 | 11.3 | 319.4/350.3/381.3 | 357.0 | 345.1/361.8 | ▼ | -2.0 | ⚫os | 🟡Holding the 200-EMA (319), relatively stable vs the carnage |
-| **AMZN** | 230.25 | 36.1/48.4 | -0.09 | 6.8 | 230.0/243.3/256.5 | 248.2 | 242.7/250.2 | ▼ | -2.0 | — | 🔴At BB-low, CMF neg. **Earn Thu 7/31** landmine |
-| **ARM** | 243.77 | 35.7/41.3 | -0.10 | 25.7 | 235.9/293.2/350.5 | 284.9 | 305.0/327.9 | ▼ | -2.0 | — | 🔴−7.5%, knife |
-| **MU** | 798.69 | 39.0/46.4 | -0.10 | **83.1** | 797.6/946.9/1096.1 | 813.4 | 961.2/953.6 | ▼ | -2.0 | — | 🔴**−10.8% CRASH** to BB-low; ⚠️ATR 83 |
-| **TSLA** | 301.38 | 26.0/40.5 | **-0.24** | 17.7 | 304.9/379.7/454.4 | 391.2 | 357.4/377.0 | ▼ | -2.5 | ⚫os | ⚫Hit **~300** support, RSI 26 <BB-low; knife, don't chase |
-| **MRVL** | 167.95 | 33.0/40.2 | **-0.26** | 19.9 | 158.9/220.2/281.5 | 229.9 | 216.0/246.4 | ▼ | -2.5 | 🎯**hit** | 🔴**−13%, nearly hit the 162 target** (short PAID big, 210→168); trail/cover |
-| **CRWV** | 64.94 | 31.0/36.8 | **-0.25** | 6.9 | 64.8/80.8/96.8 | 103.3 | 83.5/98.4 | ▼ | -2.5 | ⚫os | ⚫−10.4%, knife at BB-low; earn ~Aug 12 |
-| **HOOD** | 89.17 | 38.2/52.3 | **-0.13** | 6.6 | 90.9/106.5/122.0 | 89.0 | 102.8/96.6 | ▼ | -2.5 | ⚫ | ⚫**−8.1% CRASH** <BB-low. **Earn Thu 7/30** |
-| **ORCL** | 115.28 | 30.4/29.7 | **-0.34** | 7.6 | 111.1/131.4/151.6 | 166.2 | 136.3/182.4 | ▼ | -2.5 | ⚫os | ⚫New lows · **CMF −0.34, still NO flip**; buy only on flip |
-| **LUNR** | 12.08 | 27.3/28.9 | **-0.43** | 1.6 | 10.5/15.7/20.9 | 26.8 | 15.3/29.4 | ▼ | -2.5 | ⚫os | ⚫−9.2%, knife, CMF −0.43 |
-| **SPCX** | 110.17 | 32.6/37.9 | **-0.21** | 11.0 | 100.1/136.4/172.6 | 161.7 | (IPO) | ▼ | -2.5 | ⚫ | ⚫Flat, broken; price-action only |
-| **INTC** | 83.82 | 32.5/40.0 | **-0.25** | 8.6 | 80.6/106.6/132.5 | 102.4 | 103.9/112.7 | ▼ | -2.5 | ⚫ | ⚫**−7.1% more**, knife near BB-low |
-| **NBIS** | 162.86 | 36.9/43.1 | **-0.24** | **24.3** | 156.9/205.6/254.3 | 201.9 | 213.3/230.7 | ▼ | -2.5 | ⚫ | 🔴**−13.7%, blew past the 175 target** (188→163); breakdown fully played, near 164 major low |
+| **MSFT** | 491.59 | 78.9/57.9 | **+0.14** | 16.5 | 337.7/407.1/476.4 | 404.3 | 430.2/420.5 | ▲ | +2.5 | — | 🟢Parabolic, RSI 79, +15 above BB-up 476; CMF firmed +0.14 (flow now confirming). Winner — trail, don't chase |
+| **PLTR** | 153.09 | 69.0/49.4 | **+0.24** | 7.93 | 115.7/129.6/143.6 | 134.4 | 135.4/135.0 | ▲ | +2.5 | — | 🟢**+22.6% earnings gap — the +CMF accum (0.17→0.24) PAID.** RSI 69, +9 above BB-up 143.6. Extended; buy pullback to 143/135, don't chase |
+| **GOOGL** | 375.30 | 61.8/44.5 | -0.02 | 12.6 | 316.2/348.8/381.5 | 356.5 | 345.8/354.4 | ▲ | +2.0 | — | 🟢RSI 62, cleared VWAP+1σ 374.6, testing BB-up 381.5. Buy dips to 356 VWAP |
+| **NVDA** | 210.03 | 55.6/48.9 | **+0.15** | 7.63 | 192.4/204.5/216.6 | 205.5 | 201.6/211.0 | ▲ | +2.0 | — | 🟢**Cleared VWAP, at the 211 shelf** (cloud-top + VWAP+1σ). Break+hold >211 → 216 BB-up; stop <202/191 |
+| **AMZN** | 277.79 | 67.3/49.6 | +0.04 | 9.82 | 217.5/247.4/277.3 | 249.0 | 256.7/256.4 | ▲ | +2.0 | — | 🟢**Pulling back to BB-up 277 retest** (the flagged buy zone); CMF +0.04 flat. Hold 277 = long → else 265-271 gap |
+| **BMNR** | 17.57 | 55.2/54.7 | **+0.19** | 1.21 | 14.2/16.4/18.7 | 18.5 | 16.2/16.4 | ▲ | +2.0 | — | 🟢Above cloud, CMF +0.19 accum rising; approaching VWAP/BB-up 18.5-18.7. Thin |
+| **BABA** | 127.06 | 68.9/58.8 | +0.03 | 3.94 | 106.8/116.3/125.8 | 121.2 | 116.3/113.9 | ▲ | +2.0 | — | 🟢RSI 69, at BB-up/VWAP+1σ 128 resistance; CMF +0.03 flat (softening at highs). Trail |
+| **AVGO** | 416.00 | 61.1/49.6 | **+0.09** | 17.2 | 366.6/387.9/409.2 | 397.4 | 389.7/425.7 | ◆ | +2.0 | — | 🆕🟢**The QUALITY semi (added 08-04)** — +13.5%/5 up-days, gapped +6% >BB-up/VWAP+1σ; **CMF +0.09 near-positive = REAL accum, NOT the AMD/MRVL/ARM squeeze** (all those are −CMF). Into cloud-top 425.7 wall. Buy retest 409-412, stop <397; break >426 → new highs. Earn early Sept |
+| **QQQ** | 713.82 | 55.0/43.3 | +0.06 | 15.3 | 666.5/700.1/733.7 | 689.9 | 693.6/704.9 | ▲ | +1.5 | — | 🌐**Broke out +3% above cloud+basis+VWAP+1σ = full risk-on.** RSI 55. Support 704.9 cloud-top; target BB-up 733.7 |
+| **IWM** | 299.83 | 59.3/49.8 | +0.02 | 4.49 | 289.1/294.0/299.0 | 283.3 | 294.6/288.1 | ▲ | +1.5 | — | 🆕🟢**Small-caps breaking out** (added 08-04) — cleared cloud/basis/BB-up 299 + 300 round, RSI 59, 4 up-days off the 288 low; **CMF +0.02 flat = breakout thin on flow** (false-breakout risk). Buy retest 296/294, stop <294; target 305-308. Risk-on broadening tell |
+| **DELL** | 455.42 | 59.1/51.3 | -0.05 | 34.4 | 370.2/419.5/468.9 | 340.5 | 410.5/353.3 | ▲ | +1.5 | — | 🟢**+12.4% rip** back above basis+cloud, RSI 59; CMF −0.05 flat (rip not fully flow-confirmed). Target BB-up 469 |
+| **NBIS** | 219.18 | 53.8/44.4 | **-0.09** | 26.4 | 156.9/197.4/238.0 | 199.8 | 203.1/222.8 | ◆ | +1.5 | — | ⚠️+6.5% more, at cloud-top 222.8/VWAP+1σ 218; **CMF −0.09 near flat (nearly flipped)**. >222 break = confirm |
+| **NFLX** | 73.23 | 49.5/40.5 | **+0.28** | 2.46 | 67.2/72.0/76.8 | 82.7 | 71.3/77.7 | ◆ | +1.0 | — | 🟢**CMF +0.28 rising (strongest bottom-tell)**, >basis, RSI turning up. >77.7 cloud-top → 82.7 VWAP |
+| **MRVL** | 215.48 | 51.3/39.9 | **-0.18** | 19.8 | 162.3/202.9/243.6 | 228.0 | 211.3/246.4 | ◆ | +1.0 | — | ⚠️**+16.8% rip into cloud but CMF −0.18** = squeeze, don't chase. VWAP 228 resistance |
+| **CRWV** | 90.83 | 56.3/39.1 | **-0.11** | 8.04 | 62.0/78.2/94.5 | 101.1 | 78.2/96.4 | ◆ | +1.0 | — | ⚠️**+28% in 2 days but CMF −0.11 still neg** = squeeze, not accum. At BB-up 94.5/cloud-top 96.4. Earn ~Aug 12 |
+| **ORCL** | 144.93 | 55.3/35.5 | **-0.13** | 7.85 | 111.0/128.9/146.9 | 163.5 | 132.2/182.4 | ◆ | +1.0 | — | ⚠️+6.5% to BB-up 147, RSI 55; **CMF −0.13 (was −0.19) STILL negative = squeeze, NO flip, no buy trigger yet** |
+| **AMD** | 511.31 | 51.2/47.5 | -0.08 | 39.4 | 444.3/511.5/578.6 | 425.8 | 497.3/504.4 | ▲ | -0.5 | — | ⚠️**+8.4% rip reclaimed cloud, at basis 511 — but CMF −0.08 & EARNS TOMORROW 8/5.** Don't chase into the print |
+| **AAPL** | 305.12 | 41.7/60.5 | **+0.26** | 9.42 | 301.7/323.6/345.5 | 296.0 | 317.3/309.2 | ▼ | -1.0 | — | 🟢**Divergence alive — CMF +0.26, holding 301-305**; not yet reclaimed cloud 309 (untriggered). >309 = the buy trigger → 324/333 gap |
+| **META** | 585.70 | 46.0/47.5 | **+0.15** | 25.2 | 542.0/618.8/695.7 | 610.2 | 587.4/605.3 | ▼ | -1.0 | — | 🟡Coiled just under cloud 587, **CMF +0.15 rising (accum strengthening)**; >587/605 reclaim → 610/620 |
+| **MSTR** | 94.24 | 44.1/43.3 | +0.04 | 6.55 | 90.3/95.6/100.9 | 128.1 | 94.2/125.5 | ◆ | -1.5 | — | 🟡Basing at 94, CMF ticked +0.04; deep downtrend. ⚠️BTC proxy, small size |
+| **COIN** | 146.98 | 40.8/48.1 | +0.05 | 10.4 | 145.7/160.1/174.5 | 177.0 | 157.4/167.9 | ▼ | -1.5 | — | 🟡Still pinned at BB-low 145.7, crypto-weak; CMF flat +0.05. Needs cloud 157 reclaim |
+| **MU** | 879.31 | 47.8/45.0 | -0.05 | **86.7** | 764.8/901.0/1037.1 | 814.0 | 914.1/977.8 | ▼ | -1.5 | — | 🟡**+9.3% bounce off the VWAP 814 hold** (as flagged); CMF flat −0.05. Reclaim basis 901/cloud 914. ⚠️ATR 87 |
+| **HOOD** | 91.37 | 42.4/44.1 | **-0.14** | 6.39 | 81.9/101.3/120.6 | 89.0 | 97.9/96.7 | ▼ | -2.0 | — | 🔴Bounced off VWAP 89 but <cloud/basis; CMF −0.14. Fade rips to cloud 97 |
+| **LUNR** | 13.82 | 40.0/30.2 | **-0.29** | 1.46 | 11.0/14.0/17.0 | 26.3 | 14.8/29.0 | ▼ | -2.0 | ⚫os | 🔴+8.9% bounce but <cloud/basis, CMF −0.29 no bottom. Knife |
+| **SPCX** | 118.08 | 41.4/35.8 | **-0.20** | 10.2 | 98.9/125.0/151.0 | 157.8 | (IPO) | ▼ | -2.0 | ⚫ | 🔴+6.9% bounce but <basis 125; CMF −0.20 (price-action read). Still weak |
+| **ARM** | 266.80 | 46.3/39.4 | **-0.12** | 26.4 | 218.8/272.3/325.8 | 282.8 | 272.4/336.0 | ▼ | -2.0 | — | ⚠️**+14.9% off the 218 hold** (support worked), back to basis/cloud 272; CMF −0.12. Reclaim 272 → 283 VWAP; else fade |
+| **INTC** | 97.86 | 47.0/39.2 | **-0.16** | 8.36 | 81.8/98.3/114.8 | 101.6 | 102.5/112.1 | ▼ | -2.0 | — | ⚠️**+10.4% bounce** to basis/VWAP 98-102 resistance cluster; CMF −0.16. Reclaim 102 → cloud; else fade |
+| **TSLA** | 321.70 | 36.7/34.7 | **-0.18** | 15.9 | 275.3/355.0/434.7 | 387.7 | 342.4/371.5 | ▼ | -2.5 | ⚫ | 🔴**Lagged the whole-market rip** (RS-weak), <cloud/basis, CMF −0.18 no bottom. BB-low 275 target |
 
 ---
 
@@ -334,3 +338,15 @@ support) — chase-avoidance > thesis-strength when locating fresh entries. RS-a
 **Outcomes:** the RS filter fully sorted — the entire weak-RS AI-hardware cohort (AMD/DELL/MU/MRVL/CRWV) capitulated in one day, exactly the "thins from the bottom up" path; AAPL alone held. MRVL & NBIS shorts hit. NVDA's +CMF divergence now faces its literal test at the 200-EMA.
 **Lesson reinforced:** **when the RS list collapses to ONE name (AAPL), that's late-stage washout, not health** — a single holdout leader into its own earnings is a fragile top, not a buy signal. And the accumulation divergence (NVDA +0.17 at the 200-EMA) is a *setup*, not a *trigger* — it needs the reclaim; catching it mid-flush is the knife.
 **Next (07-29, MSFT/META earn a/c):** trade the *reactions* — MSFT (holding, +CMF) vs META (<cloud) prints tonight set the tape; NVDA hold-191-or-lose-it (buy the reclaim, not the flush); MRVL/NBIS trail the shorts; watch if AAPL finally cracks (= no leader). ORCL CMF flip. **Don't fresh-short the −12%-crash names into a washout** (AMD/MU/DELL = too extended, bounce risk).
+
+### 2026-07-29 (Wed) — relief bounce in the wreckage (digestion, not a bottom); MSFT/META earn TONIGHT
+**Gate:** QQQ **670, still <BB-low, RSI 35** — no confirmed bottom, but the crashed names bounced: **DELL +6.2%, ORCL +3.9%, COIN/MSTR +3.3%, PLTR +2.9%, HOOD +2.7%, MRVL +3.7% dead-cat.** Exactly the "don't fresh-short the −12% crash names, bounce risk" call from 07-28 (validated — the shorts that chased AMD/MU/DELL down would have been squeezed today).
+- **AAPL** — still the lone leader, **new highs, CMF +0.36, RSI 70** (extended). Earn Thu = the risk (a single-leader top into its own print).
+- **NVDA** — **re-testing 191** (yesterday's bounce to 197 faded back to 193.5). CMF +0.15 but **fading 0.26→0.19→0.15** — each bounce is lower, the divergence is *weakening*. Still holds 191, but the buyers are less aggressive each test. Buy-the-reclaim only; a decisive <191 with CMF finally rolling = the flush.
+- **Accum-tell holding:** NFLX (+0.19, RSI>MA), PLTR (+0.17) — the rising-CMF-into-weakness names; these are where the first real bottom prints (watch for the index to confirm).
+- **Shorts DONE:** MRVL **hit 162** (now +3.7% bouncing = cover), NBIS **blew through the 164 low** (188→157). Both fully played — book/cover, don't press into the bounce.
+- **ORCL** watch — +3.9% bounce but **CMF −0.31, STILL no flip** (4 sessions unchanged) = short-cover, not the turn. No trade.
+**Ranking now:** 🥇AAPL (lone leader) · MSFT/COIN/BABA/BMNR (the few +score) · NVDA/NFLX/PLTR (the +CMF holders at -1.0). MRVL/NBIS shorts = **cover**.
+**Outcomes:** the 07-28 "don't chase the crash names short" call paid — they all bounced +3-6% today. The accum-tell names held their flow through the bounce. NVDA's divergence weakening (fading CMF) = the tension building at 191.
+**Lesson reinforced:** **after a one-day capitulation, the crashed names bounce first (short-covering) — don't chase them down; the *real* bottom shows in the +CMF-into-weakness names (NFLX/PLTR), not the −2.5 knives.** And a bounce on *unchanged* deep-negative CMF (ORCL 4 sessions at −0.31/−0.34) is never the turn — the flip is the signal.
+**Next (07-30, post-MSFT/META):** trade the **MSFT/META reactions** (tonight's prints set the tape) + **HOOD/COIN earn Thu**; NVDA 191 hold vs the fading-CMF flush; watch AAPL into its own Thu print (if the lone leader cracks post-earn, no leaders left); NFLX/PLTR accum-tell for the first real long. Cover MRVL/NBIS.
