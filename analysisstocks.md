@@ -15,6 +15,63 @@ exhaustion (fade). ⚠️ `quote_get`/Volume-study numbers are intraday *partial
 only `data_get_ohlcv` per-bar volume is valid. **Standing refresh: RVOL becomes a master-table column, backfilled
 for all names at each EOD run when full-day volume is final.**
 
+---
+
+## 🚨 Bearish Exhaustion → Put Confirmation Framework (added 08-13)
+
+A **two-stage** rule so an overbought/distribution reading is never mistaken for a short entry. Stage 1 = an
+ALERT (watchlist only). Stage 2 = CONFIRMED (price has actually broken). **You only trade Stage 2.**
+
+### Stage 1 — ⚠️ Bearish Exhaustion Alert (WATCHLIST, *not* a put entry)
+Fires only when **ALL** hold:
+- Price making **higher highs** (HH structure), **and**
+- **RSI > 70** (overbought), **and**
+- **CMF < 0** (distribution — money leaving *on* the new high), **and**
+- Price **near resistance** (BB-up / VWAP band / cloud-top SpanB / prior swing high).
+
+**Stronger variant — bearish RSI divergence:** price prints a **higher high while RSI prints a LOWER high** and
+CMF stays **≤ 0**. Same alert, higher conviction (momentum + flow both failing to confirm the new price high).
+
+⛔ **Rule: Stage 1 alone is NEVER a put entry.** Overbought + distribution can persist for many bars inside a
+strong uptrend. It only moves the name onto the short-watchlist and starts looking for Stage 2.
+
+### Stage 2 — 🔴 Put Setup Confirmed (actionable) — requires PRICE confirmation
+At least **one** of:
+- **Break of the prior swing low / key support**, **or**
+- **Loss of the short-term trend** — close below the **9/20-EMA**,
+- **preferably on increased (above-average) selling volume** (RVOL ≥ ~1× on the down-bar).
+
+### Display per flagged name
+| Status | Trigger reason | Confirmation level | Invalidation | RSI | CMF | Support / Resistance | R:R |
+
+- **Status** = `⚠️ Watchlist` (Stage 1) or `🔴 Confirmed` (Stage 2).
+- **Confirmation level** = the exact price that flips Watchlist → Confirmed (swing low / support / 9-20 EMA).
+- **Invalidation level** = where the short is wrong (reclaim of the resistance / new HH) → stop.
+- **R:R** = (entry − target) ÷ (stop − entry), quoted only when both levels are real chart levels.
+
+### ⚠️ Data-honesty note (never invent indicators/levels)
+**9/20-EMA readability (added 08-13):** multi-length EMA studies collapse to a SINGLE plot in `data_get_study_values`
+(the `EMA 20/50/100/200` study → one `Plot`; the `9/20 EMAs w/ Cross Signals` study likewise → one `Plot`), so they
+can't give a separate 9 and 20. **Fix: two discrete single-length `Moving Average Exponential` studies on the chart —
+one length 9, one length 20** — each reports its own `MA` value cleanly. ⚠️ The CDP bridge **cannot set EMA length via
+API** (`indicator_set_inputs` and the add-`inputs` arg both no-op; the study exposes no inputs) — **the length must be
+set once by hand in the TV UI**, after which it persists in the layout for every symbol. Since both studies share the
+name "Moving Average Exponential", identify them by value: in an uptrend the **higher `MA` = the 9-EMA, the lower = the
+20-EMA** (they overlap/invert in chop — cross-check vs price). Fallback proxies if the 9/20 aren't set: **BB-basis
+(= 20-SMA)** and the **Ichimoku conversion line**. **Do not quote a 9/20-EMA number that wasn't actually read.** Same
+for support/resistance — use only BB / VWAP / cloud / real swing highs-lows in the data, never a guessed level.
+
+### ⚠️ Data-freshness note — the scroll-drift gotcha (added 08-13)
+`data_get_study_values` reads whatever bar the **crosshair / chart view is parked on**, NOT necessarily the latest bar.
+If the chart gets scrolled or zoomed to history, the study values go **stale silently** (they stay internally
+consistent, so nothing looks wrong — e.g. MSFT read BB-basis 512 / ATR 8 from a months-old bar while live was 494).
+**Guard: cross-check the study read against a fresh `quote_get` (live `last`); if BB-basis/ATR/price context disagree,
+the view is scrolled. Re-setting the symbol (`chart_set_symbol` to the same ticker) snaps the chart back to the live
+bar.** Standing rule: on every sweep, symbols are set fresh per name (which auto-snaps to live), so drift only bites
+on single-symbol deep-dives after manual scrolling — re-set the symbol before trusting the values.
+
+---
+
 **07-17 close — reversal day, not a red day.** Broad risk-off tape (14 of 22 red on score), but
 two tells flip the read: (1) the beaten-down semis/mega-caps held **strongly positive CMF while
 price fell below cloud** — AMD +0.20, GOOGL +0.20, NVDA +0.17 = *accumulation into weakness*, a
