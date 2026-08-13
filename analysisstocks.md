@@ -121,6 +121,79 @@ Put = put-setup grade (see ranking below).
 
 ---
 
+## 🎯 Trade-Thesis Cohort View (08-13)
+
+Same 37 names re-grouped by *what to do with them* rather than score. Cohorts 1-3 = call hunting
+(flow-confirmed → momentum-ride → pending-breakout triggers); cohort 4 = the trap zone (bullish
+structure, distributing flow — don't chase); cohort 7 = the put book. AAPL sits alone as the binary.
+
+### 🟢 1. Confirmed CALLS — HH↑ uptrend + flow confirming (the buys)
+| Sym | Px | RSI/MA | CMF | Cloud A/B | Pos | Score | Trigger · Next |
+|-----|----|--------|-----|-----------|-----|-------|----------------|
+| **ACN**‡ | 179.73 | 69.8/65.8 | +0.36 | 165/158 | ▲ | +2.5 | Strongest accum; buy dips → 191 |
+| **PLTR** | 174.35 | 71.1/60.4 | +0.20 | 150/143 | ▲ | +2.5 | Cleanest; RSI 71 → BB-up 185 |
+| **ORCL** | 156.88 | 61.8/49.4 | +0.14 | 141/182 | ◆ | +2.5 | 🔔Trigger fired → 162/182 |
+| **NFLX** | 77.10 | 59.5/50.6 | +0.33 | 73/76 | ▲ | +2.0 | Cloud-top break → VWAP 82 |
+| **CRCL**‡ | 71.75 | 57.0/47.5 | +0.27 | 66/84 | ◆ | +2.0 | BB-up push → SpanB 84; buy dips |
+| **SPCX** | 140.68 | 55.1/43.7 | +0.23 | 128/IPO | ▲ | +2.0 | At BB-up → 150. ⚠️IPO |
+| **BMNR** | 18.00 | 55.0/56.4 | +0.19 | 17.4/16.1 | ▲ | +2.0 | HH >cloud → 19.2/20 |
+
+### 🟢 2. Breakout / new-high momentum — HH↑ but flat flow (ride & trail, don't add up here)
+| Sym | Px | RSI/MA | CMF | Cloud A/B | Pos | Score | Note |
+|-----|----|--------|-----|-----------|-----|-------|------|
+| **QQQ** | 732.41 | 60.2/49.9 | 0.00 | 704/705 | ▲ | +2.0 | New high; support 713/705 |
+| **MSFT** | 497.65 | 72.0/70.5 | 0.00 | 469/431 | ▲ | +2.0 | New high, RSI 72 hot; trail |
+| **NVDA** | 225.00 | 63.0/53.8 | −0.00 | 210/211 | ▲ | +2.0 | New high, −flow eased; trail |
+| **IWM** | 303.74 | 61.7/54.5 | −0.02 | 298/291 | ▲ | +2.0 | New highs; hold 296 |
+| **NBIS** | 266.73 | 63.2/48.4 | +0.04 | 218/223 | ▲ | +2.0 | +9% >cloud/BB-up. ⚠️ATR 26 |
+| **DELL** | 503.81 | 63.9/54.6 | +0.08 | 444/435 | ▲ | +2.0 | HH >BB-up (514 high). ⚠️ATR 34 |
+| **AVGO**‡ | 424.15 | 61.5/56.1 | +0.08 | 399/426 | ◆ | +2.0 | At 426 wall; >426 = new highs |
+| **LLY**‡ | 1221.67 | 58.3/53.3 | −0.01 | 1175/1151 | ▲ | +1.5 | Grind → 1248; trail |
+| **ISRG**‡ | 400.04 | 59.0/48.9 | −0.05 | 378/386 | ▲ | +1.5 | At 407-409 wall; no flip yet |
+
+### 🟡 3. Coiling call triggers — +flow, pending a breakout
+| Sym | Px | RSI/MA | CMF | Cloud A/B | Pos | Score | The trigger |
+|-----|----|--------|-----|-----------|-----|-------|-------------|
+| **BABA** | 122.22 | 52.8/62.2 | +0.18 | 124/113 | ◆ | +2.0 | **>124 SpanA** = call → 128/133 |
+| **SOFI**‡ | 18.00 | 53.5/50.7 | +0.04 | 17.5/17.3 | ▲ | +1.5 | Flip held; >19 = the move |
+| **MCD**‡ | 274.26 | 52.8/50.8 | +0.02 | 271/275 | ◆ | +1.5 | **>275** w/+CMF = confirm |
+
+### ⚠️ 4. The trap zone — HH↑/Rng structure but NEGATIVE flow (don't chase; rips being sold)
+| Sym | Px | RSI/MA | CMF | Cloud A/B | Pos | Score | Why wait |
+|-----|----|--------|-----|-----------|-----|-------|----------|
+| **MU** | 955.60 | 54.9/46.3 | −0.04 | 876/996 | ◆ | +1.5 | +5% to 996 wall, flat. ⚠️ATR 75 |
+| **MRVL** | 229.11 | 56.0/45.7 | −0.05 | 206/246 | ◆ | +1.5 | At BB-up, <246 SpanB, squeeze |
+| **INTC** | 105.70 | 54.4/44.2 | −0.07 | 98/112 | ◆ | +1.5 | Reclaimed VWAP, <112 wall |
+| **ARM** | 287.00 | 52.3/43.9 | −0.04 | 269/336 | ◆ | +1.5 | Reclaimed VWAP, <336 wall |
+| **LUNR** | 16.43 | 52.4/40.9 | +0.13 | 14.5/27 | ◆ | +2.0 | +15% but <VWAP 26 wall |
+| **CRWV** | 110.43 | 66.3/49.4 | −0.12 | 91/96 | ▲ | +1.5 | Rip to 117, −0.12 distribution |
+| **AMZN** | 268.05 | 57.5/56.5 | −0.13 | 267/256 | ▲ | +1.0 | >cloud but −0.13; hold 267 |
+| **HOOD** | 98.58 | 53.1/43.5 | −0.18 | 97/100 | ◆ | +1.0 | Bounce, −0.18; >99.5 or fade |
+| **AMD** | 495.00 | 49.8/45.7 | −0.11 | 496/504 | ◆ | 0.0 | Reclaimed cloud, −0.11; >504 repair |
+
+### ⚫ 5. Low-tier prove-it / basing (no edge yet)
+| Sym | Px | RSI/MA | CMF | Cloud A/B | Pos | Score | Note |
+|-----|----|--------|-----|-----------|-----|-------|------|
+| **IREN**‡ | 46.62 | 58.4/46.1 | −0.10 | 41/50 | ◆ | +1.5 | Popped to 49 then faded. ⚠️ATR 4 |
+| **APLD**‡ | 31.33 | 52.4/44.0 | −0.09 | 29/37 | ◆ | +1.5 | Reclaimed 200-EMA, still −flow |
+| **SOUN**‡ | 7.34 | 58.0/51.0 | −0.17 | 7.0/7.6 | ◆ | +1.0 | Stuck at 7.6-7.8, −0.17; fade |
+| **MSTR** | 97.87 | 48.7/46.3 | +0.05 | 98/118 | ◆ | +0.5 | Basing; >102 = life, <91 fails |
+
+### 🎯 6. Special watch
+| Sym | Px | RSI/MA | CMF | Cloud A/B | Pos | Score | The setup |
+|-----|----|--------|-----|-----------|-----|-------|-----------|
+| **AAPL** | 305.01 | 42.8/50.2 | +0.21 | 315/309 | ▼ | −1.0 | Held 300 line, +0.21 intact; **reclaim 309 = the long** |
+
+### 🔴 7. PUTS — LL↓ downtrend
+| Sym | Px | RSI/MA | CMF | Cloud A/B | Pos | Score | Target |
+|-----|----|--------|-----|-----------|-----|-------|--------|
+| **GOOGL** | 346.39 | 47.3/49.4 | −0.13 | 356/350 | ▼ | −2.0 | Rejected basis → 338/316 |
+| **META** | 590.68 | 47.9/44.5 | +0.03 | 596/605 | ▼ | −1.5 | <cloud; reclaim 596 or range-low |
+| **COIN** | 150.12 | 45.1/45.4 | −0.01 | 154/163 | ▼ | −1.5 | <cloud → BB-low 139 |
+| **TSLA** | 334.74 | 45.3/36.2 | −0.13 | 339/365 | ▼ | 0.0 | Bounced to basis, <cloud; reject 339 → 322/282 |
+
+---
+
 ## 🔊 Volume Conviction — RVOL (07-22, trigger names)
 
 RVOL = last completed daily bar volume ÷ ~21-day avg. Confirms/invalidates the level triggers above.
