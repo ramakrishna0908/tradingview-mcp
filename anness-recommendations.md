@@ -1,7 +1,7 @@
 # Anness — Stock Recommendations
 
 Watchlist: **ACN · LLY · ISRG · CRCL · SOFI · MCD · SOUN · APLD · IREN**. Same methodology as `analysisstocks.md`.
-**Data: 2026-08-13** (early-session ticks; prior 08-12, 08-11, 08-06, 08-05, 07-29, 07-28, 07-21). Separate from the main tracker.
+**Data: 2026-08-17** (early-session ticks; prior 08-14, 08-13, 08-12, 08-11, 08-06, 08-05, 07-29, 07-28, 07-21). Separate from the main tracker.
 
 **Scoring:** RSI >60 +1 / >50 +0.5 / <50 -0.5 / <40 -1 · above BB basis +1 / below -1 ·
 CMF >0.1 +0.5 / <-0.1 -0.5. **CMF is the leading tell** (positive = accumulation/dip-buys;
@@ -10,31 +10,30 @@ the *trend of CMF + cloud/VWAP position* is the prediction.
 
 ---
 
-## 📋 Master Technical Table (08-13)
+## 📋 Master Technical Table (08-17)
 
 BB = Bollinger (Low/Basis/Up) · VWAP = Q2-anchored · Cloud = Ichimoku SpanA/B ·
 Pos = price vs cloud (▲above / ◆in / ▼below) · **HH/LL = swing structure (HH↑ uptrend/call · Rng range · ⚠ diverge).**
 
-**08-13: the two +CMF turns confirmed (CRCL/SOFI hold their flips); ACN still the parabolic winner; LLY/ISRG flow still won't flip.**
-🟢 **ACN** pulled back to 179.7 but **CMF +0.36** = strongest accum, RSI 70, clean HH uptrend (the winner, buy dips). 🟢 **CRCL**
-pushed to BB-up 72.3 (73.4 high) on **CMF +0.27** — the turn holding with +flow, HH. 🟢 **SOFI** reclaimed 18 >cloud, **CMF held
-+0.04** = the flip confirming (HH). 🟡 **MCD** still coiling under 275 but **CMF held +0.02** (a >275 break = the confirm). ⚠️ **LLY**
-grinds >cloud toward 1248 but **CMF −0.01** (flip still not clean); **ISRG** holds >cloud at the 407-409 wall but **CMF −0.05** (no flip
-yet — the confirm still pending). 🔴 **SOUN** still stuck at 7.6 resistance on **CMF −0.17** = distribution (fade holds). 🟡 **APLD/IREN**
-popped again (32.7 / 49.2) then faded on −CMF (−0.09 / −0.10) = pops sold, still prove-it. **Rule: ACN/CRCL/SOFI the confirmed
-+flow names (buy/dips); MCD on the >275 break; LLY/ISRG wait for the CMF flip; SOUN/APLD/IREN avoid until flip + reclaim.**
+**08-17: ACN/CRCL still the flow winners; LLY DEFENDED 1175; but 🔴 MCD's coil broke DOWN and ISRG's flip faded — mixed.**
+🟢 **ACN** pulled to 172.5 (VWAP+1σ) but **CMF +0.28** = still the winner, buy dips. 🟢 **CRCL** BB-up push (75.4 high) on **CMF +0.26**,
+→ SpanB 78.5. 🟢 **LLY defended 1175** (dipped 1163, reclaimed 1185 at the basis/cloud/9-20 cluster) — the uptrend held. 🟢 **SOFI**
+flip improving +0.06 → BB-up 19.35. ⚠️ **ISRG flip FADED** back to flat +0.01 (from +0.09) — the confirm stalled <the 409/414 wall.
+🔴 **MCD's coil resolved DOWN** — lost cloud/basis 270-271 (not the >275 break we wanted), RSI <MA, flipped LL↓ → BB-low 262.
+🔴 **SOUN failed 7.9, back <cloud on CMF −0.21** (the fade worked). 🔴 **IREN CMF worsened to −0.26** (pop keeps getting sold), **APLD −0.14**
+= avoid. **Rule: ACN/CRCL/SOFI the +flow winners (buy dips); LLY holding 1175; ISRG needs the flip to RE-fire >409; MCD now a put <270; SOUN/APLD/IREN avoid.**
 
 | Sym | Px | RSI/MA | CMF | ATR | BB L/Basis/Up | VWAP | Cloud A/B | Pos | HH/LL | Score | Bias · Next |
 |-----|----|--------|-----|-----|---------------|------|-----------|-----|-------|-------|-------------|
-| **ACN** | 179.73 | 69.8/65.8 | **+0.36** | 7.76 | 133.4/162.4/191.4 | 156.7 | 164.7/158.1 | ▲ | **HH↑** | +2.5 | 🟢Healthy pullback 185.8→179.7, **CMF +0.36** (strongest accum), RSI 70. The clean winner → BB-up 191.4. Buy dips to VWAP+1σ 172; trail |
-| **CRCL** | 71.75 | 57.0/47.5 | **+0.27** | 4.92 | 58.1/65.2/72.3 | 89.4 | 65.6/83.7 | ◆ | **HH↑** | +2.0 | 🟢Pushed to BB-up 72.3 (73.4 high) on **CMF +0.27** (the turn, +flow). In cloud → SpanB 84. Add on dips 68-69; stop <65 |
-| **LLY** | 1221.67 | 58.3/53.3 | **-0.01** | 40.02 | 1118/1183/1248 | 1071 | 1174.6/1150.8 | ▲ | HH↑ | +1.5 | ⚠️Grinding >cloud/basis toward BB-up 1248, RSI 58; **CMF −0.01 (flip still not clean)**. Trail the winner; support 1183 basis |
-| **ISRG** | 400.04 | 59.0/48.9 | **-0.05** | 12.58 | 323.2/365.2/407.2 | 409.1 | 377.7/386.2 | ▲ | HH↑ | +1.5 | 🟢Holding >cloud at the VWAP 409/BB-up 407 wall, RSI 59; **CMF −0.05 (no flip yet)**. A CMF flip = the confirm → 409/463 |
-| **SOFI** | 18.00 | 53.5/50.7 | **+0.04** | 0.79 | 15.6/17.4/19.1 | 17.2 | 17.48/17.31 | ▲ | HH↑ | +1.5 | 🟢Reclaimed 18 >cloud/basis, **CMF held positive +0.04** = the flip confirming. >19 with the flip = the move; VWAP+1σ 18.1 |
-| **MCD** | 274.26 | 52.8/50.8 | **+0.02** | 5.63 | 261.5/270.0/278.6 | 280 | 270.6/275.1 | ◆ | Rng | +1.5 | 🟡Coiling under the 275 SpanB, **CMF held +0.02**. A >275 break w/ +CMF = the confirm → 278/280. <270 → 262 |
-| **SOUN** | 7.34 | 58.0/51.0 | **-0.17** | 0.47 | 5.43/6.62/7.81 | 7.43 | 7.02/7.59 | ◆ | Rng⚠ | +1.0 | 🔴Stuck at cloud-top/BB-up 7.6-7.8 resistance, **CMF −0.17 = distribution**. Don't chase (fade call holds). <7.02 cloud → down |
-| **APLD** | 31.33 | 52.4/44.0 | **-0.09** | 2.66 | 24.6/28.6/32.7 | 35.6 | 28.9/36.6 | ◆ | Rng⚠ | +1.5 | 🟡Reclaimed 200-EMA 30.9 toward BB-up 32.7, **CMF −0.09** (still slightly neg). Prove-it; confirm = flip + >32.7. ⚠️ATR 2.7, tiny size |
-| **IREN** | 46.62 | 58.4/46.1 | **-0.10** | 4.16 | 31.5/38.8/46.1 | 48.9 | 40.7/49.8 | ◆ | Rng⚠ | +1.5 | 🟡Popped to 49.2 (BB-up/SpanB 50) then faded to 46.6, **CMF −0.10** (pop sold). Prove-it; confirm = flip + >49.8. ⚠️ATR 4, tiny size |
+| **ACN** | 172.46 | 59.5/65.7 | **+0.28** | 7.67 | 138.5/165.4/192.3 | 157.2/172.5 | 164.8/152.0 | ▲ | **HH↑** | +2.0 | 🟢Healthy pullback to VWAP+1σ 172.5 on **CMF +0.28** (still strongest accum). The winner → BB-up 192; buy dips 172/167 |
+| **CRCL** | 74.58 | 58.7/49.5 | **+0.26** | 5.01 | 57.5/66.0/75.3 | 89.2 | 67.2/78.5 | ◆ | **HH↑** | +2.0 | 🟢BB-up push (75.4 high) on **CMF +0.26**. In cloud → SpanB 78.5. Add dips; stop <66 |
+| **LLY** | 1185.54 | 51.1/51.8 | **-0.03** | 39.3 | 1122/1184/1246 | 1072/1197 | 1182.0/1151.5 | ◆ | HH pullbk | +1.5 | 🟢**Defended 1175** (dipped 1163 → reclaimed 1185) at the basis/cloud/9-20 cluster. CMF −0.03. Hold 1175 or breaks; BB-up 1246 target |
+| **SOFI** | 18.42 | 56.3/52.5 | **+0.06** | 0.78 | 15.7/17.5/19.35 | 17.2/18.2 | 17.68/17.31 | ▲ | HH↑ | +1.5 | 🟢Flip improving +0.06 >VWAP+1σ 18.2. → BB-up 19.35/200-EMA 19 |
+| **ISRG** | 393.41 | 55.3/51.0 | **+0.01** | 11.9 | 325.9/369.7/413.6 | 409/458 | 379.4/386.2 | ▲ | HH↑ | +1.5 | 🟡**Flip FADED to flat +0.01** (from +0.09) — confirm stalled <the 409/414 wall. Needs CMF to RE-fire + >413 = the breakout → 458 |
+| **SOUN** | 7.02 | 52.1/52.9 | **-0.21** | 0.46 | 5.48/6.72/7.96 | 7.43/8.42 | 7.10/7.16 | ▼ | LL roll | +1.0 | 🔴**Failed 7.9, back <cloud** on **CMF −0.21** (the fade worked). Lose 6.93/6.72 → BB-low 5.48 |
+| **APLD** | 30.76 | 50.7/46.4 | **-0.14** | 2.48 | 25.0/29.0/32.9 | 35.5 | 29.2/36.1 | ◆ | Rng⚠ | +1.0 | 🟡<200-EMA 30.9, CMF −0.14. Prove-it; confirm = flip + >33. ⚠️ATR 2.5, tiny size |
+| **IREN** | 44.43 | 55.4/48.6 | **-0.26** | 3.87 | 32.2/39.4/46.7 | 48.8 | 41.1/49.8 | ◆ | Rng⚠ | +1.0 | 🔴**CMF worsened to −0.26** (pop keeps getting sold), stuck <BB-up 46.7/SpanB 50. Avoid; confirm = flip + >49.8 |
+| **MCD** | 266.90 | 43.3/50.2 | **+0.02** | 5.70 | 261.7/270.2/278.6 | 279.9/268.4 | 271.1/275.1 | ▼ | **LL↓** | -1.5 | 🔴**Coil broke DOWN** — lost cloud/basis 270-271 (not the >275 break), RSI <MA. Now a put → BB-low 262; reclaim 271 negates |
 
 ---
 
