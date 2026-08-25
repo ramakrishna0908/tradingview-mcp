@@ -1,6 +1,6 @@
 # Analysis Stocks — History & Next-Move Tracker
 
-Rolling `full analysis`. **Latest refresh: 2026-08-17** (early-session ticks). Prior: 08-14, 08-13, 08-12, 08-11, 08-10, 08-07, 08-06, 08-05, 08-04, 08-03, 07-31 (NVDA), 07-29, 07-28, 07-27, 07-24, 07-23, 07-22, 07-21, 07-17. (Master table = 08-17; Trade-Thesis Cohort View below = 08-13 groupings; narrative at bottom is 07-17 context.)
+Rolling `full analysis`. **Latest refresh: 2026-08-24** (9:35 snapshot via scheduled report). Prior: 08-17, 08-14, 08-13, 08-12, 08-11, 08-10, 08-07, 08-06, 08-05, 08-04, 08-03, 07-31 (NVDA), 07-29, 07-28, 07-27, 07-24, 07-23, 07-22, 07-21, 07-17. (Master table = 08-24; Trade-Thesis Cohort View below = 08-13 groupings; narrative at bottom is 07-17 context.)
 
 **Scoring:** RSI >60 +1 / >50 +0.5 / <50 -0.5 / <40 -1 · above BB basis +1 / below -1 ·
 CMF >0.1 +0.5 / <-0.1 -0.5. **CMF is the leading tell** — green candle + neg/flat CMF =
@@ -118,63 +118,58 @@ in a pullback, but leaders' CMF is positive (accumulation into weakness).**
 
 ---
 
-## 📋 Master Technical Table (08-17)
+## 📋 Master Technical Table (08-24)
 
-**08-17 theme: ROTATION — leaders wobble, laggards break, and the framework's calls paid off (MSFT exhaustion fired, META put worked).**
-🔔 **MSFT Bearish Exhaustion FIRED** — RSI rolled 72→64.5, **CMF turned −0.05**, price −2.6% off the high (485). Stage-1 confirmed;
-Stage-2 put = loss of 464 (9/20-EMA). 🔴 **META put WORKED** — rejected the 600-605 wall exactly as planned, −3.2% to 579 (first
-target hit); next 545. 🔴 **AVGO reversal deepened** — lost the 398-400 line → 395 (toward 381). 🔴 **DELL −3.8% reversal** (497→475,
-still >cloud). 🔴 **MCD's coil broke DOWN** — lost cloud/basis, flipped LL↓ (→262). 🟢 **MU broke out** >the 996 wall → 1017.
-🟢 **BABA's >124 call fired** (tagged 126). 🟢 **SPCX dip bought hard** 137→149.6 wall on CMF +0.27 (>149.9 = breakout).
-**+flow leaders holding:** PLTR +0.20, LUNR +0.17, NFLX +0.27, ACN +0.28, CRCL +0.26, ORCL +0.13, BMNR +0.19, NBIS +0.06.
-**Distribution/rolling:** CRWV −0.19, AMZN −0.19, IREN −0.26, SOUN −0.21, GOOGL −0.15. 🎯 **AAPL holds 300, CMF +0.23** (strengthening; 309 = the long). (Data = early-8/17, thin vol.)
+**08-24 theme: VIOLENT ROTATION — crypto/fintech explodes on a bitcoin rip while the semis get crushed.**
+🟢 **Crypto/fintech cohort ripped:** MSTR **+38%** (92→122), COIN **+25%** (150→188), CRCL **+17%** (75→87), BMNR **+27%** (18.5→23.5) — all +flow, HH-up (bitcoin-led). 🟢 **+flow leaders hold:** ACN 186 new highs (+0.19), NFLX 80 coiled, PLTR 173 (momentum cooling — Diverge). 🔴 **SEMIS CRUSHED — the story of the session:** AVGO −2.5 (RSI 36, lower-BB), ARM −2.5 (RSI 37), AMD −2.0 (460, lost cloud), INTC −2.0 (RSI 36), **SMH −2.0 the sector drag** — until SMH reclaims 563, semis stay a fade. **MRVL +1.5 = only semi with relative strength.** 🚨 **NVDA −2.0 into 8/26 AMC earnings** — the whole complex keys off it; in-cloud, −0.12 flow. 🔴 **META −2.0** (trial wk1, RSI 39). 🎯 **AAPL recovered to 311, CMF +0.18, RSI crossed >MA** — best of the negatives; reclaim 313.06 flips it. **QQQ 707 parked in the cloud (703-709) = no index edge, trade the names.** 🟢 **ORCL flow re-accel +0.21** (leads price again; confirm 142.6). **SNDK digesting** 1448 (ATR 154). **UNH turnaround** still <cloud. (Data = 08-24 9:35 snapshot via scheduled report.)
 
 Cols: BB = Bollinger (Low/Basis/Up) · VWAP = Q2-anchored · Cloud = Ichimoku SpanA/B ·
 Pos = price vs cloud (▲above / ◆in / ▼below) · **HH/LL = swing structure: `HH↑`=higher-highs/uptrend (call bias),
-`LL↓`=lower-highs/downtrend (put bias), `Rng`=range/coiling (no edge), `⚠`=structure vs flow diverge** ·
+`LL↓`=lower-highs/downtrend (put bias), `Rng`=range/coiling (no edge), `Diverge`=structure vs flow diverge** ·
 Put = put-setup grade (see ranking below).
 
 | Sym | Px | RSI/MA | CMF | ATR | BB L/Basis/Up | VWAP | Cloud A/B | Pos | HH/LL | Score | Put | Bias · Next |
 |-----|----|--------|-----|-----|---------------|------|-----------|-----|-------|-------|-----|-------------|
-| **PLTR** | 176.04 | 69.0/63.4 | **+0.20** | 8.08 | 101/148/194 | 138/163 | 158/143 | ▲ | **HH↑** | +2.5 | — | 🟢Cleanest call — RSI 69 w/ CMF +0.20 confirming. Consolidating 176 → BB-up 194; buy dips 163 |
-| **LUNR** | 20.29 | 67.0/46.4 | **+0.17** | 1.65 | 10.1/14.8/19.4 | 25.4 | 16.5/25.0 | ◆ | **HH↑** | +2.5 | — | 🟢Continuation >BB-up on CMF +0.17. Into cloud → SpanB/VWAP 25 wall. ⚠️tiny size |
-| **QQQ** | 732.22 | 60.0/53.1 | +0.04 | 12.0 | 665/706/747 | 692/717 | 710/705 | ▲ | **HH↑** | +2.0 | — | 🌐Holding new highs <BB-up 747. Support 717/705 |
-| **IWM** | 304.00 | 61.1/56.3 | +0.06 | 3.65 | 287/297/307 | 284/299 | 299/291 | ▲ | **HH↑** | +2.0 | — | 🟢New highs, flow improved +0.06. Hold 297 |
-| **MSFT** | 484.78 | 64.5/72.9 | **-0.05** | 13.6 | 356/454/553 | 411/478 | 472/431 | ▲ | HH↓ exh | +2.0 | — | 🔔**Exhaustion FIRED** — RSI rolled 72→64.5, CMF turned −0.05, −2.6% off high. Stage-2 put = lose 464 (9/20). Trail/de-risk |
-| **NVDA** | 225.89 | 63.6/56.8 | -0.00 | 6.59 | 189/211.5/233.6 | 207/219 | 215/209 | ▲ | **HH↑** | +2.0 | — | 🟢Near highs, flat flow. <BB-up 233.6; trail |
-| **NFLX** | 77.01 | 57.6/53.2 | **+0.27** | 2.30 | 68/73/79 | 82.2 | 74/74.4 | ▲ | **HH↑** | +2.0 | — | 🟢Healthy dip on CMF +0.27 (strong accum). >cloud; <BB-up 79 |
-| **BMNR** | 18.86 | 59.5/56.4 | **+0.19** | 1.05 | 16.3/17.8/19.3 | 18.44/19.5 | 17.6/16.1 | ▲ | **HH↑** | +2.0 | — | 🟢+flow +0.19 >cloud/VWAP. Toward BB-up 19.3/VWAP+1σ 19.5 |
-| **ORCL** | 146.97 | 52.9/52.5 | **+0.13** | 7.40 | 110/136/163 | 162.2 | 143/178 | ◆ | **HH↑** | +2.0 | — | 🔔🟢Healthy dip, **CMF holds +0.13**. Support 143 (cloud/9-20); next VWAP 162 |
-| **BABA** | 124.59 | 56.1/62.4 | **+0.16** | 3.76 | 110/122/134 | 121.6/127.5 | 124.5/112 | ▲ | **HH↑** | +2.0 | — | 🟢**>124 call FIRED** (tagged 126) on CMF +0.16. → VWAP+1σ 127.5/133 |
-| **NBIS** | 269.70 | 62.3/51.6 | +0.06 | 25.6 | 143/210/277 | 204/235 | 221/223 | ▲ | **HH↑** | +2.0 | — | 🟢New highs near BB-up 277, flow +0.06 (catching). Extended; ⚠️ATR 26 |
-| **SPCX** | 149.09 | 58.9/46.8 | **+0.27** | 11.0 | 98/124/149.9 | 149.5 | 127/(IPO) | ▲ | **HH↑** | +2.0 | — | 🟢Dip bought 137→149.6 wall on CMF +0.27. **>149.9 = breakout** to new highs. ⚠️IPO |
-| **ACN**‡ | 172.46 | 59.5/65.7 | **+0.28** | 7.67 | 138.5/165/192 | 157/172.5 | 165/152 | ▲ | **HH↑** | +2.0 | — | 🟢Healthy pullback to VWAP+1σ 172.5 on **CMF +0.28**. The winner; buy dips (‡Anness) |
-| **CRCL**‡ | 74.58 | 58.7/49.5 | **+0.26** | 5.01 | 57.5/66/75.3 | 89.2 | 67/78.5 | ◆ | **HH↑** | +2.0 | — | 🟢BB-up push (75.4 high) on **CMF +0.26**. In cloud → SpanB 78.5. Buy dips (‡Anness) |
-| **SNDK** | 1800 | 61.4/45.9 | +0.02 | 169 | 983/1374/1765 | 1398/1582 | 1454/1676 | ▲ | HH↑⚠ | +2.0 | — | 🟢**AI-storage/NAND supercycle winner** — parabolic +27% (998→1828), but **extended >BB-up 1765 on CMF flat +0.02** (rip not flow-confirmed). Don't chase 1800; buy dips 1765/1582 (VWAP+1σ)/1449 (9-20) w/ CMF confirming. ⚠️ATR 169 (~9%/day), tiny size · earn passed 8/5, next ~Nov · added 08-17 |
-| **AMD** | 512.32 | 53.3/47.2 | **-0.10** | 30.7 | 435/495/554 | 431/506 | 494/504 | ▲ | HH↑⚠ | +1.5 | — | 🟢**Cleared the 504 SpanB wall** +2.6% (516 high) = the repair, but CMF −0.10 still lagging. >cloud; toward BB-up 554 |
-| **MU** | 1017.25 | 59.9/48.4 | +0.01 | 71.4 | 767/898/1029 | 820/923 | 904/996 | ▲ | **HH↑** | +1.5 | — | 🟢**Broke out >the 996 wall** (1025 high) = cloud clear. CMF flat +0.01. → BB-up 1029. ⚠️ATR 71 |
-| **MRVL** | 235.25 | 58.5/48.4 | -0.05 | 16.9 | 169/205/240 | 227 | 210/246 | ◆ | HH↑⚠ | +1.5 | — | 🟡+6.8% (238 high) to the 240 BB-up/246 SpanB wall, CMF −0.05. Watch >246 / the flip |
-| **CRWV** | 104.61 | 62.2/53.4 | **-0.19** | 8.42 | 59/85/112 | 101/123 | 95/91 | ▲ | HH↑⚠ | +1.5 | — | 🔴>cloud/VWAP but **CMF −0.19 = heavy distribution** (exhaustion). Near-put: lose 101 VWAP → 96/91 |
-| **DELL** | 475.11 | 57.7/55.9 | +0.02 | 32.2 | 375/441/507 | 350/453 | 451/436 | ▲ | HH pullbk | +1.5 | — | 🔴**−3.8% reversal** (497 high→475), flat flow. Still >cloud/9-20; watch 450-453 support. ⚠️ATR 32 |
-| **INTC** | 103.59 | 52.4/46.5 | -0.09 | 6.89 | 84/97/110 | 101.5 | 99/112 | ◆ | HH↑⚠ | +1.5 | — | 🟡In cloud <112 SpanB wall, CMF −0.09. Prove-it; >112 or the flip |
-| **LLY**‡ | 1185.54 | 51.1/51.8 | -0.03 | 39.3 | 1122/1184/1246 | 1072/1197 | 1182/1151 | ◆ | HH pullbk | +1.5 | — | 🟢**Defended 1175** (dipped 1163, reclaimed 1185) at the basis/cloud/9-20 cluster. CMF −0.03. Hold 1175 (‡Anness) |
-| **ISRG**‡ | 393.41 | 55.3/51.0 | +0.01 | 11.9 | 326/370/414 | 409/458 | 379/386 | ▲ | HH↑ | +1.5 | — | 🟡Flip faded to flat **+0.01** (from +0.09); >cloud but <409/414 wall. Needs the flip to re-fire → 409 (‡Anness) |
-| **SOFI**‡ | 18.42 | 56.3/52.5 | +0.06 | 0.78 | 15.7/17.5/19.35 | 17.2/18.2 | 17.7/17.3 | ▲ | HH↑ | +1.5 | — | 🟢Flip improving +0.06 >VWAP+1σ. → BB-up 19.35/200-EMA 19 (‡Anness) |
-| **SMH** | 594.57 | 56.0/48.8 | **-0.13** | 21.0 | 519/566/613 | 560/583 | 567/588 | ▲ | HH↑⚠ | +1.0 | — | ⚠️Recovered >cloud-top 588 but **CMF still −0.13** (trap intact). >613 BB-up on a flip = real; else fade |
-| **AMZN** | 261.46 | 52.6/58.7 | **-0.19** | 7.93 | 219/257/295 | 251/271 | 264/256 | ◆ | HH↑⚠ roll | +1.0 | — | 🔴Near-put maturing — at basis 257/SpanB 256, **CMF −0.19** (worsening), RSI <MA. Lose 256 → 250/240 |
-| **HOOD** | 96.51 | 50.1/44.6 | **-0.16** | 5.10 | 85/95/105 | 89/97 | 98/99.5 | ▼ | Rng⚠ | +1.0 | — | ⚠️<cloud, CMF −0.16 distribution. Lose 95 basis → 89; >99.5 to clear |
-| **SOUN**‡ | 7.02 | 52.1/52.9 | **-0.21** | 0.46 | 5.5/6.7/8.0 | 7.43 | 7.10/7.16 | ▼ | LL roll | +1.0 | — | 🔴**Failed 7.9, back <cloud** on **CMF −0.21** (fade worked). Lose 6.93/6.72 → BB-low 5.48 (‡Anness) |
-| **APLD**‡ | 30.76 | 50.7/46.4 | **-0.14** | 2.48 | 25/29/33 | 35.5 | 29/36 | ◆ | Rng⚠ | +1.0 | — | 🟡<200-EMA 30.9, CMF −0.14. Prove-it; confirm = flip + >33 (‡Anness) |
-| **IREN**‡ | 44.43 | 55.4/48.6 | **-0.26** | 3.87 | 32/39/47 | 48.8 | 41/50 | ◆ | Rng⚠ | +1.0 | — | 🔴**CMF worsened to −0.26** (pop keeps getting sold), stuck <BB-up 47/SpanB 50. Avoid (‡Anness) |
-| **TSLA** | 339.24 | 47.4/39.4 | -0.06 | 13.3 | 288/328/368 | 384 | 343/365 | ◆ | Rng | +0.5 | — | 🟡Gave back the bounce to the 9/20-EMA 338/cloud-bottom 343, CMF −0.06. Hold 338 or fade to basis 328 |
-| **ARM** | 278.40 | 49.8/45.4 | -0.08 | 21.9 | 230/267/304 | 282.5 | 274/336 | ◆ | Rng⚠ | +0.5 | — | 🟡In cloud, RSI <50, <VWAP 282.5/SpanB 336 walls, CMF −0.08. Prove-it |
-| **AAPL** | 304.87 | 42.9/46.6 | **+0.23** | 7.56 | 291/317/343 | 297/323 | 315/309 | ▼ | Rng+ | -1.0 | — | 🎯🟢**Still holding 300** (305), **CMF +0.23 strengthening** = divergence alive & building. <cloud; reclaim 309 = the long |
-| **META** | 579.55 | 44.6/45.0 | -0.02 | 20.9 | 550/591/633 | 609/580 | 600/605 | ▼ | LL↓ | -1.5 | ⚫ | 🔴**Put WORKED** — rejected the 600-605 wall, −3.2% to 579 (VWAP−1σ). Next 545 BB-low; a bounce fades at 591/600 |
-| **MSTR** | 95.59 | 46.7/46.1 | +0.02 | 5.62 | 91/96/102 | 126 | 98/110 | ▼ | LL↓ | -1.5 | ⚫ | 🔴Bouncing in the downtrend (held BB-low 91), still <cloud/basis. >98 cloud = life; <91 = base breaks. ⚠️BTC proxy |
-| **COIN** | 149.87 | 45.5/44.5 | -0.00 | 8.34 | 138/156/173 | 175/152 | 155/160 | ▼ | LL↓ | -1.5 | ⚫ | 🔴<cloud/basis, flat flow. Needs 155 reclaim, else → BB-low 138 |
-| **AVGO**‡ | 394.87 | 47.4/55.8 | +0.01 | 15.9 | 367/400/434 | 399/381 | 403/426 | ▼ | LL↓ reversal | -1.5 | ⚫ | 🔴**Reversal deepening** — lost the 398-400 line → 395, now <cloud/9-20/VWAP. Toward VWAP−1σ 381 → 366 (‡Anness) |
-| **MCD**‡ | 266.90 | 43.3/50.2 | +0.02 | 5.70 | 262/270/279 | 280/268 | 271/275 | ▼ | LL↓ | -1.5 | ⚫ | 🔴**Coil broke DOWN** — lost cloud/basis 270-271 (was coiling <275), RSI <MA. → BB-low 262 (‡Anness) |
-| **GOOGL** | 344.58 | 46.3/50.4 | **-0.15** | 10.5 | 315/346/377 | 357/338 | 356/350 | ▼ | LL↓ | -2.0 | ⚫ | 🔴Rejected the 350 resistance as flagged, back down, CMF −0.15. → 338 VWAP−1σ → 316 BB-low |
+| **BMNR** | 23.47 | 75.1/60.9 | **+0.25** | 1.21 | 15.3/18.8/22.4 | 18.6 | 20.2/18.4 | ▲ | **HH↑** | +2.5 | — | 🟢+27% rip, flow confirms (+0.25) but RSI 75/>BB-up = extended. Buy the pullback to 20.2, don't chase |
+| **CRCL**‡ | 87.30 | 68.4/57.0 | **+0.22** | 5.55 | 54/70/87 | 88.7 | 78.2/75.4 | ▲ | **HH↑** | +2.5 | — | 🟢+17% >BB-up on +0.22. Q2 VWAP 88.7 is the gate; reclaim → 95+. Buy dips (‡Anness) |
+| **ACN**‡ | 186.25 | 67.6/65.9 | **+0.19** | 7.74 | 161/175/188 | 158 | 170.7/153.3 | ▲ | **HH↑** | +2.5 | — | 🟢Cleanest trend on the board — new highs, RSI >MA, >all structure. Calls on dips (‡Anness) |
+| **MSTR** | 121.63 | 67.4/51.4 | **+0.14** | 6.56 | 83/100/116 | 124 | 106.7/109 | ▲ | **HH↑** | +2.5 | — | 🟢**+38% breakout** cleared the cloud on rising flow; >BB-up 116 (extended). Next Q2 VWAP 124. ⚠️BTC proxy — buy 112/109 retest |
+| **NFLX** | 80.20 | 63.0/57.7 | **+0.21** | 2.27 | 70/76/81 | 82.1 | 75.7/73.9 | ▲ | **HH↑** | +2.5 | — | 🟢Coiled under BB-up 81.3/VWAP 82. Break both = calls; best R:R of the leaders |
+| **PLTR** | 173.55 | 62.8/68.9 | **+0.21** | 7.77 | 116/159/202 | 139.6 | 162.8/144.4 | ▲ | Diverge | +2.5 | — | 🟡Structure fully bullish + flow +0.21, but RSI 62.8 <MA 68.9 = momentum cooling. Hold, don't add |
+| **COIN** | 187.81 | 67.5/49.5 | +0.07 | 9.71 | 132/157/182 | 174.5 | 167.2/165.5 | ▲ | **HH↑** | +2.0 | — | 🟢+25% >BB-up 182, but only +0.07 flow = weakest confirm of the leaders. Extended; buy dips |
+| **MSFT** | 484.04 | 62.7/69.8 | +0.04 | 11.7 | 415/478/540 | 413/478 | 467/431 | ▲ | Diverge | +2.0 | — | 🟢Only mega-cap tech still >all structure, but RSI rolling off 70s. Trail stops 477.8 |
+| **HOOD** | 106.56 | 60.4/49.4 | **-0.06** | 5.89 | 84/94/105 | 89.8 | 98.6/101.9 | ▲ | HH↑⚠ | +2.0 | — | ⚠️>BB-up but **CMF −0.06 = thin, unconfirmed** move (squeeze). Needs flow to flip or it fades; watch 105/102 |
+| **TSLA** | 353.58 | 53.4/46.3 | **+0.23** | 13.6 | 298/330/363 | 383 | 343.5/365 | ◆ | **HH↑** | +2.0 | — | 🟢Best flow turn in mega-cap (+0.23, RSI >MA). **Cloud-top 365.12 is the test** — >365 close = calls → 375/383 |
+| **SPCX** | 137.66 | 52.3/52.2 | **+0.29** | 9.79 | 103/129/155 | 148.7 | 133.7/(IPO) | ▲ | **HH↑** | +2.0 | — | 🟢**Highest CMF on the board (+0.29)** — dips bought. >149.9 = breakout. ⚠️IPO (no SpanB), tiny size |
+| **LLY**‡ | 1244.83 | 57.4/56.4 | -0.05 | 41.2 | 1115/1200/1286 | 1080/1197 | 1214/1186 | ▲ | **HH↑** | +1.5 | — | 🟢Orderly uptrend >all structure, flow flat. Grind → BB-up 1286 (‡Anness) |
+| **SOFI**‡ | 18.52 | 54.8/54.6 | +0.09 | 0.83 | 16/17.8/19.6 | 17.2/18.2 | 17.7/17.3 | ▲ | **HH↑** | +1.5 | — | 🟢Quietly constructive >cloud/VWAP, +0.09. BB-up 19.6 the objective; buy 17.8 dips (‡Anness) |
+| **MCD**‡ | 272.17 | 51.7/50.3 | -0.07 | 5.24 | 265/271/278 | 279.4 | 270.8/275.1 | ◆ | Rng | +1.5 | — | 🟡Defensive base inside a tight cloud. Needs >275.1 to matter (‡Anness) |
+| **IWM** | 299.18 | 51.3/57.0 | +0.03 | 3.46 | 290/299/308 | 285/299 | 298.8/293.5 | ▲ | Diverge | +1.5 | — | 🟢Small-caps > QQQ = the breadth tell of the day, but RSI fading. Hold 293-297 |
+| **MRVL** | 220.50 | 50.0/53.1 | -0.03 | 18.2 | 169/212/255 | 227.7 | 220/246 | ◆ | Rng | +1.5 | — | 🟡**Strongest semi** yet still inside a bearish cloud (<246 SpanB). Relative-strength watch |
+| **SOUN**‡ | 7.04 | 51.4/56.5 | **-0.11** | 0.43 | 5.7/6.9/8.1 | 7.42 | 7.08/6.92 | ◆ | Rng | +1.0 | — | 🟡Coiling on the cloud edge (6.92-7.08), soft flow −0.11. Wait for the resolve (‡Anness) |
+| **LUNR** | 17.03 | 50.0/54.6 | **+0.18** | 1.56 | 10.6/15.9/21.2 | 25.2 | 16.8/21.1 | ◆ | Rng | +1.0 | — | 🟡Flow +0.18 but price 32% under VWAP 25.2. Early-turn candidate, not a trend. ⚠️tiny |
+| **ORCL** | 142.25 | 48.9/54.2 | **+0.21** | 6.88 | 122/142/162 | 161.6 | 142.6/163.5 | ◆ | Rng | +1.0 | — | 🔔🟢**CMF re-accel to +0.21** (flip fired 8/11, stalled 8/19, back). Flow leads price again; confirm >142.6 |
+| **MU** | 906.56 | 48.2/51.5 | -0.05 | 66.4 | 770/897/1023 | 824/923 | 927/996 | ▼ | Rng | +0.5 | — | 🟡Holding basis 896.6 under a heavy bearish cloud (lost 996 breakout). ⚠️ATR 66, small size |
+| **SNDK** | 1447.51 | 48.1/50.0 | -0.02 | 154 | 993/1390/1787 | 1408 | 1491/1676 | ▼ | Rng | +0.5 | — | 🟡NAND supercycle digesting — pulled from 1828 into/below the cloud. **Basis 1390 = line in the sand.** ⚠️ATR 154 (~10%/day) |
+| **AMZN** | 261.68 | 52.2/56.8 | **-0.11** | 7.20 | 233/263/293 | 251 | 261/256.4 | ▲ | Rng | -1.0 | — | 🔴Pinned at basis 262.9, flow leaking −0.11. Cloud-top 261 is the must-hold; lose it → 256/250 |
+| **AAPL** | 311.31 | 49.1/46.0 | **+0.18** | 7.28 | 292/313/335 | 297.5 | 316.4/309.2 | ◆ | Rng+ | -1.0 | — | 🎯🟢**Best of the negatives** — RSI crossed >MA, CMF +0.18. Recovered to 311; **reclaim 313.06 flips it long** |
+| **BABA** | 118.08 | 44.5/59.7 | **+0.15** | 4.42 | 114/124/135 | 121.9 | 122.8/112.3 | ◆ | Diverge | -1.0 | — | 🟡Price weak (RSI 44.5 <MA 59.7, post-earnings drop) but **flow +0.15 = accumulation into weakness.** Watch 116-118 for the bounce |
+| **GOOGL** | 347.87 | 49.4/48.2 | +0.08 | 9.07 | 326/349/373 | 356 | 347.1/349.7 | ◆ | Rng | -1.5 | — | 🟡RSI crossing up but price in a razor-thin cloud (347-350). Coin flip — wait for the pick |
+| **ISRG**‡ | 379.50 | 47.9/53.4 | -0.01 | 12.6 | 348/380/412 | 408 | 376.6/386.2 | ◆ | Rng | -1.5 | — | 🟡Sitting literally on the basis (379.5 vs 379.8). Neutral until it picks a side (‡Anness) |
+| **DELL** | 427.20 | 46.8/55.5 | -0.03 | 30.2 | 379/444/509 | 353/456 | 453/436 | ▼ | LL↓ | -1.5 | ⚫ | 🚩**Earnings late-Aug — verify date.** Lost cloud/9-20 (453/436), −5% off 475. ATR 30, no directional bet pre-print |
+| **QQQ** | 707.03 | 46.8/54.5 | +0.02 | 11.1 | 673/710/748 | 693 | 709/703 | ◆ | Rng | -1.5 | — | 🌐Index parked IN the cloud (703-709). No index-level edge — trade the names. <703 = uptrend breaks |
+| **NBIS** | 204.18 | 46.2/52.9 | +0.01 | 24.1 | 147/214/281 | 206 | 228/223 | ▼ | LL↓ | -1.5 | — | 🔴Lost basis + VWAP together. Flow flat = drift not flush. ⚠️ATR 24, wide stops |
+| **NVDA** | 212.94 | 49.0/58.5 | **-0.12** | 6.03 | 193/214/235 | 207 | 214.7/208.9 | ◆ | Rng | -2.0 | — | 🚨**EARNINGS 8/26 AMC** — in-cloud, −0.12 flow, RSI <MA. Whole complex keys off this. Trade the REACTION, not the anticipation; support 208 → 194 |
+| **IREN**‡ | 39.72 | 46.5/51.0 | **-0.18** | 3.81 | 33/40/47 | 48.5 | 41.7/46.1 | ▼ | LL↓ | -2.0 | — | 🔴Lost the basis on −0.18; diverges from the crypto cohort's strength. Avoid (‡Anness) |
+| **CRWV** | 84.28 | 45.3/55.1 | **-0.24** | 7.78 | 64/88/113 | 100.7 | 94.8/91.3 | ▼ | LL↓ | -2.0 | ⚫ | 🔴**Worst CMF on the board (−0.24)**, below every reference. Cleanest put structure → BB-low 64 |
+| **AMD** | 460.00 | 43.1/47.0 | **-0.14** | 27.4 | 440/479/518 | 432 | 490/504 | ▼ | LL↓ | -2.0 | ⚫ | 🔴Below a bearish cloud. Lower-BB 440 the next magnet; VWAP 432 the backstop |
+| **SMH** | 548.75 | 42.2/49.9 | **-0.16** | 19.8 | 519/563/607 | 561 | 563/588 | ▼ | LL↓ | -2.0 | ⚫ | 🔴**The sector drag — story of the session.** Until SMH reclaims 563, semis stay a fade |
+| **META** | 551.27 | 39.2/43.6 | +0.01 | 19.1 | 533/574/616 | 606 | 580.5/605.3 | ▼ | LL↓ | -2.0 | ⚫ | 🔴**Trial wk1 of ~7** (began 8/18) = structural overhang, RSI 39. Needs reclaim 574/605 + narrative shift |
+| **INTC** | 86.09 | 36.3/46.6 | -0.07 | 6.33 | 83/95/108 | 101 | 95.7/112 | ▼ | LL↓ | -2.0 | ⚫ | 🔴RSI 36 oversold but no turn yet. Lower-BB 82.6 the next shelf |
+| **UNH** | 398.10 | 45.0/41.0 | **-0.23** | 10.0 | 382/405/428 | 382/409 | 403/423 | ▼ | LL/base | -2.0 | — | ⚫**Turnaround candidate** — Q2 crushed (EPS 6.38 vs 4.85, raised guide), but stock <cloud (403/423), CMF −0.23. Bouncing off 383 base. Prove-it: buy 383-384 hold OR reclaim 403-405 + CMF flip; inval <382. Earn ~Oct 9-16 · added 08-24 |
+| **APLD**‡ | 26.20 | 38.5/46.6 | **-0.11** | 2.38 | 25/29/33 | 35.3 | 28.8/36.1 | ▼ | LL↓ | -2.5 | — | 🔴Riding lower-BB 24.85, 26% under VWAP. Downtrend intact, no reversal signal (‡Anness) |
+| **ARM** | 236.34 | 37.1/45.6 | **-0.19** | 20.1 | 223/259/296 | 282 | 260.6/336 | ▼ | LL↓ | -2.5 | ⚫ | 🔴Deep below a thick bearish cloud (260-336). Lower-BB 223 next; flow −0.19 |
+| **AVGO** | 361.09 | 36.2/50.5 | **-0.16** | 14.8 | 350/395/440 | 397 | 393.6/394.6 | ▼ | LL↓ | -2.5 | ⚫ | 🔴**Weakest large-cap (RSI 36.2)** — pressing lower-BB 350, stretched short-term. Bounce fades at 395 wall |
 
 ---
 
