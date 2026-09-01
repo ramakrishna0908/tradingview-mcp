@@ -28,6 +28,11 @@ cd "$REPO" || exit 1
 
 echo "=== $(date) starting daily report ===" >> "$LOG"
 
+# Prior-session CMF, so the report can show the flow TREND (the leading tell)
+# rather than a memory-less daily snapshot. Empty on first run / unparseable dir.
+PRIOR_CMF="$(python3 "$REPO/scripts/prior-cmf.py" "$REPORT_DIR" "$DATE" 2 2>/dev/null)"
+[ -z "$PRIOR_CMF" ] && PRIOR_CMF="(no prior report found - omit the CMF trend column this run)"
+
 read -r -d '' PROMPT <<EOF
 You are running the AUTOMATED DAILY STOCK REPORT (headless, no human watching).
 Follow CLAUDE.md and the memory files. Keep any chat text to an absolute minimum.
@@ -43,14 +48,35 @@ Follow CLAUDE.md and the memory files. Keep any chat text to an absolute minimum
    ANNESS(9): ACN LLY ISRG CRCL SOFI MCD SOUN APLD IREN
    Score each: RSI(>60 +1/>50 +0.5/<50 -0.5/<40 -1) + BB-basis(above +1/below -1)
    + CMF(>0.1 +0.5/<-0.1 -0.5). Infer HH/LL structure (HH-up / LL-down / Rng / diverge).
+3b) CMF TREND. Prior sessions' CMF per symbol (oldest -> newest) is below. For each
+   name compute the delta from the OLDEST listed value to today's reading, and
+   classify: improving (>= +0.06), flat (between), deteriorating (<= -0.06).
+   The methodology treats the *trend* of CMF as the leading tell and the score as
+   only a snapshot, so apply this GATE to the cohort summary:
+     - A name scoring >= +2.0 whose CMF is DETERIORATING is demoted from Calls to
+       Watches, labelled "flow fading", with the delta quoted.
+     - A name scoring <= -2.0 whose CMF is IMPROVING or flat-at-a-floor is removed
+       from Puts and listed as a Watch ("seller exhaustion - do not chase short").
+     - A name whose CMF crossed from positive to negative over the window is
+       called out as a FRESH flow breakdown (highest-quality short thesis).
+   If a symbol has no prior value, print "n/a" and do not gate it.
+PRIOR CMF DATA:
+$PRIOR_CMF
 4) Write ONE self-contained HTML file to EXACTLY this path: $REPORT
    Requirements: inline CSS only, dark-theme friendly, mobile-safe (table scrolls
    horizontally in its own container). Include: (a) header with the date "$DATE";
    (b) a one-paragraph market theme; (c) a table SORTED BY SCORE desc with columns
-   Sym, Px, RSI/MA, CMF, ATR, BB L/Basis/Up, VWAP, Cloud A/B, Pos, HH/LL, Score, Bias-Next;
-   color Score green(>0)/red(<0)/grey(0) and tint HH-up green / LL-down red;
-   (d) a short cohort summary below (Calls / Puts / Watches). Flag any known
-   catalyst (e.g. the META trial) per the flag-catalysts memory.
+   Sym, Px, RSI/MA, CMF, CMF Trend, ATR, BB L/Basis/Up, VWAP, Cloud A/B, Pos, HH/LL,
+   Score, Bias-Next. The "CMF Trend" cell shows the signed delta and an arrow
+   (up improving / down deteriorating / dash flat), e.g. "-0.15 v" or "+0.07 ^";
+   tint it red when deteriorating and green when improving.
+   Color Score green(>0)/red(<0)/grey(0) and tint HH-up green / LL-down red;
+   (d) a short cohort summary below (Calls / Puts / Watches), applying the 3b gate -
+   state explicitly which names were demoted or removed by the flow trend and why;
+   (e) a one-line "flow breadth" stat: how many names are deteriorating vs improving.
+   Flag any known catalyst (e.g. the META trial) per the flag-catalysts memory, and
+   check for EARNINGS inside the next 2 sessions - a name reporting imminently is
+   never listed as a Call or a Put, only as a Watch with the date.
 5) Do NOT git commit. Do NOT update analysisstocks.md or anness-recommendations.md
    (this is a read-only report). When the HTML file exists at $REPORT, stop.
 EOF
