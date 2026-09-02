@@ -46,6 +46,10 @@ Follow CLAUDE.md and the memory files. Keep any chat text to an absolute minimum
    NFLX PLTR COIN MRVL CRWV BMNR ORCL BABA DELL LUNR MU SPCX ARM INTC NBIS AVGO
    UNH HIMS
    ANNESS(9): ACN LLY ISRG CRCL SOFI MCD SOUN APLD IREN
+   DEFENSE(10): LMT RTX NOC GD BA LHX TDG HII LDOS AXON
+   MACRO(1): USO  <- crude ETF, NOT a defense name. Swept as the cross-check on any
+   geopolitical read: oil must move WITH a conflict narrative, so if a headline says
+   de-escalation while USO rips (or vice versa), the narrative is stale - say so.
    Score each: RSI(>60 +1/>50 +0.5/<50 -0.5/<40 -1) + BB-basis(above +1/below -1)
    + CMF(>0.1 +0.5/<-0.1 -0.5). Infer HH/LL structure (HH-up / LL-down / Rng / diverge).
 3b) CMF TREND. Prior sessions' CMF per symbol (oldest -> newest) is below. For each
@@ -73,7 +77,13 @@ $PRIOR_CMF
    Color Score green(>0)/red(<0)/grey(0) and tint HH-up green / LL-down red;
    (d) a short cohort summary below (Calls / Puts / Watches), applying the 3b gate -
    state explicitly which names were demoted or removed by the flow trend and why;
-   (e) a one-line "flow breadth" stat: how many names are deteriorating vs improving.
+   (e) a one-line "flow breadth" stat: how many names are deteriorating vs improving;
+   (f) a SEPARATE "Defense & Aerospace" section after the main table - its own table with
+   the same columns for the DEFENSE(10) names, its own Calls/Puts/Watches read, and the
+   MACRO row (USO) rendered inside it but visually marked as a non-constituent
+   cross-check, not a sector pick. Keep defense names OUT of the main table and out of
+   the main cohort summary so the two do not blur. Tracker file: defense-stocks.md
+   (read it for the standing sector read; do NOT edit it).
    Flag any known catalyst (e.g. the META trial) per the flag-catalysts memory, and
    check for EARNINGS inside the next 2 sessions - a name reporting imminently is
    never listed as a Call or a Put, only as a Watch with the date.
