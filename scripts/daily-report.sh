@@ -84,9 +84,20 @@ $PRIOR_CMF
    cross-check, not a sector pick. Keep defense names OUT of the main table and out of
    the main cohort summary so the two do not blur. Tracker file: defense-stocks.md
    (read it for the standing sector read; do NOT edit it).
-   Flag any known catalyst (e.g. the META trial) per the flag-catalysts memory, and
-   check for EARNINGS inside the next 2 sessions - a name reporting imminently is
-   never listed as a Call or a Put, only as a Watch with the date.
+   Flag any known catalyst (e.g. the META trial) per the flag-catalysts memory.
+3c) EARNINGS ALERT (do this for EVERY name swept - main, Anness and defense).
+   Check which names report TODAY (before open or after close) or within the next
+   2 sessions. Standing user rule: ALWAYS surface same-day earnings prominently.
+   Render a banner as the FIRST element of the report body, above the market theme:
+     - Title it "EARNINGS TODAY" and list each name with its ticker, the session
+       (BMO / AMC), and the consensus if you have it. If none, print one line:
+       "No watchlist names report today." - never omit the banner entirely.
+     - Add a second line for "Next 2 sessions" with any upcoming names + dates.
+   A name reporting today or within 2 sessions is NEVER a Call or a Put - list it
+   as a Watch with the date, and say plainly that its technical read is
+   pre-news and will be invalidated by the gap.
+   ⚠️ A name that reported AFTER yesterday's close has a STALE daily bar: say so
+   explicitly rather than scoring it as if the chart were current.
 5) Do NOT git commit. Do NOT update analysisstocks.md or anness-recommendations.md
    (this is a read-only report). When the HTML file exists at $REPORT, stop.
 EOF
