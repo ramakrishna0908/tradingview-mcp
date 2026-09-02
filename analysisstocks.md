@@ -2,6 +2,19 @@
 
 Rolling `full analysis`. **Latest refresh: 2026-08-24** (9:35 snapshot via scheduled report). Prior: 08-17, 08-14, 08-13, 08-12, 08-11, 08-10, 08-07, 08-06, 08-05, 08-04, 08-03, 07-31 (NVDA), 07-29, 07-28, 07-27, 07-24, 07-23, 07-22, 07-21, 07-17. (Master table = 08-24; Trade-Thesis Cohort View below = 08-13 groupings; narrative at bottom is 07-17 context.)
 
+**Watchlist add — SNOW (Snowflake), 2026-09-02.** Cloud data platform / AI-data. Baseline at the 09-02
+close: **305.84, -4.4% on 2.60x RVOL** (11.22M vs 4.32M avg) — heavy de-risking *into* its print. Closed
+**below BB-low 310.61** and below base line 309.42, inside the cloud (SpanA 314.38 / SpanB 279.71), under
+9-20 EMA 318.03 / conversion 319.35 / basis 325.99. RSI 45.75 vs MA 62.03 (16 pts below), CMF +0.04,
+ATR 13.17 (~4.3%/day). Score **-1.5**. Long-term trend still intact — far above Q2 VWAP 219.14 and the
+200-EMA 234.14; the damage is short-term only.
+⚑ **Reported Q2 FY27 the same evening (09-02, after close): big beat & raise** — revenue $1.55B vs $1.49B
+est, adj EPS $0.62 vs $0.46, revenue +35% YoY, product revenue +37% (third straight quarter of
+*accelerating* growth); Q3 product guide $1.59B vs $1.50B consensus, FY product raised to $6.07B from
+$5.84B. So the 09-02 daily bar is pre-news and **stale as a read** — re-baseline on the 09-03 reaction.
+Pivot after the gap: reclaim of **310.61 / 314.38** (BB-low + cloud SpanA) that holds = the long;
+failure to hold 303.89 (09-02 low) on a beat = the tell that the AI-data trade is being sold regardless.
+
 **Scoring:** RSI >60 +1 / >50 +0.5 / <50 -0.5 / <40 -1 · above BB basis +1 / below -1 ·
 CMF >0.1 +0.5 / <-0.1 -0.5. **CMF is the leading tell** — green candle + neg/flat CMF =
 distribution into strength = fade/wait; positive CMF = the dip-buys. Score is a snapshot;

@@ -42,9 +42,9 @@ Follow CLAUDE.md and the memory files. Keep any chat text to an absolute minimum
    short HTML error page to $REPORT saying "TradingView not reachable" and stop.
 2) Collapse to a single chart (pane_set_layout s) and set timeframe D.
 3) Sweep ALL names SEQUENTIALLY (chart_set_symbol -> quote_get + data_get_study_values):
-   MAIN(32): QQQ IWM SMH SNDK AMD GOOGL AAPL MSFT NVDA TSLA AMZN META HOOD MSTR
+   MAIN(33): QQQ IWM SMH SNDK AMD GOOGL AAPL MSFT NVDA TSLA AMZN META HOOD MSTR
    NFLX PLTR COIN MRVL CRWV BMNR ORCL BABA DELL LUNR MU SPCX ARM INTC NBIS AVGO
-   UNH HIMS
+   UNH HIMS SNOW
    ANNESS(9): ACN LLY ISRG CRCL SOFI MCD SOUN APLD IREN
    DEFENSE(10): LMT RTX NOC GD BA LHX TDG HII LDOS AXON
    MACRO(1): USO  <- crude ETF, NOT a defense name. Swept as the cross-check on any
