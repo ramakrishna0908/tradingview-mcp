@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>com.ramakrishna.tvsocialauto</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/ramakrishna0908/MyProjects/trading/tradingview-mcp/scripts/social-auto.sh</string>
+  </array>
+  <!-- Fallback: weekdays 10:10 ET, after the 9:35 report job. Idempotent — only posts what the report-chained run did not. -->
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>10</integer></dict>
+    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>10</integer></dict>
+    <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>10</integer></dict>
+    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>10</integer></dict>
+    <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>10</integer><key>Minute</key><integer>10</integer></dict>
+  </array>
+  <key>StandardOutPath</key><string>/Users/ramakrishna0908/MyProjects/trading/tradingview-mcp/docs/reports/launchd-social.out.log</string>
+  <key>StandardErrorPath</key><string>/Users/ramakrishna0908/MyProjects/trading/tradingview-mcp/docs/reports/launchd-social.err.log</string>
+  <key>RunAtLoad</key><false/>
+</dict>
+</plist>

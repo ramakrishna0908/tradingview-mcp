@@ -82,25 +82,45 @@ trailing hashtag-only line but nothing else after the disclosure.
 
 ## Auto-publish (`tv social auto`)
 
-Runs from `scripts/daily-report.sh` right after the report is written
-(weekdays ~9:50 AM ET via launchd), reading X credentials from `.env.social`
-(copy `.env.social.example`, `chmod 600`). Guards, all in
-`config/social-compliance.json → posting.autoPublish`:
+**When it runs.** The launchd report job starts at 9:35 AM ET on weekdays and
+the report is usually written by ~9:50. `scripts/daily-report.sh` launches
+`scripts/social-auto.sh` in the background the moment the file exists, and a
+second launchd job (`scripts/com.ramakrishna.tvsocialauto.plist`, 10:10 AM ET)
+re-runs the same script as a fallback. Both runs are idempotent — a ticker
+already posted for that report is a `duplicate_post` — so a re-run only
+publishes what the first run missed. Load the fallback once with:
+
+```bash
+cp scripts/com.ramakrishna.tvsocialauto.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.ramakrishna.tvsocialauto.plist
+```
+
+**What it posts.** With `candidateSource: "report-cohort"` (the default) the
+candidates are exactly the names the report lists under **Calls** and
+**Puts** in its Cohort Summary, in report order, Calls first. The report's
+flow-trend gate is the authority: names it demoted to Watches or removed
+from Puts are never candidates. The classifier only supplies the label, and a
+report Call that is pinned to the upper band still posts as a *Breakout watch*
+— a signal is never upgraded. Posts are spaced `spacingSeconds` apart (2 min)
+so a run of ~15 posts spreads over half an hour. `candidateSource: "table"`
+switches back to the classifier ranking with `requireSignal`/`minConfidence`.
+
+Guards, all in `config/social-compliance.json → posting.autoPublish`:
 
 | Guard | Default |
 |---|---|
 | `enabled` | `true` — `SOCIAL_AUTO_PUBLISH=0` in the environment overrides to off |
 | Freshness | report must be within `maxReportAgeHours`; **auto mode can never acknowledge stale data** |
-| `requireSignal` / `minConfidence` | `CONFIRMED` / `High` only |
-| `maxPostsPerRun` | 2 |
-| `symbolCooldownDays` | 3 — a ticker published within the window is skipped |
+| `candidateSource` | `report-cohort` — the report's own Calls/Puts lists; refuses if the report has none |
+| `requireSignal` / `minConfidence` | `null` / `Low` (the cohort list is the gate; set `CONFIRMED`/`High` to tighten) |
+| `maxPostsPerRun` / `spacingSeconds` | 20 / 120 |
+| `symbolCooldownHours` | 20 — one post per ticker per day, even across re-runs |
 | `skipFlaggedRows` | skip rows the report flagged (⚑ catalyst, ◉ macro cross-check) |
 | `skipBiasKeywords` | skip when the report's note mentions earnings, trial, avoid, no position, pre-news, stale, removed, demoted, catalyst |
 | `allowWarnings` | `false` — every compliance check must be clean, not just non-blocking |
 | `requireDisclosureLast` | the disclosure must be the last sentence line (hashtags may follow) |
 | Credentials | must come from the environment; there is no browser/manual path in auto mode |
 
-Every decision is audited: published posts have `approval.by = "auto-publish policy"`,
+Logs go to `docs/reports/social-YYYY-MM-DD.log`. Every decision is audited: published posts have `approval.by = "auto-publish policy"`,
 skipped candidates are stored as `auto_skipped` with the reason, `--dry-run`
 stores `auto_dry_run` and calls nothing. `tv social auto --dry-run` is the way
 to preview what a morning run would post.

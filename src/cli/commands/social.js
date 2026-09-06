@@ -79,7 +79,9 @@ const subcommands = new Map([
       const table = wf.summaryTable(model, values.all ? { groups: ['main', 'anness', 'defense', 'macro'] } : undefined);
       const fmt = values.format || 'md';
       if (fmt === 'json') return out({ reportDate: model.reportDate, dataAsOf: model.dataAsOf, modelSource: source, columns: TABLE_COLUMNS, rows: table.map(tableRow), setups: table });
-      console.log(`Report ${model.reportDate} · data as of ${model.dataAsOf} (${source === 'json' ? 'cached model' : 'parsed from HTML → model cached'})\n`);
+      console.log(`Report ${model.reportDate} · data as of ${model.dataAsOf} (${source === 'json' ? 'cached model' : 'parsed from HTML → model cached'})`);
+      if (model.cohort) console.log(`Report cohort — Calls: ${model.cohort.calls.map(x => x.symbol).join(', ') || '—'} · Puts: ${model.cohort.puts.map(x => x.symbol).join(', ') || '—'}`);
+      console.log('');
       console.log(fmt === 'text' ? renderTextTable(table) : renderMarkdownTable(table));
       done();
     },
@@ -226,10 +228,12 @@ subcommands.set('auto', {
     if (values.json) return out(summary);
     console.log(`auto-publish · report ${summary.reportDate}${summary.dryRun ? ' · DRY RUN' : ''}`);
     if (summary.refused) { console.log(`refused: ${summary.refused}`); done(2); }
+    if (summary.cohort) console.log(`report cohort — Calls: ${summary.cohort.calls.join(', ') || '—'} · Puts: ${summary.cohort.puts.join(', ') || '—'}`);
     for (const p of summary.published) {
-      console.log(`\n${p.dryRun ? 'WOULD POST' : 'POSTED'} ${p.symbol} (${p.id})${p.url ? ' → ' + p.url : ''}\n${p.text}`);
+      console.log(`\n${p.dryRun ? 'WOULD POST' : 'POSTED'} ${p.symbol}${p.cohort ? ' [' + p.cohort + ']' : ''} (${p.id})${p.url ? ' → ' + p.url : ''}\n${p.text}`);
     }
     for (const s of summary.skipped) console.log(`skip ${s.symbol.padEnd(6)} ${s.signal}/${s.confidence.padEnd(6)} ${s.setup} — ${s.reason}`);
+    if (summary.capped) console.log(`(stopped at maxPostsPerRun = ${summary.policy.maxPostsPerRun})`);
     if (!summary.published.length) console.log('\nnothing published');
     done(0);
   },

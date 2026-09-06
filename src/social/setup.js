@@ -177,11 +177,21 @@ export function qualityRank(s) {
 }
 
 /** Build the social summary table (all rows, sorted by quality then score). */
+export function cohortOf(model, symbol) {
+  const c = model.cohort;
+  if (!c) return null;
+  if (c.calls?.some(x => x.symbol === symbol)) return 'calls';
+  if (c.puts?.some(x => x.symbol === symbol)) return 'puts';
+  if (c.watches?.includes(symbol)) return 'watch';
+  return null;
+}
+
 export function buildSummaryTable(model, { groups = ['main', 'anness'] } = {}) {
   return model.rows
     .filter(r => groups.includes(r.group))
     .map(classifySetup)
     .filter(Boolean)
+    .map(s => ({ ...s, cohort: cohortOf(model, s.symbol) }))
     .sort((a, b) => qualityRank(b) - qualityRank(a) || Math.abs(b.score) - Math.abs(a.score) || a.symbol.localeCompare(b.symbol));
 }
 
@@ -193,6 +203,19 @@ export function selectPostCandidates(table, posting) {
     .filter(s => CONFIDENCE_RANK[s.confidence] >= minRank)
     .filter(s => s.direction !== 'neutral')
     .slice(0, posting.maxDraftsPerReport);
+}
+
+/**
+ * The report's own Calls then Puts, in report order, mapped onto the table.
+ * Names whose classifier direction contradicts the cohort are dropped here
+ * (a Call must read bullish, a Put bearish) — never relabelled.
+ */
+export function cohortCandidates(model, table) {
+  const c = model.cohort;
+  if (!c) return [];
+  const bySym = new Map(table.map(s => [s.symbol, s]));
+  const pick = (list, dir) => list.map(x => bySym.get(x.symbol)).filter(s => s && s.direction === dir);
+  return [...pick(c.calls ?? [], 'bullish'), ...pick(c.puts ?? [], 'bearish')];
 }
 
 // ─── rendering ───────────────────────────────────────────────────────────────

@@ -13,7 +13,7 @@
 import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 
-export const MODEL_VERSION = 1;
+export const MODEL_VERSION = 2;
 
 // ─── text helpers ────────────────────────────────────────────────────────────
 
@@ -205,7 +205,64 @@ export function parseReportHtml(html, { sourcePath = null, runLog = null } = {})
     timeframe: 'D',
     marketTheme: themeMatch ? stripTags(themeMatch[1]) : null,
     footer: footerMatch ? stripTags(footerMatch[1]) : null,
+    cohort: parseCohort(html, rows),
     rows,
+  };
+}
+
+// ─── cohort summary (the report's own Calls / Puts / Watches lists) ──────────
+
+/**
+ * Symbols the report itself put in a cohort block, in order of first mention.
+ * The report formats vary day to day (comma lists, "SYM (+2.5) and SYM",
+ * "SYM +2.0 · CMF …", prose), so membership is decided by two facts that are
+ * stable across every variant:
+ *   1. the symbol is mentioned inside the Calls (or Puts) block, and
+ *   2. its table row actually clears that cohort's score bar (≥ +2 / ≤ −2).
+ * Anything the report moved to Watches is removed again, so a demoted or
+ * "removed from Puts" name can never be promoted back by a prose mention.
+ */
+function cohortSymbols(block, rowsBySymbol, dir, watchSet) {
+  const found = [];
+  for (const m of block.matchAll(/\b([A-Z]{2,5})\b/g)) {
+    const sym = m[1];
+    if (!rowsBySymbol.has(sym) || found.includes(sym) || watchSet.has(sym)) continue;
+    const sc = rowsBySymbol.get(sym).score;
+    if (sc == null) continue;
+    if (dir === 'calls' ? sc >= 2 : sc <= -2) found.push(sym);
+  }
+  return found.map(sym => ({ symbol: sym, score: rowsBySymbol.get(sym).score }));
+}
+
+export function parseCohort(html, rows) {
+  const rowsBySymbol = new Map(rows.map(r => [r.symbol, r]));
+  const text = stripTags(html);
+  let start = text.search(/Cohort (Summary|read)/i);
+  if (start < 0) start = text.search(/\bCalls\b/);
+  if (start < 0) return null;
+  const sect = text.slice(start);
+  const iCalls = sect.search(/\bCalls\b/);
+  const iPuts = sect.search(/\bPuts\b/);
+  const iWatch = sect.search(/\bWatch(?:es|list)?\b/);
+  const iEndRaw = sect.search(/Flow breadth|Defense|Aerospace|Generated 20\d\d/);
+  const iEnd = iEndRaw > 0 ? iEndRaw : sect.length;
+  if (iCalls < 0 && iPuts < 0) return null;
+  const cut = (from, ...stops) => {
+    if (from < 0) return '';
+    const ends = stops.filter(x => x > from);
+    return sect.slice(from, ends.length ? Math.min(...ends) : iEnd);
+  };
+  const callsBlock = cut(iCalls, iPuts, iWatch, iEnd);
+  const putsBlock = cut(iPuts, iWatch, iEnd);
+  const watchBlock = cut(iWatch, iEnd);
+  const watches = [];
+  for (const m of watchBlock.matchAll(/\b([A-Z]{2,5})\b/g)) if (rowsBySymbol.has(m[1]) && !watches.includes(m[1])) watches.push(m[1]);
+  const watchSet = new Set(watches);
+  return {
+    source: 'cohort-summary',
+    calls: cohortSymbols(callsBlock, rowsBySymbol, 'calls', watchSet),
+    puts: cohortSymbols(putsBlock, rowsBySymbol, 'puts', watchSet),
+    watches,
   };
 }
 

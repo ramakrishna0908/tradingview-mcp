@@ -95,12 +95,14 @@
       "WATCH"
     ],
     "autoPublish": {
-      "$comment": "Guard-railed unattended publishing (tv social auto). Every condition below must hold; nothing here can override the stale-data gate. SOCIAL_AUTO_PUBLISH=0 in the environment is a kill switch.",
+      "$comment": "Guard-railed unattended publishing (tv social auto). candidateSource 'report-cohort' posts exactly the names the report lists under Calls and Puts (its flow-trend gate is the authority; the classifier only supplies the label and can never upgrade one). Every guard below must hold; nothing here can override the stale-data gate. SOCIAL_AUTO_PUBLISH=0 in the environment is a kill switch.",
       "enabled": true,
-      "requireSignal": "CONFIRMED",
-      "minConfidence": "High",
-      "maxPostsPerRun": 2,
-      "symbolCooldownDays": 3,
+      "candidateSource": "report-cohort",
+      "requireSignal": null,
+      "minConfidence": "Low",
+      "maxPostsPerRun": 20,
+      "spacingSeconds": 120,
+      "symbolCooldownHours": 20,
       "skipFlaggedRows": true,
       "skipBiasKeywords": [
         "earnings",

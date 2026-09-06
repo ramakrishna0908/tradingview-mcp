@@ -9,8 +9,8 @@ import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { parseReportHtml, loadReportModel, num } from '../src/social/report-model.js';
-import { classifySetup, buildSummaryTable, selectPostCandidates, renderMarkdownTable, SIGNAL, nearestLevels } from '../src/social/setup.js';
+import { parseReportHtml, loadReportModel, parseCohort, num } from '../src/social/report-model.js';
+import { classifySetup, buildSummaryTable, selectPostCandidates, cohortCandidates, renderMarkdownTable, SIGNAL, nearestLevels } from '../src/social/setup.js';
 import { validatePost, blocking, xWeightedLength, textHash } from '../src/social/compliance.js';
 import { generatePost, formatDataTimestamp } from '../src/social/generate.js';
 import { loadConfig, resetConfigCache, DEFAULT_DISCLOSURE } from '../src/social/config.js';
@@ -21,7 +21,9 @@ import { oauth1Signature, oauth1Header, percentEncode, postTweet, getCredentials
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
 const REPORT_0831 = join(ROOT, 'docs', 'reports', 'daily-2026-08-31.html');
+const REPORT_0904 = join(ROOT, 'docs', 'reports', 'daily-2026-09-04.html');
 const HAVE_REPORT = existsSync(REPORT_0831);
+const HAVE_0904 = existsSync(REPORT_0904);
 
 // ─── fixtures ────────────────────────────────────────────────────────────────
 
@@ -103,6 +105,30 @@ describe('report model — HTML → structured JSON', () => {
     assert.deepEqual(second.model.rows, first.model.rows);
   });
 
+  it('parses the Cohort Summary: list form, "SYM (+2.5) and SYM" prose, scored mentions; watches excluded', () => {
+    const rows = [
+      ROW({ symbol: 'AAA', score: 2.5 }), ROW({ symbol: 'BBB', score: 2.0 }), ROW({ symbol: 'CCC', score: 2.0 }),
+      ROW({ symbol: 'DDD', score: -2.0 }), ROW({ symbol: 'EEE', score: -2.5 }), ROW({ symbol: 'FFF', score: 0.5 }),
+      ROW({ symbol: 'GGG', score: 2.0 }), ROW({ symbol: 'HHH', score: -2.0 }),
+    ];
+    const html = `<h2>Cohort Summary</h2><div>🟢 Calls (3): AAA +2.5, BBB +2.0, CCC +2.0. Unlike FFF, all above basis.</div>
+      <div>🔴 Puts (2): DDD −2.0 is the headline. EEE −2.5 rounds it out.</div>
+      <div>⚠️ Watches: GGG — demoted from Calls, flow fading. HHH — removed from Puts: seller exhaustion.</div>
+      <div>Flow breadth: 1 improving.</div>`;
+    const c = parseCohort(html, rows);
+    assert.deepEqual(c.calls.map(x => x.symbol), ['AAA', 'BBB', 'CCC']);   // FFF mentioned but below the bar
+    assert.deepEqual(c.puts.map(x => x.symbol), ['DDD', 'EEE']);
+    assert.ok(c.watches.includes('GGG') && c.watches.includes('HHH'));       // demoted/removed never come back
+    assert.equal(parseCohort('<p>No cohort here</p>', rows), null);
+  });
+
+  it('parses the real 2026-09-04 cohort lists exactly as the report states them', { skip: !HAVE_0904 }, () => {
+    const m = parseReportHtml(readFileSync(REPORT_0904, 'utf8'));
+    assert.deepEqual(m.cohort.calls.map(x => x.symbol), ['AAPL', 'HOOD', 'MSTR', 'BMNR', 'CRCL', 'MSFT', 'TSLA', 'NFLX', 'SNDK', 'DELL']);
+    assert.deepEqual(m.cohort.puts.map(x => x.symbol), ['LUNR', 'MCD', 'MRVL', 'SOUN']);
+    for (const s of ['SPCX', 'ACN', 'AVGO', 'CRWV', 'SOFI']) assert.ok(m.cohort.watches.includes(s), s);
+  });
+
   it('parses the real 2026-08-31 report (41 rows, MSTR on top)', { skip: !HAVE_REPORT }, () => {
     const m = parseReportHtml(readFileSync(REPORT_0831, 'utf8'));
     assert.equal(m.reportDate, '2026-08-31');
@@ -111,6 +137,9 @@ describe('report model — HTML → structured JSON', () => {
     const aapl = m.rows.find(r => r.symbol === 'AAPL');
     assert.equal(aapl.cmf, 0.20);
     assert.ok(m.rows.every(r => r.price != null && r.score != null));
+    assert.deepEqual(m.cohort.calls.map(x => x.symbol), ['MSTR', 'NFLX', 'PLTR', 'ACN', 'CRCL', 'AAPL', 'MSFT', 'BMNR', 'SPCX']);
+    // META is in the report's Puts list but carries the ⚑ trial flag and sits in Watches → excluded
+    assert.deepEqual(m.cohort.puts.map(x => x.symbol), ['SMH', 'AMD', 'MRVL', 'CRWV', 'AVGO', 'UNH', 'SOFI', 'IREN', 'APLD']);
   });
 });
 
@@ -456,8 +485,39 @@ describe('auto-publish: policy-gated, audited, never overrides freshness', () =>
   beforeEach(() => {
     auditPath = join(mkdtempSync(join(tmpdir(), 'auto-')), 'audit.jsonl');
     cfg = { ...freshConfig() };
-    cfg.posting = { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, enabled: true, maxPostsPerRun: 2 } };
+    cfg.posting = { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, enabled: true, maxPostsPerRun: 2, candidateSource: 'table', requireSignal: 'CONFIRMED', minConfidence: 'High', spacingSeconds: 0 } };
     wf = new SocialWorkflow({ config: cfg, audit: new AuditStore(auditPath), actor: 'cron' });
+  });
+
+  it('report-cohort source posts exactly the report\'s Calls then Puts, spaced, labels never upgraded', async () => {
+    const rows = [
+      ROW({ symbol: 'AAA', price: 118 }),                                    // call, confirmed
+      ROW({ symbol: 'BBB', price: 122 }),                                    // call, but at the band → posts as Breakout watch
+      ROW({ symbol: 'CCC', price: 111, rsi: 42, cmf: -0.25, position: 'below_cloud', structure: 'LL-down', score: -2.5, cloudA: 114, cloudB: 116 }), // put
+      ROW({ symbol: 'DDD', price: 118 }),                                    // call listed but skipped by keyword
+      ROW({ symbol: 'EEE', price: 118, biasNext: 'Calls' }),                 // NOT in the cohort → never posted
+    ];
+    rows[3].biasNext = 'Call — earnings 09-10 AMC';
+    const model = MODEL(rows, { cohort: { source: 't', calls: [{ symbol: 'AAA', score: 2.5 }, { symbol: 'BBB', score: 2.5 }, { symbol: 'DDD', score: 2.5 }], puts: [{ symbol: 'CCC', score: -2.5 }], watches: [] } });
+    const cohortCfg = { ...cfg, posting: { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, candidateSource: 'report-cohort', requireSignal: null, minConfidence: 'Low', maxPostsPerRun: 20, spacingSeconds: 120 } } };
+    const w = new SocialWorkflow({ config: cohortCfg, audit: new AuditStore(join(mkdtempSync(join(tmpdir(), 'coh-')), 'a.jsonl')) });
+    const sleeps = [];
+    const r = await w.autoPublish(model, { creds, fetchImpl: okFetch('5'), sleep: async ms => { sleeps.push(ms); } });
+    assert.equal(r.refused, null);
+    assert.deepEqual(r.published.map(p => p.symbol), ['AAA', 'BBB', 'CCC']);
+    assert.deepEqual(r.published.map(p => p.cohort), ['calls', 'calls', 'puts']);
+    assert.match(r.published[1].text, /Breakout watch/);                    // report Call, still a WATCH label
+    assert.deepEqual(sleeps, [120000, 120000]);                              // spaced between posts, none before the first
+    assert.match(r.skipped.find(s => s.symbol === 'DDD').reason, /earnings/);
+    assert.ok(!r.skipped.some(s => s.symbol === 'EEE'));
+    assert.deepEqual(cohortCandidates(model, buildSummaryTable(model)).map(s => s.symbol), ['AAA', 'BBB', 'DDD', 'CCC']);
+  });
+
+  it('report-cohort source refuses when the report has no cohort lists', async () => {
+    const cohortCfg = { ...cfg, posting: { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, candidateSource: 'report-cohort' } } };
+    const w = new SocialWorkflow({ config: cohortCfg, audit: new AuditStore(auditPath) });
+    const r = await w.autoPublish(MODEL([ROW({ price: 118 })], { cohort: null }), { creds, fetchImpl: okFetch() });
+    assert.match(r.refused, /no Calls\/Puts cohort/);
   });
 
   it('is refused when disabled in config or by the kill switch', async () => {

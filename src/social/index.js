@@ -9,7 +9,7 @@
  */
 import { loadConfig } from './config.js';
 import { loadReportModel, findRow } from './report-model.js';
-import { buildSummaryTable, selectPostCandidates, classifySetup, CONFIDENCE_RANK } from './setup.js';
+import { buildSummaryTable, selectPostCandidates, classifySetup, cohortCandidates, CONFIDENCE_RANK } from './setup.js';
 import { generatePost } from './generate.js';
 import { validatePost, blocking, textHash, isHashtagLine } from './compliance.js';
 import { AuditStore } from './audit.js';
@@ -216,7 +216,7 @@ export class SocialWorkflow {
    *   - zero blocking issues; zero warnings unless policy.allowWarnings
    *   - API credentials must exist (no browser/manual path)
    */
-  async autoPublish(model, { reportPath = model.sourcePath, dryRun = false, creds = getCredentialsFromEnv(), fetchImpl } = {}) {
+  async autoPublish(model, { reportPath = model.sourcePath, dryRun = false, creds = getCredentialsFromEnv(), fetchImpl, sleep = ms => new Promise(r => setTimeout(r, ms)) } = {}) {
     const policy = this.config.posting.autoPublish ?? {};
     const now = this.now();
     const summary = { reportDate: model.reportDate, dryRun, policy, published: [], skipped: [], refused: null };
@@ -230,24 +230,44 @@ export class SocialWorkflow {
     if (!dryRun && !creds) return refuse('no X API credentials in environment');
 
     const minRank = CONFIDENCE_RANK[policy.minConfidence] ?? 3;
-    const cooldownMs = (policy.symbolCooldownDays ?? 3) * 86400_000;
+    const cooldownMs = policy.symbolCooldownHours != null
+      ? policy.symbolCooldownHours * 3600_000
+      : (policy.symbolCooldownDays ?? 3) * 86400_000;
+    const cooldownLabel = policy.symbolCooldownHours != null ? `${policy.symbolCooldownHours}-hour` : `${policy.symbolCooldownDays ?? 3}-day`;
     const recent = this.audit.latest().filter(r => r.status === 'published' && r.publication?.at && now - new Date(r.publication.at) < cooldownMs);
     const keywords = (policy.skipBiasKeywords ?? []).map(k => k.toLowerCase());
 
     const table = this.summaryTable(model);
-    for (const setup of table) {
-      if (summary.published.length >= (policy.maxPostsPerRun ?? 1)) break;
+    const source = policy.candidateSource ?? 'table';
+    let candidates;
+    if (source === 'report-cohort') {
+      if (!model.cohort || (!model.cohort.calls?.length && !model.cohort.puts?.length)) {
+        return refuse('report has no Calls/Puts cohort lists (cohort summary not found) — nothing to post');
+      }
+      candidates = cohortCandidates(model, table);
+      summary.cohort = { calls: model.cohort.calls.map(x => x.symbol), puts: model.cohort.puts.map(x => x.symbol) };
+      for (const x of [...model.cohort.calls, ...model.cohort.puts]) {
+        if (!candidates.some(c => c.symbol === x.symbol)) {
+          summary.skipped.push({ symbol: x.symbol, setup: '-', signal: '-', confidence: '-', reason: 'cohort direction contradicts the row data (not relabelled)' });
+        }
+      }
+    } else {
+      candidates = table;
+    }
+
+    for (const setup of candidates) {
+      if (summary.published.length >= (policy.maxPostsPerRun ?? 1)) { summary.capped = true; break; }
       const row = findRow(model, setup.symbol);
       const skip = reason => summary.skipped.push({ symbol: setup.symbol, setup: setup.setup, signal: setup.signal, confidence: setup.confidence, reason });
 
-      if (setup.signal !== (policy.requireSignal ?? 'CONFIRMED')) { skip(`signal ${setup.signal} (policy requires ${policy.requireSignal})`); continue; }
+      if (policy.requireSignal && setup.signal !== policy.requireSignal) { skip(`signal ${setup.signal} (policy requires ${policy.requireSignal})`); continue; }
       if ((CONFIDENCE_RANK[setup.confidence] ?? 0) < minRank) { skip(`confidence ${setup.confidence} below ${policy.minConfidence}`); continue; }
       if (policy.skipFlaggedRows && row?.flags) { skip(`row carries a catalyst flag (${row.flags})`); continue; }
       const bias = (row?.biasNext ?? '').toLowerCase();
       const kw = keywords.find(k => bias.includes(k));
       if (kw) { skip(`report note mentions "${kw}": ${row.biasNext}`); continue; }
       const cool = recent.find(r => r.symbol === setup.symbol);
-      if (cool) { skip(`posted ${cool.publication.at.slice(0, 10)} — within ${policy.symbolCooldownDays}-day cooldown (${cool.id})`); continue; }
+      if (cool) { skip(`posted ${cool.publication.at.slice(0, 16)}Z — within ${cooldownLabel} cooldown (${cool.id})`); continue; }
 
       const [rec] = this.draft(model, { symbol: setup.symbol, reportPath });
       const issues = rec.issues;
@@ -272,14 +292,17 @@ export class SocialWorkflow {
 
       if (dryRun) {
         this.audit.append({ ...rec, status: 'auto_dry_run' });
-        summary.published.push({ id: rec.id, symbol: setup.symbol, text, dryRun: true });
+        summary.published.push({ id: rec.id, symbol: setup.symbol, cohort: setup.cohort, text, dryRun: true });
         continue;
       }
+
+      // Space posts out so a morning run reads like a feed, not a dump.
+      if (summary.published.length > 0 && (policy.spacingSeconds ?? 0) > 0) await sleep(policy.spacingSeconds * 1000);
 
       const approver = new SocialWorkflow({ config: this.config, audit: this.audit, now: this.now, actor: 'auto-publish policy' });
       const approved = approver.approve(rec.id, model);
       const pub = await approver.publish(approved.id, model, { creds, fetchImpl });
-      if (pub.status === 'published') summary.published.push({ id: pub.id, symbol: setup.symbol, text, url: pub.publication.url, xPostId: pub.publication.xPostId });
+      if (pub.status === 'published') summary.published.push({ id: pub.id, symbol: setup.symbol, cohort: setup.cohort, text, url: pub.publication.url, xPostId: pub.publication.xPostId });
       else skip(`publish failed: ${pub.error}`);
     }
     return summary;

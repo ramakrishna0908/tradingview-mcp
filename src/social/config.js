@@ -19,10 +19,12 @@ export const DEFAULT_DISCLOSURE =
 /** Auto-publish is opt-in and every guard has a conservative default. */
 export const AUTO_PUBLISH_OFF = Object.freeze({
   enabled: false,
-  requireSignal: 'CONFIRMED',
-  minConfidence: 'High',
+  candidateSource: 'report-cohort', // 'report-cohort' = the report's own Calls/Puts lists; 'table' = classifier ranking
+  requireSignal: null,              // null = any label (the cohort list is the gate); 'CONFIRMED' to tighten
+  minConfidence: 'Low',
   maxPostsPerRun: 1,
-  symbolCooldownDays: 3,
+  spacingSeconds: 120,
+  symbolCooldownHours: 20,
   skipFlaggedRows: true,
   skipBiasKeywords: ['earnings', 'trial', 'avoid', 'no position', 'pre-news', 'stale'],
   allowWarnings: false,
