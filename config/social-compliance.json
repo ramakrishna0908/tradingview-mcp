@@ -159,5 +159,16 @@
       "#Pump",
       "#Signals"
     ]
+  },
+  "cta": {
+    "$comment": "Engagement line placed before the Data line; dropped first when the post does not fit charLimit. Set enabled=false to remove.",
+    "enabled": true,
+    "text": "Watching this setup? Bookmark it and follow for daily breakdowns."
+  },
+  "charts": {
+    "$comment": "Annotated daily chart attached to every post (candles from Yahoo Finance; levels, price and timestamp from the report). If the chart cannot be built the post goes out text-only and the audit records why. requireForPublish=true blocks instead.",
+    "enabled": true,
+    "bars": 60,
+    "requireForPublish": false
   }
 }

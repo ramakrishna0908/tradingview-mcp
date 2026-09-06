@@ -46,6 +46,8 @@ const FALLBACK = {
   preferredPhrases: ['Watch', 'Potential setup', 'Technical signal', 'Breakout watch', 'Bearish exhaustion watch'],
   riskContextKeywords: ['risk', 'invalidat', 'rejection', 'back under', 'lose'],
   signalLabels: { WATCH: 'Watch', CONFIRMED: 'Confirmed Setup' },
+  cta: { enabled: false, text: '' },
+  charts: { enabled: false, bars: 60, requireForPublish: false },
   hashtags: { required: ['#NFA', '#DYOR'], engagement: { default: [], bullish: [], bearish: [] }, maxTotal: 6, prohibited: [] },
   posting: { maxDraftsPerReport: 3, minConfidence: 'Medium', allowedSignals: ['CONFIRMED', 'WATCH'], autoPublish: AUTO_PUBLISH_OFF },
 };
@@ -64,6 +66,8 @@ export function loadConfig(path = process.env.SOCIAL_COMPLIANCE_CONFIG || DEFAUL
     ...FALLBACK,
     ...parsed,
     posting: { ...FALLBACK.posting, ...(parsed.posting || {}) },
+    cta: { ...FALLBACK.cta, ...(parsed.cta || {}) },
+    charts: { ...FALLBACK.charts, ...(parsed.charts || {}) },
     hashtags: { ...FALLBACK.hashtags, ...(parsed.hashtags || {}), engagement: { ...FALLBACK.hashtags.engagement, ...(parsed.hashtags?.engagement || {}) } },
     signalLabels: { ...FALLBACK.signalLabels, ...(parsed.signalLabels || {}) },
   };

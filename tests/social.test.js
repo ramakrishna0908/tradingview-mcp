@@ -16,7 +16,10 @@ import { generatePost, formatDataTimestamp } from '../src/social/generate.js';
 import { loadConfig, resetConfigCache, DEFAULT_DISCLOSURE } from '../src/social/config.js';
 import { AuditStore } from '../src/social/audit.js';
 import { SocialWorkflow } from '../src/social/index.js';
-import { oauth1Signature, oauth1Header, percentEncode, postTweet, getCredentialsFromEnv } from '../src/social/x-client.js';
+import { oauth1Signature, oauth1Header, percentEncode, postTweet, uploadMedia, getCredentialsFromEnv } from '../src/social/x-client.js';
+import { parseYahooChart, toYahooSymbol } from '../src/social/chart-data.js';
+import { buildChartSpec, chartAltText, makeChart, renderChartSpec } from '../src/social/chart.js';
+import { spawnSync } from 'node:child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -55,7 +58,8 @@ function freshConfig() {
   resetConfigCache();
   // Tests pin the per-post disclosure so the disclosure checks are exercised;
   // the shipped config may place it in the bio instead.
-  return { ...loadConfig(), disclosurePlacement: 'post' };
+  const cfg = loadConfig();
+  return { ...cfg, disclosurePlacement: 'post', charts: { ...cfg.charts, enabled: false } };
 }
 
 // ─── report model ────────────────────────────────────────────────────────────
@@ -129,6 +133,30 @@ describe('report model — HTML → structured JSON', () => {
     assert.deepEqual(m.cohort.calls.map(x => x.symbol), ['AAPL', 'HOOD', 'MSTR', 'BMNR', 'CRCL', 'MSFT', 'TSLA', 'NFLX', 'SNDK', 'DELL']);
     assert.deepEqual(m.cohort.puts.map(x => x.symbol), ['LUNR', 'MCD', 'MRVL', 'SOUN']);
     for (const s of ['SPCX', 'ACN', 'AVGO', 'CRWV', 'SOFI']) assert.ok(m.cohort.watches.includes(s), s);
+  });
+
+  it('attaches day-over-day CMF from the previous report in the directory', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'prior-'));
+    const prev = MIN_HTML.replace('2026-08-31', '2026-08-28').replace('<td>+0.12</td>', '<td>+0.20</td>');
+    writeFileSync(join(dir, 'daily-2026-08-28.html'), prev);
+    writeFileSync(join(dir, 'daily-2026-08-31.html'), MIN_HTML);
+    const { model } = loadReportModel(join(dir, 'daily-2026-08-31.html'));
+    assert.equal(model.priorReportDate, '2026-08-28');
+    const mstr = model.rows.find(r => r.symbol === 'MSTR');
+    assert.equal(mstr.cmfPrev, 0.20);
+    assert.equal(mstr.cmfDelta, -0.08);
+    assert.equal(mstr.cmfTrendLabel, 'deteriorating');
+    const s = classifySetup(mstr);
+    assert.equal(s.cmfDelta, -0.08);
+    const cfg = { ...freshConfig(), charLimit: 4000 }; // at 280 with an in-post disclosure the note is the last thing trimmed
+    const { text } = generatePost(s, model, cfg);
+    assert.match(text, /CMF: \+0\.12 \(−0\.08 vs prior day\)/);
+    const row = mstr;
+    assert.deepEqual(blocking(validatePost(text, { setup: s, row, model, config: cfg })), []);
+    assert.ok(blocking(validatePost(text.replace('−0.08 vs', '+0.08 vs'), { setup: s, row, model, config: cfg })).some(i => i.code === 'value_mismatch'));
+    // the first report in a directory has no prior → no note
+    const first = loadReportModel(join(dir, 'daily-2026-08-28.html')).model;
+    assert.equal(first.rows[0].cmfDelta ?? null, null);
   });
 
   it('parses the real 2026-08-31 report (41 rows, MSTR on top)', { skip: !HAVE_REPORT }, () => {
@@ -245,11 +273,11 @@ describe('post generation', () => {
     const model = MODEL([row]);
     const { text, length } = generatePost(setup, model, cfg);
     assert.ok(length <= 280, `length ${length}`);
-    assert.match(text, /^👀 \$XYZ Trend continuation · Confirmed Setup\n/);
-    assert.match(text, /Price \$118\.00 · RSI 64 · CMF \+0\.19/);
-    assert.match(text, /Support \$115\.00 · Resistance \$123\.50/);
+    assert.match(text, /^👀 \$XYZ — Trend continuation · Confirmed Setup\n/);
+    assert.match(text, /Price: \$118\.00 · RSI: 64 · CMF: \+0\.19/);
+    assert.match(text, /Support: \$115\.00 · Resistance: \$123\.50/);
+    assert.match(text, /Invalidation: /);
     assert.match(text, /\n#NFA #DYOR/);
-    assert.match(text, /Risk: /);
     assert.match(text, /Data: \w{3} \d{1,2}, 20\d\d \d{1,2}:\d\d [AP]M ET/);
     assert.ok(text.includes(DEFAULT_DISCLOSURE + '\n#NFA #DYOR'));
     const issues = validatePost(text, { setup, row, model, config: cfg });
@@ -262,7 +290,7 @@ describe('post generation', () => {
     const setup = classifySetup(row);
     const { text } = generatePost(setup, MODEL([row]), cfg);
     assert.ok(text.includes(setup.rationale));
-    assert.match(text, /Data: daily · /);
+    assert.match(text, /Watching this setup\? Bookmark it and follow for daily breakdowns\.\nData: daily · /);
     assert.match(text, /#NFA #DYOR #Momentum #Stocks #TechnicalAnalysis #StockMarket$/);
     assert.deepEqual(blocking(validatePost(text, { setup, row, model: MODEL([row]), config: cfg })), []);
     const tight = generatePost(setup, MODEL([row]), { ...cfg, charLimit: 280 }).text;
@@ -277,7 +305,7 @@ describe('post generation', () => {
     const { text } = generatePost(setup, model, cfg);
     assert.ok(!text.includes(DEFAULT_DISCLOSURE));
     assert.match(text, /\n#NFA #DYOR/);
-    assert.ok(text.includes(setup.rationale)); // the freed budget brings the rationale back at 280
+    assert.match(text, /Upside level: \$123\.50 \(resistance test\)\nInvalidation: lose and hold below \$115\.00\n/);
     const issues = validatePost(text, { setup, row, model, config: cfg });
     assert.deepEqual(blocking(issues), []);
     assert.ok(!issues.some(i => i.code === 'disclosure_position'));
@@ -332,12 +360,12 @@ describe('compliance validation', () => {
 
   it('blocks prohibited / promotional wording', () => {
     for (const bad of ['Guaranteed breakout', 'easy profit here', 'You should buy this', 'must buy', 'risk-free trade']) {
-      assert.ok(codes(base.replace('Risk:', bad + ' Risk:')).includes('prohibited_wording'), bad);
+      assert.ok(codes(base.replace('Invalidation:', bad + ' Invalidation:')).includes('prohibited_wording'), bad);
     }
   });
 
   it('blocks personalized advice', () => {
-    assert.ok(codes(base.replace('Risk:', 'Great for your portfolio. Risk:')).includes('personalized_advice'));
+    assert.ok(codes(base.replace('Invalidation:', 'Great for your portfolio. Invalidation:')).includes('personalized_advice'));
   });
 
   it('blocks a missing disclosure', () => {
@@ -353,8 +381,8 @@ describe('compliance validation', () => {
   });
 
   it('blocks unsupported forward-looking claims', () => {
-    assert.ok(codes(base.replace('Risk:', 'Price will rally to the band. Risk:')).includes('unsupported_claim'));
-    assert.ok(codes(base.replace('Risk:', 'Price target $150.00. Risk:')).includes('unsupported_claim'));
+    assert.ok(codes(base.replace('Invalidation:', 'Price will rally to the band. Invalidation:')).includes('unsupported_claim'));
+    assert.ok(codes(base.replace('Invalidation:', 'Price target $150.00. Invalidation:')).includes('unsupported_claim'));
   });
 
   it('blocks duplicates: same text, or same ticker+report already approved/published', () => {
@@ -367,16 +395,17 @@ describe('compliance validation', () => {
   });
 
   it('blocks missing indicators', () => {
-    assert.ok(codes(base.replace('RSI 64 · CMF +0.19', 'momentum ok')).includes('missing_indicator'));
-    assert.ok(codes(base.replace(/Support \$115\.00 · Resistance \$123\.50/, 'levels tbd')).includes('missing_indicator'));
+    assert.ok(codes(base.replace('RSI: 64 · CMF: +0.19', 'momentum ok')).includes('missing_indicator'));
+    assert.ok(codes(base.replace(/Support: \$115\.00 · Resistance: \$123\.50/, 'levels tbd').replace(/Upside level: .*\n/, '')).includes('missing_indicator'));
   });
 
   it('blocks wrong ticker, wrong price, and numbers not in the report', () => {
     assert.ok(codes(base.replace('$XYZ', '$ABC')).includes('ticker_mismatch'));
-    assert.ok(codes(base.replace('Price $118.00', 'Price $119.00')).includes('price_mismatch'));
+    assert.ok(codes(base.replace('Price: $118.00', 'Price: $119.00')).includes('price_mismatch'));
     assert.ok(codes(base.replace('$123.50', '$130.00')).includes('value_mismatch'));
-    assert.ok(codes(base.replace('RSI 64', 'RSI 72')).includes('value_mismatch'));
-    assert.ok(codes(base.replace('CMF +0.19', 'CMF +0.40')).includes('value_mismatch'));
+    assert.ok(codes(base.replace('RSI: 64', 'RSI: 72')).includes('value_mismatch'));
+    assert.ok(codes(base.replace('CMF: +0.19', 'CMF: +0.40')).includes('value_mismatch'));
+    assert.ok(codes(base.replace('CMF: +0.19', 'CMF: +0.19 (+0.10 vs prior day)')).includes('value_mismatch')); // no prior report in this fixture
   });
 
   it('requires the configured hashtags and blocks promotional ones', () => {
@@ -404,7 +433,7 @@ describe('compliance validation', () => {
   });
 
   it('requires downside/risk context and a data timestamp', () => {
-    const noRisk = base.split('\n').filter(l => !l.startsWith('Risk:')).join('\n');
+    const noRisk = base.split('\n').filter(l => !l.startsWith('Invalidation:')).join('\n');
     assert.ok(codes(noRisk).includes('missing_risk_context'));
     const noTs = base.split('\n').filter(l => !l.startsWith('Data:')).join('\n');
     assert.ok(codes(noTs).includes('missing_timestamp'));
@@ -423,8 +452,8 @@ describe('workflow: draft → validate → edit → approve → publish, fully a
     wf = new SocialWorkflow({ config: freshConfig(), audit: new AuditStore(auditPath), actor: 'tester' });
   });
 
-  it('drafts only candidates above the bar, and never auto-publishes', () => {
-    const recs = wf.draft(model);
+  it('drafts only candidates above the bar, and never auto-publishes', async () => {
+    const recs = await wf.draft(model);
     assert.equal(recs.length, 1);
     assert.equal(recs[0].status, 'draft');
     assert.equal(recs[0].publication, null);
@@ -432,12 +461,12 @@ describe('workflow: draft → validate → edit → approve → publish, fully a
   });
 
   it('edit invalidates approval; approve is refused with blocking issues', async () => {
-    const [d] = wf.draft(model);
+    const [d] = await wf.draft(model);
     const approved = wf.approve(d.id, model);
     assert.equal(approved.status, 'approved');
     assert.equal(approved.approval.by, 'tester');
 
-    const edited = wf.edit(d.id, approved.originalText.replace('Risk:', 'Guaranteed win. Risk:'), model);
+    const edited = wf.edit(d.id, approved.originalText.replace('Invalidation:', 'Guaranteed win. Invalidation:'), model);
     assert.equal(edited.status, 'edited');
     assert.equal(edited.approval, null);
     assert.throws(() => wf.approve(d.id, model), /Approval refused.*Prohibited phrase/);
@@ -445,7 +474,7 @@ describe('workflow: draft → validate → edit → approve → publish, fully a
   });
 
   it('publishes the exact approved text via the X API and records the post id', async () => {
-    const [d] = wf.draft(model);
+    const [d] = await wf.draft(model);
     wf.approve(d.id, model);
     let sent = null;
     const fetchImpl = async (url, init) => {
@@ -470,13 +499,13 @@ describe('workflow: draft → validate → edit → approve → publish, fully a
     assert.ok(final.approval.at && final.publication.at);
 
     // a second draft for the same ticker/report is now a duplicate
-    const [again] = wf.draft(model, { symbol: 'XYZ' });
+    const [again] = await wf.draft(model, { symbol: 'XYZ' });
     assert.ok(again.issues.some(i => i.code === 'duplicate_post'));
     assert.throws(() => wf.approve(again.id, model), /duplicate|already published/i);
   });
 
   it('records API failures without marking published', async () => {
-    const [d] = wf.draft(model);
+    const [d] = await wf.draft(model);
     wf.approve(d.id, model);
     const fetchImpl = async () => ({ ok: false, status: 403, json: async () => ({ detail: 'Forbidden' }) });
     const res = await wf.publish(d.id, model, { fetchImpl, creds: { type: 'oauth2', accessToken: 'tok' } });
@@ -485,9 +514,9 @@ describe('workflow: draft → validate → edit → approve → publish, fully a
     assert.equal(res.publication, null);
   });
 
-  it('stale data needs an explicit, audited acknowledgement to approve', () => {
+  it('stale data needs an explicit, audited acknowledgement to approve', async () => {
     const stale = { ...model, dataAsOf: new Date(Date.now() - 72 * 3600_000).toISOString() };
-    const [d] = wf.draft(stale);
+    const [d] = await wf.draft(stale);
     assert.ok(d.issues.some(i => i.code === 'stale_data'));
     assert.throws(() => wf.approve(d.id, stale), /Report data is/);
     const ok = wf.approve(d.id, stale, { acknowledgeStale: 'sample post from the 08-31 report' });
@@ -496,8 +525,8 @@ describe('workflow: draft → validate → edit → approve → publish, fully a
     assert.equal(ok.staleAcknowledged.by, 'tester');
   });
 
-  it('manual publication is recorded only for approved drafts', () => {
-    const [d] = wf.draft(model);
+  it('manual publication is recorded only for approved drafts', async () => {
+    const [d] = await wf.draft(model);
     assert.throws(() => wf.recordManualPublication(d.id, model, { xPostId: '1' }), /Only approved/);
     wf.approve(d.id, model);
     const rec = wf.recordManualPublication(d.id, model, { xPostId: '42' });
@@ -634,6 +663,121 @@ describe('auto-publish: policy-gated, audited, never overrides freshness', () =>
     assert.equal(r.published.length, 0);
     assert.match(r.skipped[0].reason, /publish failed: Forbidden/);
     assert.equal(wf.audit.latest()[0].status, 'failed');
+  });
+});
+
+// ─── charts ──────────────────────────────────────────────────────────────────
+
+const HAVE_PIL = spawnSync('python3', ['-c', 'import PIL'], { encoding: 'utf8' }).status === 0;
+
+function fakeYahoo(symbol, n = 40, start = 100) {
+  const ts = [], open = [], high = [], low = [], close = [], volume = [];
+  let px = start;
+  for (let i = 0; i < n; i++) {
+    const day = new Date(Date.UTC(2026, 6, 1 + i));
+    ts.push(Math.floor(day.getTime() / 1000));
+    const o = px, c = px + (i % 3 === 0 ? -1.2 : 0.8);
+    open.push(o); close.push(c); high.push(Math.max(o, c) + 0.9); low.push(Math.min(o, c) - 0.9); volume.push(1000 + i);
+    px = c;
+  }
+  return { chart: { result: [{ meta: { symbol }, timestamp: ts, indicators: { quote: [{ open, high, low, close, volume }] } }], error: null } };
+}
+
+describe('charts: real candles + the report levels, nothing forward-looking', () => {
+  it('parses Yahoo chart JSON into dated candles and maps symbols', () => {
+    const candles = parseYahooChart(fakeYahoo('XYZ', 5));
+    assert.equal(candles.length, 5);
+    assert.equal(candles[0].t, '2026-07-01');
+    assert.ok(candles.every(c => c.h >= Math.max(c.o, c.c) && c.l <= Math.min(c.o, c.c)));
+    assert.equal(toYahooSymbol('BRK.B'), 'BRK-B');
+    assert.throws(() => parseYahooChart({ chart: { result: null, error: { description: 'No data' } } }), /No data/);
+  });
+
+  it('spec draws support, resistance, report price and basis only — no targets — and alt text restates the post', () => {
+    const cfg = freshConfig();
+    const row = ROW({ price: 118 });
+    const setup = classifySetup(row);
+    const model = MODEL([row]);
+    const spec = buildChartSpec(setup, model, parseYahooChart(fakeYahoo('XYZ', 20)), cfg, '/tmp/x.png');
+    const labels = spec.levels.map(l => l.label);
+    assert.deepEqual(labels, ['Resistance $123.50', 'Support $115.00', 'Report price $118.00']); // basis == support here → not duplicated
+    assert.ok(!JSON.stringify(spec).match(/target|projection/i));
+    assert.equal(spec.badge, 'CONFIRMED SETUP');
+    assert.match(spec.stats, /RSI 64 · CMF \+0\.19/);
+    assert.equal(spec.disclosure, DEFAULT_DISCLOSURE);
+    const alt = chartAltText(setup, model);
+    assert.match(alt, /Support \$115\.00\. Resistance \$123\.50\. Setup: Trend continuation \(confirmed setup\)/);
+    assert.ok(alt.length <= 1000);
+  });
+
+  it('renders a PNG through the Pillow script', { skip: !HAVE_PIL }, async () => {
+    const cfg = { ...freshConfig(), charts: { enabled: true, bars: 30 } };
+    const row = ROW({ price: 118 });
+    const setup = classifySetup(row);
+    const model = MODEL([row], { reportDate: '2026-08-10' });
+    const dir = mkdtempSync(join(tmpdir(), 'chart-'));
+    const fetchImpl = async () => ({ ok: true, json: async () => fakeYahoo('XYZ', 40) });
+    const r = await makeChart(setup, model, cfg, { dir, fetchImpl });
+    assert.equal(r.error, undefined, r.error);
+    assert.ok(existsSync(r.path));
+    assert.equal(r.bars, 30);
+    assert.ok(r.lastBar <= '2026-08-10'); // candles after the report date are dropped
+    const head = readFileSync(r.path).subarray(0, 8);
+    assert.equal(head.toString('hex'), '89504e470d0a1a0a');
+  });
+
+  it('a chart failure never blocks the post: text-only publish with the reason audited', async () => {
+    const auditPath = join(mkdtempSync(join(tmpdir(), 'chartwf-')), 'a.jsonl');
+    const cfg = { ...freshConfig(), charts: { enabled: true, bars: 30, requireForPublish: false } };
+    const wf = new SocialWorkflow({ config: cfg, audit: new AuditStore(auditPath), actor: 't' });
+    const row = ROW({ price: 118 });
+    const model = MODEL([row]);
+    const [d] = await wf.draft(model, { chartOpts: { fetchImpl: async () => { throw new Error('offline'); } } });
+    assert.equal(d.chart.path, null);
+    assert.match(d.chart.error, /offline/);
+    wf.approve(d.id, model);
+    const calls = [];
+    const fetchImpl = async (url, init) => { calls.push(url); return { ok: true, status: 201, json: async () => ({ data: { id: '1' } }) }; };
+    const pub = await wf.publish(d.id, model, { fetchImpl, creds: { type: 'oauth2', accessToken: 't' } });
+    assert.equal(pub.status, 'published');
+    assert.deepEqual(pub.publication.mediaIds, []);
+    assert.match(pub.publication.chartNote, /no chart: offline/);
+    assert.deepEqual(calls, ['https://api.x.com/2/tweets']);
+  });
+
+  it('with a chart, publish uploads media, sets alt text, and attaches the media id', { skip: !HAVE_PIL }, async () => {
+    const auditPath = join(mkdtempSync(join(tmpdir(), 'chartwf2-')), 'a.jsonl');
+    const cfg = { ...freshConfig(), charts: { enabled: true, bars: 30, requireForPublish: true } };
+    const wf = new SocialWorkflow({ config: cfg, audit: new AuditStore(auditPath), actor: 't' });
+    const row = ROW({ price: 118 });
+    const model = MODEL([row]);
+    const dir = mkdtempSync(join(tmpdir(), 'chart2-'));
+    const [d] = await wf.draft(model, { chartOpts: { dir, fetchImpl: async () => ({ ok: true, json: async () => fakeYahoo('XYZ', 40) }) } });
+    assert.ok(d.chart.path && existsSync(d.chart.path));
+    wf.approve(d.id, model);
+    const seen = [];
+    const fetchImpl = async (url, init) => {
+      seen.push({ url, body: init.body });
+      if (url.endsWith('/media/upload')) return { ok: true, status: 200, json: async () => ({ data: { id: '777' } }) };
+      if (url.endsWith('/media/metadata')) return { ok: true, status: 200, json: async () => ({}) };
+      return { ok: true, status: 201, json: async () => ({ data: { id: '55' } }) };
+    };
+    const pub = await wf.publish(d.id, model, { fetchImpl, creds: { type: 'oauth2', accessToken: 't' } });
+    assert.equal(pub.status, 'published');
+    assert.deepEqual(pub.publication.mediaIds, ['777']);
+    assert.deepEqual(seen.map(x => x.url.split('/2/')[1]), ['media/upload', 'media/metadata', 'tweets']);
+    assert.ok(seen[0].body instanceof FormData);
+    assert.match(JSON.parse(seen[1].body).metadata.alt_text.text, /Support \$115\.00/);
+    assert.deepEqual(JSON.parse(seen[2].body).media, { media_ids: ['777'] });
+  });
+
+  it('uploadMedia surfaces API errors', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'up-'));
+    const f = join(dir, 'x.png'); writeFileSync(f, Buffer.from('89504e470d0a1a0a', 'hex'));
+    const r = await uploadMedia(f, { creds: { type: 'oauth2', accessToken: 't' }, fetchImpl: async () => ({ ok: false, status: 403, json: async () => ({ detail: 'nope' }) }) });
+    assert.equal(r.ok, false);
+    assert.equal(r.error, 'nope');
+    assert.equal((await uploadMedia(f, { creds: null })).ok, false);
   });
 });
 

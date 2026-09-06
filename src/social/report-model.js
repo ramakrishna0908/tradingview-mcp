@@ -10,7 +10,7 @@
  * Nothing here recomputes any indicator or score: values are lifted verbatim
  * from the report so the trading calculations stay the single source of truth.
  */
-import { readFileSync, writeFileSync, existsSync, statSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, statSync, readdirSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 
 export const MODEL_VERSION = 2;
@@ -282,22 +282,80 @@ export function runLogPathFor(htmlPath) {
  * exists (and is not older than the HTML), otherwise parses the HTML once and
  * writes the model next to it.
  */
-export function loadReportModel(htmlPath, { refresh = false } = {}) {
+export function loadReportModel(htmlPath, { refresh = false, withPrior = true } = {}) {
   const jsonPath = modelPathFor(htmlPath);
+  let result = null;
   if (!refresh && existsSync(jsonPath)) {
     const fresh = !existsSync(htmlPath) || statSync(jsonPath).mtimeMs >= statSync(htmlPath).mtimeMs;
     if (fresh) {
       const model = JSON.parse(readFileSync(jsonPath, 'utf8'));
-      if (model.modelVersion === MODEL_VERSION) return { model, source: 'json', jsonPath };
+      if (model.modelVersion === MODEL_VERSION) result = { model, source: 'json', jsonPath };
     }
   }
-  if (!existsSync(htmlPath)) throw new Error(`Report not found: ${htmlPath}`);
-  const html = readFileSync(htmlPath, 'utf8');
-  const logPath = runLogPathFor(htmlPath);
-  const runLog = logPath && existsSync(logPath) ? readFileSync(logPath, 'utf8') : null;
-  const model = parseReportHtml(html, { sourcePath: htmlPath, runLog });
-  writeFileSync(jsonPath, JSON.stringify(model, null, 2));
-  return { model, source: 'html', jsonPath };
+  if (!result) {
+    if (!existsSync(htmlPath)) throw new Error(`Report not found: ${htmlPath}`);
+    const html = readFileSync(htmlPath, 'utf8');
+    const logPath = runLogPathFor(htmlPath);
+    const runLog = logPath && existsSync(logPath) ? readFileSync(logPath, 'utf8') : null;
+    const model = parseReportHtml(html, { sourcePath: htmlPath, runLog });
+    writeFileSync(jsonPath, JSON.stringify(model, null, 2));
+    result = { model, source: 'html', jsonPath };
+  }
+  // Day-over-day CMF comes from the previous report in the same directory
+  // (parsed with the same code, never re-derived). Attached at load time so
+  // the cached model stays a faithful snapshot of its own report.
+  if (withPrior) {
+    const priorPath = findPriorReportPath(htmlPath);
+    if (priorPath) {
+      try { attachPriorCmf(result.model, loadReportModel(priorPath, { withPrior: false }).model); }
+      catch { /* prior report unparseable → no trend line */ }
+    }
+  }
+  return result;
+}
+
+// ─── prior session (day-over-day CMF) ────────────────────────────────────────
+
+/** The most recent daily-YYYY-MM-DD.html in the same directory dated before this report. */
+export function findPriorReportPath(htmlPath) {
+  const dir = dirname(htmlPath);
+  const m = basename(htmlPath).match(/(20\d\d-\d\d-\d\d)/);
+  if (!m || !existsSync(dir)) return null;
+  const prior = readdirSync(dir)
+    .filter(f => /^daily-\d{4}-\d\d-\d\d\.html$/.test(f))
+    .map(f => f.slice(6, 16))
+    .filter(d => d < m[1])
+    .sort()
+    .at(-1);
+  return prior ? join(dir, `daily-${prior}.html`) : null;
+}
+
+export const CMF_TREND_BAND = 0.06; // the report's own thresholds: ≥ +0.06 improving, ≤ −0.06 deteriorating
+
+export function cmfTrendLabel(delta) {
+  if (delta == null) return null;
+  if (delta >= CMF_TREND_BAND) return 'improving';
+  if (delta <= -CMF_TREND_BAND) return 'deteriorating';
+  return 'flat';
+}
+
+/** Attach cmfPrev / cmfDelta / cmfTrendLabel to each row from the prior session's model. */
+export function attachPriorCmf(model, priorModel) {
+  if (!priorModel) return model;
+  const prev = new Map(priorModel.rows.map(r => [r.symbol, r]));
+  for (const row of model.rows) {
+    const p = prev.get(row.symbol);
+    if (p && p.cmf != null && row.cmf != null) {
+      row.cmfPrev = p.cmf;
+      row.cmfDelta = Number((row.cmf - p.cmf).toFixed(2));
+      row.cmfTrendLabel = cmfTrendLabel(row.cmfDelta);
+    } else {
+      row.cmfPrev = null; row.cmfDelta = null; row.cmfTrendLabel = null;
+    }
+  }
+  model.priorReportDate = priorModel.reportDate;
+  model.priorDataAsOf = priorModel.dataAsOf;
+  return model;
 }
 
 export function findRow(model, symbol) {

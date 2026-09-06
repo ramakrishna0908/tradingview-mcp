@@ -13,7 +13,8 @@ import { buildSummaryTable, selectPostCandidates, classifySetup, cohortCandidate
 import { generatePost } from './generate.js';
 import { validatePost, blocking, textHash, isHashtagLine } from './compliance.js';
 import { AuditStore } from './audit.js';
-import { postTweet, getCredentialsFromEnv } from './x-client.js';
+import { postTweet, uploadMedia, getCredentialsFromEnv } from './x-client.js';
+import { makeChart } from './chart.js';
 
 export * from './setup.js';
 export * from './compliance.js';
@@ -21,6 +22,8 @@ export * from './report-model.js';
 export { generatePost, formatDataTimestamp } from './generate.js';
 export { loadConfig } from './config.js';
 export { AuditStore } from './audit.js';
+export { makeChart, buildChartSpec, chartAltText } from './chart.js';
+export { fetchDailyCandles, parseYahooChart } from './chart-data.js';
 
 export class SocialWorkflow {
   constructor({ config = loadConfig(), audit = new AuditStore(), now = () => new Date(), actor = process.env.USER || 'user' } = {}) {
@@ -58,8 +61,12 @@ export class SocialWorkflow {
     });
   }
 
-  /** Generate drafts for the highest-quality setups (or one given symbol). */
-  draft(model, { symbol = null, reportPath = model.sourcePath } = {}) {
+  /**
+   * Generate drafts for the highest-quality setups (or one given symbol).
+   * When charts are enabled, the annotated chart is rendered now (best-effort)
+   * so `show`/dry-runs can preview it; the record carries `chart`.
+   */
+  async draft(model, { symbol = null, reportPath = model.sourcePath, chartOpts = {} } = {}) {
     const table = this.summaryTable(model);
     let candidates;
     if (symbol) {
@@ -92,6 +99,10 @@ export class SocialWorkflow {
         createdAt: this.now().toISOString(),
       };
       base.issues = this.validateRecord(base, model);
+      if (this.config.charts?.enabled) {
+        const chart = await makeChart(setup, model, this.config, chartOpts);
+        base.chart = chart.error ? { path: null, error: chart.error } : { path: chart.path, altText: chart.altText, bars: chart.bars, lastBar: chart.lastBar };
+      }
       created.push(this.audit.append(base));
     }
     return created;
@@ -170,8 +181,23 @@ export class SocialWorkflow {
     }
     if (!creds) throw new Error('No X API credentials in environment — see README "Social posting"');
 
+    // Attach the chart when one exists. A failed upload is audited and — unless
+    // charts.requireForPublish — the post still goes out text-only.
+    let mediaIds = [];
+    let chartNote = null;
+    if (this.config.charts?.enabled && rec.chart?.path) {
+      const up = await uploadMedia(rec.chart.path, { altText: rec.chart.altText, creds, fetchImpl });
+      if (up.ok) mediaIds = [up.mediaId];
+      else chartNote = `chart upload failed: ${up.error}`;
+    } else if (this.config.charts?.enabled) {
+      chartNote = `no chart: ${rec.chart?.error ?? 'not rendered'}`;
+    }
+    if (chartNote && this.config.charts?.requireForPublish) {
+      return this.audit.append({ ...rec, issues, status: 'failed', error: chartNote, publication: null });
+    }
+
     this.audit.append({ ...rec, issues, status: 'publishing' });
-    const result = await postTweet(text, { creds, fetchImpl });
+    const result = await postTweet(text, { creds, fetchImpl, mediaIds });
     if (!result.ok) {
       return this.audit.append({ ...rec, issues, status: 'failed', error: result.error, publication: null });
     }
@@ -180,7 +206,7 @@ export class SocialWorkflow {
       issues,
       status: 'published',
       error: null,
-      publication: { at: this.now().toISOString(), xPostId: result.id, url: result.url, method: 'x-api' },
+      publication: { at: this.now().toISOString(), xPostId: result.id, url: result.url, method: 'x-api', mediaIds, chartNote },
     });
   }
 
@@ -216,7 +242,7 @@ export class SocialWorkflow {
    *   - zero blocking issues; zero warnings unless policy.allowWarnings
    *   - API credentials must exist (no browser/manual path)
    */
-  async autoPublish(model, { reportPath = model.sourcePath, dryRun = false, creds = getCredentialsFromEnv(), fetchImpl, sleep = ms => new Promise(r => setTimeout(r, ms)) } = {}) {
+  async autoPublish(model, { reportPath = model.sourcePath, dryRun = false, creds = getCredentialsFromEnv(), fetchImpl, fetchImplForCharts, sleep = ms => new Promise(r => setTimeout(r, ms)) } = {}) {
     const policy = this.config.posting.autoPublish ?? {};
     const now = this.now();
     const summary = { reportDate: model.reportDate, dryRun, policy, published: [], skipped: [], refused: null };
@@ -269,7 +295,7 @@ export class SocialWorkflow {
       const cool = recent.find(r => r.symbol === setup.symbol);
       if (cool) { skip(`posted ${cool.publication.at.slice(0, 16)}Z — within ${cooldownLabel} cooldown (${cool.id})`); continue; }
 
-      const [rec] = this.draft(model, { symbol: setup.symbol, reportPath });
+      const [rec] = await this.draft(model, { symbol: setup.symbol, reportPath, chartOpts: { fetchImpl: fetchImplForCharts } });
       const issues = rec.issues;
       const blockers = blocking(issues);
       const warns = issues.filter(i => i.severity === 'warn');
@@ -292,7 +318,7 @@ export class SocialWorkflow {
 
       if (dryRun) {
         this.audit.append({ ...rec, status: 'auto_dry_run' });
-        summary.published.push({ id: rec.id, symbol: setup.symbol, cohort: setup.cohort, text, dryRun: true });
+        summary.published.push({ id: rec.id, symbol: setup.symbol, cohort: setup.cohort, text, chart: rec.chart?.path ?? null, chartError: rec.chart?.error ?? null, dryRun: true });
         continue;
       }
 
@@ -302,7 +328,7 @@ export class SocialWorkflow {
       const approver = new SocialWorkflow({ config: this.config, audit: this.audit, now: this.now, actor: 'auto-publish policy' });
       const approved = approver.approve(rec.id, model);
       const pub = await approver.publish(approved.id, model, { creds, fetchImpl });
-      if (pub.status === 'published') summary.published.push({ id: pub.id, symbol: setup.symbol, cohort: setup.cohort, text, url: pub.publication.url, xPostId: pub.publication.xPostId });
+      if (pub.status === 'published') summary.published.push({ id: pub.id, symbol: setup.symbol, cohort: setup.cohort, text, url: pub.publication.url, xPostId: pub.publication.xPostId, chart: rec.chart?.path ?? null, chartNote: pub.publication.chartNote });
       else skip(`publish failed: ${pub.error}`);
     }
     return summary;

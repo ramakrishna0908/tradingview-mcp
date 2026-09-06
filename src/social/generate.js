@@ -1,19 +1,21 @@
 /**
  * Deterministic X post generator.
  *
- * Templates are intentionally plain: numbers come straight from the report
- * row, the risk sentence comes from the setup classifier, the disclosure and
- * hashtags come from config. No forward-looking language, no projections.
+ * Every number comes straight from the report row; the narrative and the
+ * invalidation come from the setup classifier; the CTA, disclosure and
+ * hashtags come from config. No forward-looking claims, no targets.
  *
- * Layout (each line is one fact group):
- *   👀 $XYZ Breakout watch                     ← setup + signal label
- *   Price $120.40 · RSI 64 · CMF +0.19         ← never selectively omitted
- *   Support $115.00 · Resistance $123.50
- *   <rationale>                                 ← only if it fits the limit
- *   Risk: <downside / invalidation>             ← always present
- *   Data: daily · Sep 6, 2026 9:30 AM ET        ← report timestamp
- *   <configured disclosure>                     ← last sentence line (omitted when disclosurePlacement = "bio")
- *   #NFA #DYOR #Stocks …                        ← required tags first, engagement tags while they fit
+ * Layout:
+ *   🔻 $CRWV — Breakdown · Confirmed Setup
+ *   Price: $82.84 · RSI: 44 · CMF: -0.38
+ *   Support: $76.79 · Resistance: $88.71
+ *   Downside level: $76.79 (support test)          ← bearish; "Upside level … (resistance test)" when bullish
+ *   Invalidation: reclaim and hold above $88.71    ← always present (risk context)
+ *   <narrative — what happened, what to watch>     ← dropped when it does not fit
+ *   <CTA>                                          ← dropped first when it does not fit
+ *   Data: daily · Aug 31, 2026 9:49 AM ET
+ *   <disclosure>                                   ← only when disclosurePlacement = "post"
+ *   #NFA #DYOR #Breakdown …
  */
 import { SIGNAL, fmtCmf } from './setup.js';
 import { xWeightedLength } from './compliance.js';
@@ -46,18 +48,42 @@ function headline(setup, labels) {
   const name = /watch$/i.test(setup.setup) && setup.signal === SIGNAL.WATCH
     ? setup.setup
     : `${setup.setup} · ${label}`;
-  return `${icon} $${setup.symbol} ${name}`;
+  return `${icon} $${setup.symbol} — ${name}`;
 }
 
 function levelsLine(setup) {
   const bits = [];
-  if (setup.support) bits.push(`Support ${money(setup.support.value)}`);
-  if (setup.resistance) bits.push(`Resistance ${money(setup.resistance.value)}`);
+  if (setup.support) bits.push(`Support: ${money(setup.support.value)}`);
+  if (setup.resistance) bits.push(`Resistance: ${money(setup.resistance.value)}`);
   return bits.join(' · ');
 }
 
-function capitalize(s) {
-  return s.charAt(0).toUpperCase() + s.slice(1);
+/** "Downside level: $76.79 (support test)" / "Upside level: $123.50 (resistance test)". */
+export function levelToWatchLine(setup) {
+  if (setup.direction === 'bearish' && setup.support) return `Downside level: ${money(setup.support.value)} (support test)`;
+  if (setup.direction === 'bullish' && setup.resistance) return `Upside level: ${money(setup.resistance.value)} (resistance test)`;
+  return null;
+}
+
+/** The condition that negates the read — always stated, never a target. */
+export function invalidationLine(setup) {
+  if (setup.direction === 'bearish' && setup.resistance) return `Invalidation: reclaim and hold above ${money(setup.resistance.value)}`;
+  if (setup.direction === 'bullish' && setup.support) return `Invalidation: lose and hold below ${money(setup.support.value)}`;
+  return `Invalidation: ${setup.risk}`;
+}
+
+/** " (+0.05 vs prior day)" — day-over-day CMF change, only when a prior session exists. */
+export function cmfDeltaNote(setup) {
+  if (setup.cmfDelta == null) return '';
+  const sign = setup.cmfDelta > 0 ? '+' : setup.cmfDelta < 0 ? '−' : '±';
+  return ` (${sign}${Math.abs(setup.cmfDelta).toFixed(2)} vs prior day)`;
+}
+
+/** Shorter invalidation used only when the post would not otherwise fit. */
+function invalidationShort(setup) {
+  if (setup.direction === 'bearish' && setup.resistance) return `Invalidation: hold above ${money(setup.resistance.value)}`;
+  if (setup.direction === 'bullish' && setup.support) return `Invalidation: hold below ${money(setup.support.value)}`;
+  return invalidationLine(setup);
 }
 
 /** Engagement hashtags in priority order for this setup (deduped, no required ones). */
@@ -82,11 +108,13 @@ export function engagementHashtags(setup, config) {
 /**
  * Compose the post. Returns { text, length, parts }.
  *
- * Fit ladder when the configured limit is exceeded: drop engagement hashtags
- * one at a time (lowest priority first), then the rationale, then the
- * timeframe word in the Data line. Price/RSI/CMF, levels, the risk line, the
- * timestamp, the disclosure and the REQUIRED hashtags are never dropped — if
- * it still does not fit, validation reports `char_limit` and a human edits.
+ * Fit ladder when the configured limit is exceeded: drop the CTA, then
+ * engagement hashtags one at a time (lowest priority first), then the
+ * narrative, the timeframe word, the (duplicate) level-to-watch line, the
+ * short invalidation wording, and as a last resort the prior-day CMF note. Price/RSI/CMF, the
+ * levels, the invalidation, the timestamp, the disclosure (when placed in the
+ * post) and the REQUIRED hashtags are never dropped — if it still does not
+ * fit, validation reports `char_limit` and a human edits.
  */
 export function generatePost(setup, model, config) {
   const labels = config.signalLabels;
@@ -95,13 +123,18 @@ export function generatePost(setup, model, config) {
   const required = config.hashtags?.required ?? [];
   const maxTotal = config.hashtags?.maxTotal ?? 6;
   const extras = engagementHashtags(setup, config).slice(0, Math.max(0, maxTotal - required.length));
+  const cta = config.cta?.enabled && config.cta.text?.trim() ? config.cta.text.trim() : null;
 
   const parts = {
     headline: headline(setup, labels),
-    indicators: `Price ${money(setup.price)} · RSI ${setup.rsi.toFixed(0)} · CMF ${fmtCmf(setup.cmf)}`,
+    indicators: `Price: ${money(setup.price)} · RSI: ${setup.rsi.toFixed(0)} · CMF: ${fmtCmf(setup.cmf)}${cmfDeltaNote(setup)}`,
+    indicatorsNoDelta: `Price: ${money(setup.price)} · RSI: ${setup.rsi.toFixed(0)} · CMF: ${fmtCmf(setup.cmf)}`,
     levels: levelsLine(setup),
-    rationale: setup.rationale,
-    risk: `Risk: ${capitalize(setup.risk)}`,
+    levelToWatch: levelToWatchLine(setup),
+    invalidation: invalidationLine(setup),
+    invalidationShort: invalidationShort(setup),
+    narrative: setup.rationale,
+    cta,
     timestamp: tf ? `Data: ${tf} · ${stamp}` : `Data: ${stamp}`,
     timestampShort: `Data: ${stamp}`,
     disclosure: config.disclosurePlacement === 'bio' ? null : config.disclosure.trim(),
@@ -109,26 +142,29 @@ export function generatePost(setup, model, config) {
     engagementHashtags: extras,
   };
 
-  const assemble = ({ rationale = true, tfWord = true, extraCount = extras.length } = {}) => {
+  const assemble = ({ narrative = true, withCta = true, tfWord = true, extraCount = extras.length, levelToWatch = true, shortInvalidation = false, deltaNote = true } = {}) => {
     const tags = [...required, ...extras.slice(0, extraCount)];
     return [
       parts.headline,
-      parts.indicators,
+      deltaNote ? parts.indicators : parts.indicatorsNoDelta,
       parts.levels,
-      rationale ? parts.rationale : null,
-      parts.risk,
+      levelToWatch ? parts.levelToWatch : null,
+      shortInvalidation ? parts.invalidationShort : parts.invalidation,
+      narrative ? parts.narrative : null,
+      withCta ? parts.cta : null,
       tfWord ? parts.timestamp : parts.timestampShort,
       parts.disclosure,
       tags.length ? tags.join(' ') : null,
     ].filter(Boolean).join('\n');
   };
 
-  // Priority when trimming: engagement hashtags go first (lowest priority
-  // last), then the rationale sentence, then the timeframe word.
-  const ladder = [{}];
-  for (let n = extras.length - 1; n >= 0; n--) ladder.push({ extraCount: n });
-  ladder.push({ rationale: false, extraCount: 0 });
-  ladder.push({ rationale: false, extraCount: 0, tfWord: false });
+  const ladder = [{}, { withCta: false }];
+  for (let n = extras.length - 1; n >= 0; n--) ladder.push({ withCta: false, extraCount: n });
+  ladder.push({ withCta: false, narrative: false, extraCount: 0 });
+  ladder.push({ withCta: false, narrative: false, extraCount: 0, tfWord: false });
+  ladder.push({ withCta: false, narrative: false, extraCount: 0, tfWord: false, levelToWatch: false });
+  ladder.push({ withCta: false, narrative: false, extraCount: 0, tfWord: false, levelToWatch: false, shortInvalidation: true });
+  ladder.push({ withCta: false, narrative: false, extraCount: 0, tfWord: false, levelToWatch: false, shortInvalidation: true, deltaNote: false });
 
   let text = assemble();
   for (const step of ladder) {

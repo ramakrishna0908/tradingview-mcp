@@ -61,6 +61,7 @@ function printRecord(rec) {
   if (rec.staleAcknowledged) console.log(`stale data acknowledged by ${rec.staleAcknowledged.by}: ${rec.staleAcknowledged.reason}`);
   if (rec.publication) console.log(`published ${rec.publication.at} · ${rec.publication.url} (${rec.publication.method})`);
   if (rec.error) console.log(`error: ${rec.error}`);
+  if (rec.chart) console.log(rec.chart.path ? `chart: ${rec.chart.path} (${rec.chart.bars} bars to ${rec.chart.lastBar})` : `chart: none — ${rec.chart.error}`);
   console.log('\n' + text + '\n');
   if (rec.issues?.length) console.log(summarizeIssues(rec.issues).join('\n'));
   else console.log('✔ no compliance issues');
@@ -93,7 +94,7 @@ const subcommands = new Map([
       const wf = new SocialWorkflow();
       const path = reportPathFrom(values);
       const { model } = loadReportModel(path);
-      const recs = wf.draft(model, { symbol: values.symbol, reportPath: path });
+      const recs = await wf.draft(model, { symbol: values.symbol, reportPath: path });
       if (values.json) return out(recs);
       if (!recs.length) console.log('No setups meet the posting bar (see config/social-compliance.json → posting).');
       for (const r of recs) { printRecord(r); console.log('─'.repeat(60)); }
@@ -231,6 +232,8 @@ subcommands.set('auto', {
     if (summary.cohort) console.log(`report cohort — Calls: ${summary.cohort.calls.join(', ') || '—'} · Puts: ${summary.cohort.puts.join(', ') || '—'}`);
     for (const p of summary.published) {
       console.log(`\n${p.dryRun ? 'WOULD POST' : 'POSTED'} ${p.symbol}${p.cohort ? ' [' + p.cohort + ']' : ''} (${p.id})${p.url ? ' → ' + p.url : ''}\n${p.text}`);
+      if (p.chart) console.log(`chart: ${p.chart}${p.chartNote ? ' — ' + p.chartNote : ''}`);
+      else if (p.chartError) console.log(`chart: none — ${p.chartError}`);
     }
     for (const s of summary.skipped) console.log(`skip ${s.symbol.padEnd(6)} ${s.signal}/${s.confidence.padEnd(6)} ${s.setup} — ${s.reason}`);
     if (summary.capped) console.log(`(stopped at maxPostsPerRun = ${summary.policy.maxPostsPerRun})`);

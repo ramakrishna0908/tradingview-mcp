@@ -11,8 +11,12 @@
  * Zero dependencies: HMAC-SHA1 signing uses node:crypto.
  */
 import { createHmac, randomBytes } from 'node:crypto';
+import { readFileSync } from 'node:fs';
+import { basename } from 'node:path';
 
 export const X_TWEETS_URL = 'https://api.x.com/2/tweets';
+export const X_MEDIA_UPLOAD_URL = 'https://api.x.com/2/media/upload';
+export const X_MEDIA_METADATA_URL = 'https://api.x.com/2/media/metadata';
 
 export function percentEncode(s) {
   return encodeURIComponent(s).replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
@@ -68,27 +72,68 @@ export function getCredentialsFromEnv(env = process.env) {
   return null;
 }
 
+function authHeader(creds, method, url) {
+  return creds.type === 'oauth2' ? `Bearer ${creds.accessToken}` : oauth1Header({ method, url, creds });
+}
+
+const NO_CREDS = {
+  ok: false,
+  status: 0,
+  retryable: false,
+  error: 'No X API credentials in environment (set X_API_KEY/X_API_SECRET/X_ACCESS_TOKEN/X_ACCESS_TOKEN_SECRET or X_OAUTH2_ACCESS_TOKEN)',
+};
+
+/**
+ * Upload a PNG/JPEG for a post (X API v2 media upload, simple one-shot form)
+ * and optionally set alt text. Returns { ok, mediaId } or { ok:false, error }.
+ * For OAuth 1.0a the multipart body is not part of the signature base string,
+ * so the header is signed over the URL only.
+ */
+export async function uploadMedia(filePath, { altText = null, creds = getCredentialsFromEnv(), fetchImpl = fetch } = {}) {
+  if (!creds) return NO_CREDS;
+  const bytes = readFileSync(filePath);
+  const type = /\.jpe?g$/i.test(filePath) ? 'image/jpeg' : 'image/png';
+  const form = new FormData();
+  form.append('media', new Blob([bytes], { type }), basename(filePath));
+  form.append('media_category', 'tweet_image');
+  form.append('media_type', type);
+  let res;
+  try {
+    res = await fetchImpl(X_MEDIA_UPLOAD_URL, { method: 'POST', headers: { Authorization: authHeader(creds, 'POST', X_MEDIA_UPLOAD_URL) }, body: form });
+  } catch (err) {
+    return { ok: false, status: 0, retryable: true, error: err.message };
+  }
+  let body = null;
+  try { body = await res.json(); } catch { /* non-JSON */ }
+  const mediaId = body?.data?.id ?? body?.media_id_string ?? body?.id;
+  if (!res.ok || !mediaId) {
+    return { ok: false, status: res.status, retryable: res.status === 429 || res.status >= 500, error: body?.detail || body?.title || body?.errors?.[0]?.message || `media upload error ${res.status}`, response: body };
+  }
+  if (altText) {
+    try {
+      await fetchImpl(X_MEDIA_METADATA_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: authHeader(creds, 'POST', X_MEDIA_METADATA_URL) },
+        body: JSON.stringify({ id: String(mediaId), metadata: { alt_text: { text: altText.slice(0, 1000) } } }),
+      });
+    } catch { /* alt text is best-effort */ }
+  }
+  return { ok: true, mediaId: String(mediaId), response: body };
+}
+
 /**
  * Post a tweet. Returns { ok, id, url, response } or { ok, error, status, retryable }.
- * `fetchImpl` is injectable for tests.
+ * `fetchImpl` is injectable for tests. `mediaIds` attaches uploaded media.
  */
-export async function postTweet(text, { creds = getCredentialsFromEnv(), fetchImpl = fetch } = {}) {
-  if (!creds) {
-    return {
-      ok: false,
-      status: 0,
-      retryable: false,
-      error: 'No X API credentials in environment (set X_API_KEY/X_API_SECRET/X_ACCESS_TOKEN/X_ACCESS_TOKEN_SECRET or X_OAUTH2_ACCESS_TOKEN)',
-    };
-  }
-  const headers = { 'Content-Type': 'application/json' };
-  headers.Authorization = creds.type === 'oauth2'
-    ? `Bearer ${creds.accessToken}`
-    : oauth1Header({ method: 'POST', url: X_TWEETS_URL, creds });
+export async function postTweet(text, { creds = getCredentialsFromEnv(), fetchImpl = fetch, mediaIds = [] } = {}) {
+  if (!creds) return NO_CREDS;
+  const headers = { 'Content-Type': 'application/json', Authorization: authHeader(creds, 'POST', X_TWEETS_URL) };
+  const payload = { text };
+  if (mediaIds?.length) payload.media = { media_ids: mediaIds.map(String) };
 
   let res;
   try {
-    res = await fetchImpl(X_TWEETS_URL, { method: 'POST', headers, body: JSON.stringify({ text }) });
+    res = await fetchImpl(X_TWEETS_URL, { method: 'POST', headers, body: JSON.stringify(payload) });
   } catch (err) {
     return { ok: false, status: 0, retryable: true, error: err.message };
   }

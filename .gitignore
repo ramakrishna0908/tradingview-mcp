@@ -11,3 +11,4 @@ __pycache__/
 .env.*
 .env.social
 !.env.social.example
+docs/social/charts/

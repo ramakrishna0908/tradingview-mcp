@@ -80,30 +80,30 @@ export function classifySetup(row) {
       signal = SIGNAL.WATCH;
       confidence = 'Low';
       rationale = price > bbUpper
-        ? 'Trading above the upper band: extended, a retest is the higher-quality entry.'
-        : `Pinned to the upper band with RSI ${rsi.toFixed(0)}: continuation only, not a fresh entry.`;
+        ? 'Trading through the upper band — extended. Watching for a retest rather than a chase.'
+        : `Pinned to the upper band with RSI ${rsi.toFixed(0)} — continuation only, not a fresh entry. Watching for a retest.`;
       risk = 'stretched; a rejection can retrace.';
     } else if (nearUpper) {
       setup = 'Breakout watch';
       signal = SIGNAL.WATCH; // resistance not yet cleared
       confidence = confirmed ? 'Medium' : 'Low';
-      rationale = 'Momentum is constructive, but a confirmed move above the upper band is still needed.';
+      rationale = 'Momentum is constructive, but a confirmed move above the upper band is still needed. A rejection there sends price back toward support.';
       risk = 'a rejection can return to support.';
     } else if (justReclaimed) {
       setup = 'Basis reclaim';
       signal = confirmed ? SIGNAL.CONFIRMED : SIGNAL.WATCH;
       confidence = confirmed ? (cmf >= 0.15 ? 'High' : 'Medium') : 'Low';
       rationale = confirmed
-        ? 'Price is back above its 20-day basis on positive money flow without being stretched.'
-        : 'Price is back above its 20-day basis, but cloud, flow and structure have not all confirmed it yet.';
+        ? 'Reclaimed the 20-day basis on positive money flow without being stretched. Watching for follow-through while the basis holds.'
+        : 'Reclaimed the 20-day basis, but cloud, flow and structure have not all confirmed it. Watching for them to line up.';
       risk = 'losing the basis again negates this.';
     } else {
       setup = 'Trend continuation';
       signal = confirmed ? SIGNAL.CONFIRMED : SIGNAL.WATCH;
       confidence = confirmed ? (cmf >= 0.15 && rsi < 68 ? 'High' : 'Medium') : 'Low';
       rationale = confirmed
-        ? 'Trend intact above the basis and cloud with money flow supporting.'
-        : 'Above the basis, but cloud, money flow and structure are not all aligned yet.';
+        ? 'Holding above the basis and cloud with money flow supporting. Watching for continuation while the basis holds.'
+        : 'Above the basis, but cloud, money flow and structure are not all aligned yet. Watching for them to line up before calling it confirmed.';
       risk = 'a close under basis negates this.';
     }
   } else if (bearScore) {
@@ -120,21 +120,21 @@ export function classifySetup(row) {
       setup = 'Seller exhaustion watch';
       signal = SIGNAL.WATCH;
       confidence = 'Low';
-      rationale = 'Price is broken but money flow is no longer negative: sellers may be tiring.';
+      rationale = 'Broken, but money flow is no longer negative — sellers may be tiring. Watching whether a bounce holds; a fresh flow breakdown resumes the trend.';
       risk = 'a new flow breakdown resumes selling.';
     } else if (nearLower) {
       setup = 'Bearish exhaustion watch';
       signal = SIGNAL.WATCH; // already at the band: chasing has poor reward-to-risk
       confidence = confirmed ? 'Medium' : 'Low';
-      rationale = 'Already pinned to the lower band after the breakdown; extension is late, not early.';
+      rationale = 'Already pinned to the lower band after the breakdown — late, not early. Watching for a bounce toward the basis before any continuation.';
       risk = 'bounces toward the basis are common.';
     } else {
       setup = 'Breakdown';
       signal = confirmed ? SIGNAL.CONFIRMED : SIGNAL.WATCH;
       confidence = confirmed ? (cmf <= -0.15 ? 'High' : 'Medium') : 'Low';
       rationale = confirmed
-        ? 'Below basis and cloud with distribution: price has done the work the two-stage rule requires.'
-        : 'Below the basis, but cloud, money flow and structure have not all confirmed the breakdown.';
+        ? 'Broke below the basis and cloud with money flow negative. Watching for continuation toward support; a basis reclaim weakens the setup.'
+        : 'Below the basis, but cloud, money flow and structure have not all confirmed the breakdown. Watching for flow to turn negative.';
       risk = 'a basis reclaim negates this read.';
     }
   } else {
@@ -142,12 +142,12 @@ export function classifySetup(row) {
     if (!aboveBasis && cmf > 0.1) {
       direction = 'bullish';
       setup = 'Bullish divergence watch';
-      rationale = 'Below basis while money flow turned positive: accumulation into weakness, unconfirmed.';
+      rationale = 'Below the basis while money flow turned positive — accumulation into weakness. Watching for a basis reclaim to confirm.';
       risk = 'unconfirmed until basis reclaim.';
     } else if (position === 'above_cloud' && cmf < -0.1) {
       direction = 'bearish';
       setup = 'Bearish divergence watch';
-      rationale = 'Structure still intact but money flow is negative: distribution under the surface.';
+      rationale = 'Structure still intact but money flow is negative — distribution under the surface. Watching cloud support.';
       risk = 'losing cloud support means breakdown.';
     } else {
       rationale = 'Mixed readings; no directional edge in the report framework.';
@@ -166,6 +166,9 @@ export function classifySetup(row) {
     price,
     rsi,
     cmf,
+    cmfPrev: row.cmfPrev ?? null,
+    cmfDelta: row.cmfDelta ?? null,
+    cmfTrendLabel: row.cmfTrendLabel ?? null,
     support: levels.support,
     resistance: levels.resistance,
     nextSupport: levels.nextSupport,

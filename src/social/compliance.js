@@ -201,6 +201,13 @@ export function validatePost(text, ctx) {
       push('value_mismatch', 'block', `CMF ${cmfMatch[1]} does not match report CMF ${row.cmf}`);
     }
 
+    const deltaMatch = t.match(/\(([+−-])(\d\.\d\d) vs prior day\)/);
+    if (deltaMatch) {
+      const v = (deltaMatch[1] === '+' ? 1 : deltaMatch[1] === '±' ? 0 : -1) * Number(deltaMatch[2]);
+      if (setup.cmfDelta == null) push('value_mismatch', 'block', 'Post cites a prior-day CMF change but no prior report is available');
+      else if (Math.abs(v - setup.cmfDelta) > 0.006) push('value_mismatch', 'block', `CMF change ${deltaMatch[1]}${deltaMatch[2]} does not match the report-derived ${setup.cmfDelta}`);
+    }
+
     // 9. signal integrity — never upgrade WATCH to CONFIRMED for engagement
     const claimsConfirmed = /\bconfirmed\s+(setup|breakout|breakdown|move)\b/i.test(t.split('\n')[0] ?? '');
     if (setup.signal === SIGNAL.WATCH && claimsConfirmed) {

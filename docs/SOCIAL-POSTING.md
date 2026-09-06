@@ -125,6 +125,43 @@ skipped candidates are stored as `auto_skipped` with the reason, `--dry-run`
 stores `auto_dry_run` and calls nothing. `tv social auto --dry-run` is the way
 to preview what a morning run would post.
 
+## Post format
+
+```
+🔻 $CRWV — Breakdown · Confirmed Setup
+Price: $82.84 · RSI: 44 · CMF: -0.38 (−0.05 vs prior day)
+Support: $76.79 · Resistance: $88.71
+Downside level: $76.79 (support test)
+Invalidation: reclaim and hold above $88.71
+<narrative: what happened, what to watch>          ← when it fits
+Watching this setup? Bookmark it and follow for daily breakdowns.   ← config.cta, when it fits
+Data: daily · Aug 31, 2026 9:49 AM ET
+#NFA #DYOR #Breakdown
+```
+
+- The prior-day CMF change is computed from the previous report in
+  `docs/reports/` with the same parser (never re-derived) and validated
+  against the text (`value_mismatch` if edited). No prior report → no note.
+- "Downside/Upside level" is the nearest report level, never a target; the
+  invalidation line is the risk context. Both are checked against the row.
+- At the free 280-character limit the CTA, extra hashtags and narrative are
+  trimmed in that order; with X Premium set `charLimit` higher to post the
+  full version.
+
+## Charts
+
+Every post carries an annotated daily chart (`charts.enabled`): the last
+`charts.bars` real candles (Yahoo Finance, cut at the report date), the
+report's support / resistance / 20-day basis / report price, one annotation
+naming the setup, the data timestamp, the price source and the disclosure —
+so the disclosure travels with the image even when it is not in the text.
+Nothing forward-looking is drawn. PNGs land in `docs/social/charts/<date>/`
+(gitignored); `draft` and `auto --dry-run` render them for preview, `publish`
+uploads via `POST /2/media/upload`, sets alt text via `/2/media/metadata`, and
+attaches the media id. If the chart cannot be built or uploaded the post goes
+out text-only and the audit records why (`charts.requireForPublish: true`
+blocks instead). Renderer: `scripts/render-chart.py` (Python 3 + Pillow).
+
 ## Audit trail
 
 `docs/social/audit.jsonl` is append-only; each line is a full snapshot of a
