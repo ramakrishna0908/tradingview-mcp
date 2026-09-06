@@ -280,7 +280,7 @@ export class SocialWorkflow {
         continue;
       }
       const text = this.currentText(rec);
-      if (policy.requireDisclosureLast) {
+      if (policy.requireDisclosureLast && this.config.disclosurePlacement !== 'bio') {
         const lines = text.trimEnd().split('\n');
         const lastNonTag = [...lines].reverse().find(l => !isHashtagLine(l)) ?? '';
         if (lastNonTag.trim() !== this.config.disclosure.trim()) {

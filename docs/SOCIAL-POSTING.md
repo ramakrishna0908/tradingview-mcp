@@ -59,7 +59,7 @@ Legal/compliance can change any of these without a code change:
 | Required / prohibited hashtags | `missing_hashtag`, `prohibited_hashtag`, `too_many_hashtags` | `#NFA #DYOR` required; promotional tags blocked; > 6 warns |
 | Prohibited / promotional wording | `prohibited_wording` | guaranteed, easy profit, you should buy, must buy, risk-free, … |
 | Personalized advice | `personalized_advice` | "for your portfolio", "if you're retired", "buy it now", … |
-| Missing / misplaced disclosure | `missing_disclosure` | `Educational market analysis only. Not investment advice. Trading involves risk.` |
+| Missing / misplaced disclosure | `missing_disclosure` | `Educational market analysis only. Not investment advice. Trading involves risk.` — enforced when `disclosurePlacement` is `post`; with `bio` the line is omitted from posts (it must live in the account bio) and `#NFA #DYOR` remain the required in-post marker |
 | Stale report data | `stale_data` | `maxReportAgeHours: 24` — approve needs `--acknowledge-stale "<reason>"`, which is audited |
 | Projections presented as fact | `unsupported_claim` | "will rally", "price target", "forecast", "% upside", … |
 | Duplicate post | `duplicate_post` | same text, or same ticker + report already approved/published |

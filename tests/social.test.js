@@ -53,7 +53,9 @@ const MIN_HTML = `<!DOCTYPE html><html><head><title>Daily Stock Report &mdash; 2
 
 function freshConfig() {
   resetConfigCache();
-  return loadConfig();
+  // Tests pin the per-post disclosure so the disclosure checks are exercised;
+  // the shipped config may place it in the bio instead.
+  return { ...loadConfig(), disclosurePlacement: 'post' };
 }
 
 // ─── report model ────────────────────────────────────────────────────────────
@@ -181,10 +183,16 @@ describe('setup classification (labels only — never recomputes the score)', ()
     assert.equal(above.signal, SIGNAL.WATCH);
   });
 
-  it('bullish score without flow/cloud alignment is only a WATCH', () => {
+  it('bullish score without flow/cloud alignment is only a WATCH, and says so', () => {
     const s = classifySetup(ROW({ price: 118, cmf: 0.05, position: 'in_cloud' }));
     assert.equal(s.signal, SIGNAL.WATCH);
     assert.equal(s.confidence, 'Low');
+    assert.match(s.rationale, /not all aligned/);
+    const bear = classifySetup(ROW({ price: 111, rsi: 42, cmf: -0.01, position: 'below_cloud', structure: 'LL-down', score: -2, cloudA: 114, cloudB: 116 }));
+    assert.equal(bear.setup, 'Seller exhaustion watch');
+    const bear2 = classifySetup(ROW({ price: 111, rsi: 42, cmf: -0.05, position: 'below_cloud', structure: 'LL-down', score: -2, cloudA: 114, cloudB: 116 }));
+    assert.equal(bear2.signal, SIGNAL.WATCH);
+    assert.match(bear2.rationale, /not all confirmed/);
   });
 
   it('bearish aligned mid-band → Breakdown CONFIRMED; at lower band → exhaustion WATCH', () => {
@@ -261,6 +269,26 @@ describe('post generation', () => {
     assert.ok(!tight.includes(setup.rationale));
   });
 
+  it('disclosurePlacement "bio" drops the line from posts and skips the disclosure checks, hashtags still required', () => {
+    const cfg = { ...freshConfig(), disclosurePlacement: 'bio' };
+    const row = ROW({ price: 118.0 });
+    const setup = classifySetup(row);
+    const model = MODEL([row]);
+    const { text } = generatePost(setup, model, cfg);
+    assert.ok(!text.includes(DEFAULT_DISCLOSURE));
+    assert.match(text, /\n#NFA #DYOR/);
+    assert.ok(text.includes(setup.rationale)); // the freed budget brings the rationale back at 280
+    const issues = validatePost(text, { setup, row, model, config: cfg });
+    assert.deepEqual(blocking(issues), []);
+    assert.ok(!issues.some(i => i.code === 'disclosure_position'));
+    assert.ok(blocking(validatePost(text.replace('#NFA #DYOR', ''), { setup, row, model, config: cfg })).some(i => i.code === 'missing_hashtag'));
+    resetConfigCache();
+    const bad = join(mkdtempSync(join(tmpdir(), 'dp-')), 'c.json');
+    writeFileSync(bad, JSON.stringify({ disclosurePlacement: 'nowhere' }));
+    assert.throws(() => loadConfig(bad), /disclosurePlacement/);
+    resetConfigCache();
+  });
+
   it('formats timestamps in ET', () => {
     assert.equal(formatDataTimestamp('2026-08-31T13:49:09.000Z'), 'Aug 31, 2026 9:49 AM ET');
   });
@@ -269,7 +297,7 @@ describe('post generation', () => {
     resetConfigCache();
     const dir = mkdtempSync(join(tmpdir(), 'cfg-'));
     const p = join(dir, 'c.json');
-    writeFileSync(p, JSON.stringify({ disclosure: 'Custom legal text.' }));
+    writeFileSync(p, JSON.stringify({ disclosure: 'Custom legal text.', disclosurePlacement: 'post' }));
     const cfg = loadConfig(p);
     const row = ROW({ price: 118 });
     const { text } = generatePost(classifySetup(row), MODEL([row]), cfg);

@@ -118,8 +118,10 @@ export function validatePost(text, ctx) {
   const disclosure = config.disclosure.trim();
   const lines = t.trimEnd().split('\n');
   const lastNonTagLine = [...lines].reverse().find(l => !isHashtagLine(l)) ?? '';
-  if (!t.includes(disclosure)) push('missing_disclosure', 'block', `Required disclosure missing: "${disclosure}"`);
-  else if (lastNonTagLine.trim() !== disclosure) push('disclosure_position', 'warn', 'Disclosure should be the final line (a hashtag-only line may follow it)');
+  if (config.disclosurePlacement !== 'bio') {
+    if (!t.includes(disclosure)) push('missing_disclosure', 'block', `Required disclosure missing: "${disclosure}"`);
+    else if (lastNonTagLine.trim() !== disclosure) push('disclosure_position', 'warn', 'Disclosure should be the final line (a hashtag-only line may follow it)');
+  }
 
   // 3b. hashtags — required tags present, nothing promotional, not spammy
   const tags = [...t.matchAll(/(?<![\w&])#([A-Za-z0-9_]+)/g)].map(m => '#' + m[1]);

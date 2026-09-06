@@ -93,13 +93,17 @@ export function classifySetup(row) {
       setup = 'Basis reclaim';
       signal = confirmed ? SIGNAL.CONFIRMED : SIGNAL.WATCH;
       confidence = confirmed ? (cmf >= 0.15 ? 'High' : 'Medium') : 'Low';
-      rationale = 'Price is back above its 20-day basis on positive money flow without being stretched.';
+      rationale = confirmed
+        ? 'Price is back above its 20-day basis on positive money flow without being stretched.'
+        : 'Price is back above its 20-day basis, but cloud, flow and structure have not all confirmed it yet.';
       risk = 'losing the basis again negates this.';
     } else {
       setup = 'Trend continuation';
       signal = confirmed ? SIGNAL.CONFIRMED : SIGNAL.WATCH;
       confidence = confirmed ? (cmf >= 0.15 && rsi < 68 ? 'High' : 'Medium') : 'Low';
-      rationale = 'Trend intact above the basis and cloud with money flow supporting.';
+      rationale = confirmed
+        ? 'Trend intact above the basis and cloud with money flow supporting.'
+        : 'Above the basis, but cloud, money flow and structure are not all aligned yet.';
       risk = 'a close under basis negates this.';
     }
   } else if (bearScore) {
@@ -128,7 +132,9 @@ export function classifySetup(row) {
       setup = 'Breakdown';
       signal = confirmed ? SIGNAL.CONFIRMED : SIGNAL.WATCH;
       confidence = confirmed ? (cmf <= -0.15 ? 'High' : 'Medium') : 'Low';
-      rationale = 'Below basis and cloud with distribution: price has done the work the two-stage rule requires.';
+      rationale = confirmed
+        ? 'Below basis and cloud with distribution: price has done the work the two-stage rule requires.'
+        : 'Below the basis, but cloud, money flow and structure have not all confirmed the breakdown.';
       risk = 'a basis reclaim negates this read.';
     }
   } else {

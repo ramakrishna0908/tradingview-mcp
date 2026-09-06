@@ -12,7 +12,7 @@
  *   <rationale>                                 ← only if it fits the limit
  *   Risk: <downside / invalidation>             ← always present
  *   Data: daily · Sep 6, 2026 9:30 AM ET        ← report timestamp
- *   <configured disclosure>                     ← last sentence line
+ *   <configured disclosure>                     ← last sentence line (omitted when disclosurePlacement = "bio")
  *   #NFA #DYOR #Stocks …                        ← required tags first, engagement tags while they fit
  */
 import { SIGNAL, fmtCmf } from './setup.js';
@@ -82,8 +82,8 @@ export function engagementHashtags(setup, config) {
 /**
  * Compose the post. Returns { text, length, parts }.
  *
- * Fit ladder when the configured limit is exceeded: drop the rationale, then
- * engagement hashtags one at a time (lowest priority first), then the
+ * Fit ladder when the configured limit is exceeded: drop engagement hashtags
+ * one at a time (lowest priority first), then the rationale, then the
  * timeframe word in the Data line. Price/RSI/CMF, levels, the risk line, the
  * timestamp, the disclosure and the REQUIRED hashtags are never dropped — if
  * it still does not fit, validation reports `char_limit` and a human edits.
@@ -104,7 +104,7 @@ export function generatePost(setup, model, config) {
     risk: `Risk: ${capitalize(setup.risk)}`,
     timestamp: tf ? `Data: ${tf} · ${stamp}` : `Data: ${stamp}`,
     timestampShort: `Data: ${stamp}`,
-    disclosure: config.disclosure.trim(),
+    disclosure: config.disclosurePlacement === 'bio' ? null : config.disclosure.trim(),
     requiredHashtags: required,
     engagementHashtags: extras,
   };
@@ -123,8 +123,11 @@ export function generatePost(setup, model, config) {
     ].filter(Boolean).join('\n');
   };
 
-  const ladder = [{}, { rationale: false }];
-  for (let n = extras.length - 1; n >= 0; n--) ladder.push({ rationale: false, extraCount: n });
+  // Priority when trimming: engagement hashtags go first (lowest priority
+  // last), then the rationale sentence, then the timeframe word.
+  const ladder = [{}];
+  for (let n = extras.length - 1; n >= 0; n--) ladder.push({ extraCount: n });
+  ladder.push({ rationale: false, extraCount: 0 });
   ladder.push({ rationale: false, extraCount: 0, tfWord: false });
 
   let text = assemble();

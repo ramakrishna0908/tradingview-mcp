@@ -33,6 +33,7 @@ export const AUTO_PUBLISH_OFF = Object.freeze({
 
 const FALLBACK = {
   disclosure: DEFAULT_DISCLOSURE,
+  disclosurePlacement: 'post', // 'post' | 'bio'
   charLimit: 280,
   maxReportAgeHours: 24,
   requiredIndicators: ['Price', 'RSI', 'CMF'],
@@ -71,6 +72,7 @@ export function loadConfig(path = process.env.SOCIAL_COMPLIANCE_CONFIG || DEFAUL
   const ap = parsed.posting?.autoPublish;
   cfg.posting.autoPublish = ap && typeof ap === 'object' ? { ...AUTO_PUBLISH_OFF, ...ap } : { ...AUTO_PUBLISH_OFF };
   if (process.env.SOCIAL_AUTO_PUBLISH === '0') cfg.posting.autoPublish = { ...cfg.posting.autoPublish, enabled: false, disabledBy: 'SOCIAL_AUTO_PUBLISH=0' };
+  if (!['post', 'bio'].includes(cfg.disclosurePlacement)) throw new Error('Compliance config: "disclosurePlacement" must be "post" or "bio"');
   if (typeof cfg.disclosure !== 'string' || !cfg.disclosure.trim()) {
     throw new Error('Compliance config: "disclosure" must be a non-empty string');
   }

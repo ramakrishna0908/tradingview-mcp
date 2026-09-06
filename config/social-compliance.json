@@ -1,6 +1,8 @@
 {
   "$comment": "Compliance configuration for the X (Twitter) post generator. Legal/compliance may edit this file without code changes. Every value here is read at runtime by src/social/config.js.",
   "disclosure": "Educational market analysis only. Not investment advice. Trading involves risk.",
+  "disclosurePlacement": "bio",
+  "$disclosurePlacement": "'post' = the disclosure line is appended to every post and validated; 'bio' = it lives in the account bio only (set it there!) and posts carry the required hashtags (#NFA #DYOR) as the in-post marker. Flip to 'post' to restore per-post disclosures without a code change.",
   "charLimit": 280,
   "maxReportAgeHours": 24,
   "requiredIndicators": [
