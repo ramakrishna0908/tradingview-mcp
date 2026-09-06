@@ -188,7 +188,7 @@ describe('setup classification (labels only — never recomputes the score)', ()
     assert.equal(s.signal, SIGNAL.WATCH);
     assert.equal(s.confidence, 'Low');
     assert.match(s.rationale, /not all aligned/);
-    const bear = classifySetup(ROW({ price: 111, rsi: 42, cmf: -0.01, position: 'below_cloud', structure: 'LL-down', score: -2, cloudA: 114, cloudB: 116 }));
+    const bear = classifySetup(ROW({ price: 111, rsi: 42, cmf: 0.02, position: 'below_cloud', structure: 'LL-down', score: -2, cloudA: 114, cloudB: 116 }));
     assert.equal(bear.setup, 'Seller exhaustion watch');
     const bear2 = classifySetup(ROW({ price: 111, rsi: 42, cmf: -0.05, position: 'below_cloud', structure: 'LL-down', score: -2, cloudA: 114, cloudB: 116 }));
     assert.equal(bear2.signal, SIGNAL.WATCH);
