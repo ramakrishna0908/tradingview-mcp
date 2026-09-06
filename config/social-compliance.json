@@ -1,17 +1,16 @@
 {
   "$comment": "Compliance configuration for the X (Twitter) post generator. Legal/compliance may edit this file without code changes. Every value here is read at runtime by src/social/config.js.",
-
   "disclosure": "Educational market analysis only. Not investment advice. Trading involves risk.",
-
   "charLimit": 280,
-
   "maxReportAgeHours": 24,
-
-  "requiredIndicators": ["Price", "RSI", "CMF"],
+  "requiredIndicators": [
+    "Price",
+    "RSI",
+    "CMF"
+  ],
   "requireSupportOrResistance": true,
   "requireRiskContext": true,
   "requireDataTimestamp": true,
-
   "prohibitedPhrases": [
     "guaranteed",
     "guarantee",
@@ -45,7 +44,6 @@
     "10x",
     "100x"
   ],
-
   "personalizedAdvicePatterns": [
     "\\bfor your (portfolio|retirement|401k|ira|age|income|risk tolerance)\\b",
     "\\bbased on your\\b",
@@ -54,7 +52,6 @@
     "\\bwe recommend\\b",
     "\\b(buy|sell|short|long) (it|this|here|now)\\b"
   ],
-
   "unsupportedClaimPatterns": [
     "\\bwill (rally|rise|fall|drop|break|hit|reach|go|move|bounce|crash|surge|pump|dump)\\b",
     "\\b(price )?target(?:s|ed)?\\b",
@@ -65,7 +62,6 @@
     "\\bguaranteed\\b",
     "\\bnext (week|month) (it|price)\\b"
   ],
-
   "preferredPhrases": [
     "Watch",
     "Potential setup",
@@ -73,7 +69,6 @@
     "Breakout watch",
     "Bearish exhaustion watch"
   ],
-
   "riskContextKeywords": [
     "risk",
     "invalidat",
@@ -88,16 +83,77 @@
     "negate",
     "reverse"
   ],
-
   "signalLabels": {
     "WATCH": "Watch",
     "CONFIRMED": "Confirmed Setup"
   },
-
   "posting": {
-    "autoPublish": false,
     "maxDraftsPerReport": 3,
     "minConfidence": "Medium",
-    "allowedSignals": ["CONFIRMED", "WATCH"]
+    "allowedSignals": [
+      "CONFIRMED",
+      "WATCH"
+    ],
+    "autoPublish": {
+      "$comment": "Guard-railed unattended publishing (tv social auto). Every condition below must hold; nothing here can override the stale-data gate. SOCIAL_AUTO_PUBLISH=0 in the environment is a kill switch.",
+      "enabled": true,
+      "requireSignal": "CONFIRMED",
+      "minConfidence": "High",
+      "maxPostsPerRun": 2,
+      "symbolCooldownDays": 3,
+      "skipFlaggedRows": true,
+      "skipBiasKeywords": [
+        "earnings",
+        "trial",
+        "avoid",
+        "no position",
+        "pre-news",
+        "stale",
+        "removed",
+        "demoted",
+        "catalyst"
+      ],
+      "allowWarnings": false,
+      "requireDisclosureLast": true
+    }
+  },
+  "hashtags": {
+    "$comment": "Required tags are enforced by validation. #Breakout/#Breakdown are added only when the setup name says so (never to upgrade a signal); other engagement tags are appended in priority order while the post fits charLimit.",
+    "required": [
+      "#NFA",
+      "#DYOR"
+    ],
+    "engagement": {
+      "default": [
+        "#Stocks",
+        "#TechnicalAnalysis",
+        "#StockMarket",
+        "#Trading"
+      ],
+      "bullish": [
+        "#Momentum"
+      ],
+      "bearish": []
+    },
+    "maxTotal": 6,
+    "prohibited": [
+      "#ToTheMoon",
+      "#Moon",
+      "#GetRich",
+      "#GetRichQuick",
+      "#EasyMoney",
+      "#FreeMoney",
+      "#Guaranteed",
+      "#100x",
+      "#10x",
+      "#YOLO",
+      "#SureThing",
+      "#RiskFree",
+      "#BuyNow",
+      "#FinancialAdvice",
+      "#InvestmentAdvice",
+      "#Pump",
+      "#Signals"
+    ]
   }
 }

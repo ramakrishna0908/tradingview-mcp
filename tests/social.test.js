@@ -206,11 +206,12 @@ describe('post generation', () => {
     const { text, length } = generatePost(setup, model, cfg);
     assert.ok(length <= 280, `length ${length}`);
     assert.match(text, /^👀 \$XYZ Trend continuation · Confirmed Setup\n/);
-    assert.match(text, /Price: \$118\.00 · RSI: 64 · CMF: \+0\.19/);
-    assert.match(text, /Support: \$115\.00 · Resistance: \$123\.50/);
+    assert.match(text, /Price \$118\.00 · RSI 64 · CMF \+0\.19/);
+    assert.match(text, /Support \$115\.00 · Resistance \$123\.50/);
+    assert.match(text, /\n#NFA #DYOR/);
     assert.match(text, /Risk: /);
     assert.match(text, /Data: \w{3} \d{1,2}, 20\d\d \d{1,2}:\d\d [AP]M ET/);
-    assert.ok(text.endsWith(DEFAULT_DISCLOSURE));
+    assert.ok(text.includes(DEFAULT_DISCLOSURE + '\n#NFA #DYOR'));
     const issues = validatePost(text, { setup, row, model, config: cfg });
     assert.deepEqual(blocking(issues), []);
   });
@@ -222,6 +223,7 @@ describe('post generation', () => {
     const { text } = generatePost(setup, MODEL([row]), cfg);
     assert.ok(text.includes(setup.rationale));
     assert.match(text, /Data: daily · /);
+    assert.match(text, /#NFA #DYOR #Momentum #Stocks #TechnicalAnalysis #StockMarket$/);
     assert.deepEqual(blocking(validatePost(text, { setup, row, model: MODEL([row]), config: cfg })), []);
     const tight = generatePost(setup, MODEL([row]), { ...cfg, charLimit: 280 }).text;
     assert.ok(!tight.includes(setup.rationale));
@@ -239,8 +241,8 @@ describe('post generation', () => {
     const cfg = loadConfig(p);
     const row = ROW({ price: 118 });
     const { text } = generatePost(classifySetup(row), MODEL([row]), cfg);
-    assert.ok(text.endsWith('Custom legal text.'));
-    assert.equal(cfg.posting.autoPublish, false);
+    assert.match(text, /Custom legal text\.\n#NFA #DYOR/);
+    assert.equal(cfg.posting.autoPublish.enabled, false);
     resetConfigCache();
   });
 });
@@ -305,16 +307,30 @@ describe('compliance validation', () => {
   });
 
   it('blocks missing indicators', () => {
-    assert.ok(codes(base.replace('RSI: 64 · CMF: +0.19', 'momentum ok')).includes('missing_indicator'));
-    assert.ok(codes(base.replace(/Support: \$115\.00 · Resistance: \$123\.50/, 'levels tbd')).includes('missing_indicator'));
+    assert.ok(codes(base.replace('RSI 64 · CMF +0.19', 'momentum ok')).includes('missing_indicator'));
+    assert.ok(codes(base.replace(/Support \$115\.00 · Resistance \$123\.50/, 'levels tbd')).includes('missing_indicator'));
   });
 
   it('blocks wrong ticker, wrong price, and numbers not in the report', () => {
     assert.ok(codes(base.replace('$XYZ', '$ABC')).includes('ticker_mismatch'));
-    assert.ok(codes(base.replace('Price: $118.00', 'Price: $119.00')).includes('price_mismatch'));
+    assert.ok(codes(base.replace('Price $118.00', 'Price $119.00')).includes('price_mismatch'));
     assert.ok(codes(base.replace('$123.50', '$130.00')).includes('value_mismatch'));
-    assert.ok(codes(base.replace('RSI: 64', 'RSI: 72')).includes('value_mismatch'));
-    assert.ok(codes(base.replace('CMF: +0.19', 'CMF: +0.40')).includes('value_mismatch'));
+    assert.ok(codes(base.replace('RSI 64', 'RSI 72')).includes('value_mismatch'));
+    assert.ok(codes(base.replace('CMF +0.19', 'CMF +0.40')).includes('value_mismatch'));
+  });
+
+  it('requires the configured hashtags and blocks promotional ones', () => {
+    assert.ok(codes(base.replace('#NFA #DYOR', '#DYOR')).includes('missing_hashtag'));
+    assert.ok(codes(base.replace('#NFA #DYOR', '#NFA #DYOR #ToTheMoon')).includes('prohibited_hashtag'));
+    const spam = base + ' #a #b #c #d #e #f';
+    assert.ok(validatePost(spam, { setup, row, model, config: cfg }).some(i => i.code === 'too_many_hashtags'));
+  });
+
+  it('accepts a trailing hashtag-only line after the disclosure, but not prose', () => {
+    const ok = validatePost(base, { setup, row, model, config: cfg });
+    assert.ok(!ok.some(i => i.code === 'disclosure_position'));
+    const bad = validatePost(base + '\nBuy the dip!', { setup, row, model, config: cfg });
+    assert.ok(bad.some(i => i.code === 'disclosure_position'));
   });
 
   it('never lets a WATCH be upgraded to a confirmed setup', () => {
@@ -428,6 +444,105 @@ describe('workflow: draft → validate → edit → approve → publish, fully a
     assert.equal(rec.status, 'published');
     assert.equal(rec.publication.method, 'manual');
     assert.equal(rec.publication.url, 'https://x.com/i/web/status/42');
+  });
+});
+
+// ─── auto-publish policy ─────────────────────────────────────────────────────
+
+describe('auto-publish: policy-gated, audited, never overrides freshness', () => {
+  let wf, auditPath, cfg;
+  const okFetch = (id = '777') => async () => ({ ok: true, status: 201, json: async () => ({ data: { id } }) });
+  const creds = { type: 'oauth2', accessToken: 'tok' };
+  beforeEach(() => {
+    auditPath = join(mkdtempSync(join(tmpdir(), 'auto-')), 'audit.jsonl');
+    cfg = { ...freshConfig() };
+    cfg.posting = { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, enabled: true, maxPostsPerRun: 2 } };
+    wf = new SocialWorkflow({ config: cfg, audit: new AuditStore(auditPath), actor: 'cron' });
+  });
+
+  it('is refused when disabled in config or by the kill switch', async () => {
+    const off = new SocialWorkflow({ config: { ...cfg, posting: { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, enabled: false } } }, audit: new AuditStore(auditPath) });
+    const r = await off.autoPublish(MODEL([ROW({ price: 118 })]), { creds, fetchImpl: okFetch() });
+    assert.match(r.refused, /disabled/);
+    resetConfigCache();
+    process.env.SOCIAL_AUTO_PUBLISH = '0';
+    const killed = loadConfig();
+    delete process.env.SOCIAL_AUTO_PUBLISH;
+    resetConfigCache();
+    assert.equal(killed.posting.autoPublish.enabled, false);
+    assert.equal(killed.posting.autoPublish.disabledBy, 'SOCIAL_AUTO_PUBLISH=0');
+  });
+
+  it('never publishes stale data, even with acknowledgement machinery available', async () => {
+    const stale = MODEL([ROW({ price: 118 })], { dataAsOf: new Date(Date.now() - 30 * 3600_000).toISOString() });
+    const r = await wf.autoPublish(stale, { creds, fetchImpl: okFetch() });
+    assert.match(r.refused, /never overrides freshness/);
+    assert.equal(wf.audit.latest().length, 0);
+  });
+
+  it('refuses without API credentials (no manual/browser path)', async () => {
+    const r = await wf.autoPublish(MODEL([ROW({ price: 118 })]), { creds: null });
+    assert.match(r.refused, /credentials/);
+  });
+
+  it('publishes only CONFIRMED/High rows, skipping flagged, keyworded, low-confidence and cooled-down names', async () => {
+    const rows = [
+      ROW({ symbol: 'AAA', price: 118 }),                                             // confirmed high → post
+      ROW({ symbol: 'BBB', price: 118, cmf: 0.12 }),                                  // confirmed medium → skip
+      ROW({ symbol: 'CCC', price: 118, flags: '⚑' }),                                 // catalyst flag → skip
+      ROW({ symbol: 'DDD', price: 118, biasNext: 'Calls — but earnings Thu AMC' }),   // keyword → skip
+      ROW({ symbol: 'EEE', price: 122 }),                                             // breakout WATCH → skip
+      ROW({ symbol: 'FFF', price: 118 }),                                             // confirmed high → post (2nd)
+      ROW({ symbol: 'GGG', price: 118 }),                                             // over maxPostsPerRun → not reached
+    ];
+    const model = MODEL(rows);
+    const r = await wf.autoPublish(model, { creds, fetchImpl: okFetch('9001') });
+    assert.equal(r.refused, null);
+    assert.deepEqual(r.published.map(p => p.symbol), ['AAA', 'FFF']);
+    assert.equal(r.published[0].xPostId, '9001');
+    // The table is quality-sorted, so the run stops at the cap before the
+    // Medium/WATCH rows are even considered; only the guard skips are logged.
+    const reasons = Object.fromEntries(r.skipped.map(s => [s.symbol, s.reason]));
+    assert.match(reasons.CCC, /catalyst flag/);
+    assert.match(reasons.DDD, /earnings/);
+    assert.equal(reasons.GGG, undefined);
+
+    // With the cap lifted, the lower-quality rows are skipped for the right reasons.
+    const wide = new SocialWorkflow({ config: { ...cfg, posting: { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, maxPostsPerRun: 10 } } }, audit: new AuditStore(join(mkdtempSync(join(tmpdir(), 'auto2-')), 'a.jsonl')) });
+    const r2 = await wide.autoPublish(model, { creds, fetchImpl: okFetch('9003') });
+    const reasons2 = Object.fromEntries(r2.skipped.map(s => [s.symbol, s.reason]));
+    assert.deepEqual(r2.published.map(p => p.symbol), ['AAA', 'FFF', 'GGG']);
+    assert.match(reasons2.BBB, /confidence Medium/);
+    assert.match(reasons2.EEE, /signal WATCH/);
+
+    const aaa = wf.audit.latest().find(x => x.symbol === 'AAA');
+    assert.equal(aaa.status, 'published');
+    assert.equal(aaa.approval.by, 'auto-publish policy');
+    assert.equal(aaa.publication.method, 'x-api');
+    assert.match(aaa.originalText, /#NFA #DYOR/);
+
+    // second run the same day: AAA/FFF are inside the cooldown, so GGG gets its turn
+    const again = await wf.autoPublish(model, { creds, fetchImpl: okFetch('9002') });
+    assert.deepEqual(again.published.map(p => p.symbol), ['GGG']);
+    const cool = again.skipped.find(s => s.symbol === 'AAA');
+    assert.match(cool.reason, /cooldown/);
+  });
+
+  it('dry-run records auto_dry_run and calls nothing', async () => {
+    let called = false;
+    const r = await wf.autoPublish(MODEL([ROW({ price: 118 })]), { dryRun: true, creds: null, fetchImpl: async () => { called = true; } });
+    assert.equal(r.refused, null);
+    assert.equal(r.published[0].dryRun, true);
+    assert.equal(called, false);
+    assert.equal(wf.audit.latest()[0].status, 'auto_dry_run');
+  });
+
+  it('records a failed API call as failed, not published', async () => {
+    const fetchImpl = async () => ({ ok: false, status: 403, json: async () => ({ detail: 'Forbidden' }) });
+    const r = await wf.autoPublish(MODEL([ROW({ price: 118 })]), { creds, fetchImpl });
+    assert.equal(r.published.length, 0);
+    assert.match(r.skipped[0].reason, /publish failed: Forbidden/);
+    assert.equal(wf.audit.latest()[0].status, 'failed');
   });
 });
 

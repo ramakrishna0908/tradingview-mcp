@@ -62,6 +62,11 @@ function money(v) {
   return v == null ? null : Number(v.toFixed(2));
 }
 
+export function isHashtagLine(line) {
+  const l = line.trim();
+  return l.length > 0 && l.split(/\s+/).every(w => /^#[A-Za-z0-9_]+$/.test(w));
+}
+
 /** All numeric values the post is allowed to cite, from the report row/setup. */
 export function allowedNumbers(setup, row) {
   const vals = new Set();
@@ -111,8 +116,23 @@ export function validatePost(text, ctx) {
 
   // 3. disclosure
   const disclosure = config.disclosure.trim();
+  const lines = t.trimEnd().split('\n');
+  const lastNonTagLine = [...lines].reverse().find(l => !isHashtagLine(l)) ?? '';
   if (!t.includes(disclosure)) push('missing_disclosure', 'block', `Required disclosure missing: "${disclosure}"`);
-  else if (!t.trimEnd().endsWith(disclosure)) push('disclosure_position', 'warn', 'Disclosure should be the final line');
+  else if (lastNonTagLine.trim() !== disclosure) push('disclosure_position', 'warn', 'Disclosure should be the final line (a hashtag-only line may follow it)');
+
+  // 3b. hashtags — required tags present, nothing promotional, not spammy
+  const tags = [...t.matchAll(/(?<![\w&])#([A-Za-z0-9_]+)/g)].map(m => '#' + m[1]);
+  const tagSet = new Set(tags.map(x => x.toLowerCase()));
+  for (const req of config.hashtags?.required ?? []) {
+    if (!tagSet.has(req.toLowerCase())) push('missing_hashtag', 'block', `Required hashtag missing: ${req}`);
+  }
+  for (const bad of config.hashtags?.prohibited ?? []) {
+    if (tagSet.has(bad.toLowerCase())) push('prohibited_hashtag', 'block', `Prohibited hashtag: ${bad}`);
+  }
+  if (config.hashtags?.maxTotal && tags.length > config.hashtags.maxTotal) {
+    push('too_many_hashtags', 'warn', `${tags.length} hashtags (max ${config.hashtags.maxTotal})`);
+  }
 
   // 4. stale data
   const asOf = model?.dataAsOf ? new Date(model.dataAsOf) : null;

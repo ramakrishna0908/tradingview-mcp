@@ -2,17 +2,18 @@
  * Deterministic X post generator.
  *
  * Templates are intentionally plain: numbers come straight from the report
- * row, the risk sentence comes from the setup classifier, and the disclosure
- * is appended from config. No forward-looking language, no projections.
+ * row, the risk sentence comes from the setup classifier, the disclosure and
+ * hashtags come from config. No forward-looking language, no projections.
  *
  * Layout (each line is one fact group):
  *   👀 $XYZ Breakout watch                     ← setup + signal label
- *   Price: $120.40 · RSI: 64 · CMF: +0.19      ← never selectively omitted
- *   Support: $115.00 · Resistance: $123.50
+ *   Price $120.40 · RSI 64 · CMF +0.19         ← never selectively omitted
+ *   Support $115.00 · Resistance $123.50
  *   <rationale>                                 ← only if it fits the limit
  *   Risk: <downside / invalidation>             ← always present
  *   Data: daily · Sep 6, 2026 9:30 AM ET        ← report timestamp
- *   <configured disclosure>                     ← always last
+ *   <configured disclosure>                     ← last sentence line
+ *   #NFA #DYOR #Stocks …                        ← required tags first, engagement tags while they fit
  */
 import { SIGNAL, fmtCmf } from './setup.js';
 import { xWeightedLength } from './compliance.js';
@@ -50,8 +51,8 @@ function headline(setup, labels) {
 
 function levelsLine(setup) {
   const bits = [];
-  if (setup.support) bits.push(`Support: ${money(setup.support.value)}`);
-  if (setup.resistance) bits.push(`Resistance: ${money(setup.resistance.value)}`);
+  if (setup.support) bits.push(`Support ${money(setup.support.value)}`);
+  if (setup.resistance) bits.push(`Resistance ${money(setup.resistance.value)}`);
   return bits.join(' · ');
 }
 
@@ -59,31 +60,58 @@ function capitalize(s) {
   return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
+/** Engagement hashtags in priority order for this setup (deduped, no required ones). */
+export function engagementHashtags(setup, config) {
+  const h = config.hashtags ?? {};
+  const eng = h.engagement ?? {};
+  const bySetup = [];
+  if (/breakout/i.test(setup.setup)) bySetup.push('#Breakout');
+  if (/breakdown/i.test(setup.setup)) bySetup.push('#Breakdown');
+  const pool = [...bySetup, ...(eng[setup.direction] ?? []), ...(eng.default ?? [])];
+  const required = new Set((h.required ?? []).map(x => x.toLowerCase()));
+  const prohibited = new Set((h.prohibited ?? []).map(x => x.toLowerCase()));
+  const out = [];
+  for (const tag of pool) {
+    const k = tag.toLowerCase();
+    if (required.has(k) || prohibited.has(k) || out.some(o => o.toLowerCase() === k)) continue;
+    out.push(tag);
+  }
+  return out;
+}
+
 /**
  * Compose the post. Returns { text, length, parts }.
  *
  * Fit ladder when the configured limit is exceeded: drop the rationale, then
- * the timeframe word in the Data line. Price/RSI/CMF, levels, the risk line,
- * the timestamp and the disclosure are never dropped — if it still does not
- * fit, validation reports `char_limit` and a human edits.
+ * engagement hashtags one at a time (lowest priority first), then the
+ * timeframe word in the Data line. Price/RSI/CMF, levels, the risk line, the
+ * timestamp, the disclosure and the REQUIRED hashtags are never dropped — if
+ * it still does not fit, validation reports `char_limit` and a human edits.
  */
 export function generatePost(setup, model, config) {
   const labels = config.signalLabels;
   const tf = TIMEFRAME_WORD[model.timeframe] ?? model.timeframe ?? null;
   const stamp = formatDataTimestamp(model.dataAsOf);
+  const required = config.hashtags?.required ?? [];
+  const maxTotal = config.hashtags?.maxTotal ?? 6;
+  const extras = engagementHashtags(setup, config).slice(0, Math.max(0, maxTotal - required.length));
+
   const parts = {
     headline: headline(setup, labels),
-    indicators: `Price: ${money(setup.price)} · RSI: ${setup.rsi.toFixed(0)} · CMF: ${fmtCmf(setup.cmf)}`,
+    indicators: `Price ${money(setup.price)} · RSI ${setup.rsi.toFixed(0)} · CMF ${fmtCmf(setup.cmf)}`,
     levels: levelsLine(setup),
     rationale: setup.rationale,
     risk: `Risk: ${capitalize(setup.risk)}`,
     timestamp: tf ? `Data: ${tf} · ${stamp}` : `Data: ${stamp}`,
     timestampShort: `Data: ${stamp}`,
     disclosure: config.disclosure.trim(),
+    requiredHashtags: required,
+    engagementHashtags: extras,
   };
 
-  const assemble = ({ rationale = true, tfWord = true } = {}) =>
-    [
+  const assemble = ({ rationale = true, tfWord = true, extraCount = extras.length } = {}) => {
+    const tags = [...required, ...extras.slice(0, extraCount)];
+    return [
       parts.headline,
       parts.indicators,
       parts.levels,
@@ -91,9 +119,14 @@ export function generatePost(setup, model, config) {
       parts.risk,
       tfWord ? parts.timestamp : parts.timestampShort,
       parts.disclosure,
+      tags.length ? tags.join(' ') : null,
     ].filter(Boolean).join('\n');
+  };
 
-  const ladder = [{}, { rationale: false }, { rationale: false, tfWord: false }];
+  const ladder = [{}, { rationale: false }];
+  for (let n = extras.length - 1; n >= 0; n--) ladder.push({ rationale: false, extraCount: n });
+  ladder.push({ rationale: false, extraCount: 0, tfWord: false });
+
   let text = assemble();
   for (const step of ladder) {
     text = assemble(step);

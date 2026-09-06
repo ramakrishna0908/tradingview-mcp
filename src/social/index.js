@@ -9,9 +9,9 @@
  */
 import { loadConfig } from './config.js';
 import { loadReportModel, findRow } from './report-model.js';
-import { buildSummaryTable, selectPostCandidates, classifySetup } from './setup.js';
+import { buildSummaryTable, selectPostCandidates, classifySetup, CONFIDENCE_RANK } from './setup.js';
 import { generatePost } from './generate.js';
-import { validatePost, blocking, textHash } from './compliance.js';
+import { validatePost, blocking, textHash, isHashtagLine } from './compliance.js';
 import { AuditStore } from './audit.js';
 import { postTweet, getCredentialsFromEnv } from './x-client.js';
 
@@ -200,6 +200,89 @@ export class SocialWorkflow {
       status: 'published',
       publication: { at: this.now().toISOString(), xPostId, url: url ?? `https://x.com/i/web/status/${xPostId}`, method: 'manual' },
     });
+  }
+
+  // ─── auto-publish (policy-gated, unattended) ───────────────────────────────
+
+  /**
+   * Evaluate the auto-publish policy for one report and, unless dryRun, publish
+   * the qualifying posts through the X API. Every decision is written to the
+   * audit log: published posts carry approval.by = 'auto-publish policy', and
+   * skipped candidates are stored with status 'auto_skipped' and the reason.
+   *
+   * Hard guards (not configurable away):
+   *   - policy.enabled must be true and SOCIAL_AUTO_PUBLISH != 0
+   *   - report data must be within maxReportAgeHours (no stale override, ever)
+   *   - zero blocking issues; zero warnings unless policy.allowWarnings
+   *   - API credentials must exist (no browser/manual path)
+   */
+  async autoPublish(model, { reportPath = model.sourcePath, dryRun = false, creds = getCredentialsFromEnv(), fetchImpl } = {}) {
+    const policy = this.config.posting.autoPublish ?? {};
+    const now = this.now();
+    const summary = { reportDate: model.reportDate, dryRun, policy, published: [], skipped: [], refused: null };
+    const refuse = reason => { summary.refused = reason; return summary; };
+
+    if (!policy.enabled) return refuse(policy.disabledBy ? `auto-publish disabled by ${policy.disabledBy}` : 'auto-publish is disabled in config (posting.autoPublish.enabled)');
+    const ageH = (now - new Date(model.dataAsOf)) / 3600_000;
+    if (!Number.isFinite(ageH) || ageH > this.config.maxReportAgeHours) {
+      return refuse(`report data is ${Number.isFinite(ageH) ? ageH.toFixed(1) + 'h' : 'of unknown age'} (limit ${this.config.maxReportAgeHours}h) — auto mode never overrides freshness`);
+    }
+    if (!dryRun && !creds) return refuse('no X API credentials in environment');
+
+    const minRank = CONFIDENCE_RANK[policy.minConfidence] ?? 3;
+    const cooldownMs = (policy.symbolCooldownDays ?? 3) * 86400_000;
+    const recent = this.audit.latest().filter(r => r.status === 'published' && r.publication?.at && now - new Date(r.publication.at) < cooldownMs);
+    const keywords = (policy.skipBiasKeywords ?? []).map(k => k.toLowerCase());
+
+    const table = this.summaryTable(model);
+    for (const setup of table) {
+      if (summary.published.length >= (policy.maxPostsPerRun ?? 1)) break;
+      const row = findRow(model, setup.symbol);
+      const skip = reason => summary.skipped.push({ symbol: setup.symbol, setup: setup.setup, signal: setup.signal, confidence: setup.confidence, reason });
+
+      if (setup.signal !== (policy.requireSignal ?? 'CONFIRMED')) { skip(`signal ${setup.signal} (policy requires ${policy.requireSignal})`); continue; }
+      if ((CONFIDENCE_RANK[setup.confidence] ?? 0) < minRank) { skip(`confidence ${setup.confidence} below ${policy.minConfidence}`); continue; }
+      if (policy.skipFlaggedRows && row?.flags) { skip(`row carries a catalyst flag (${row.flags})`); continue; }
+      const bias = (row?.biasNext ?? '').toLowerCase();
+      const kw = keywords.find(k => bias.includes(k));
+      if (kw) { skip(`report note mentions "${kw}": ${row.biasNext}`); continue; }
+      const cool = recent.find(r => r.symbol === setup.symbol);
+      if (cool) { skip(`posted ${cool.publication.at.slice(0, 10)} — within ${policy.symbolCooldownDays}-day cooldown (${cool.id})`); continue; }
+
+      const [rec] = this.draft(model, { symbol: setup.symbol, reportPath });
+      const issues = rec.issues;
+      const blockers = blocking(issues);
+      const warns = issues.filter(i => i.severity === 'warn');
+      if (blockers.length || (warns.length && !policy.allowWarnings)) {
+        const reason = [...blockers, ...warns].map(i => `${i.code}: ${i.message}`).join('; ');
+        this.audit.append({ ...rec, status: 'auto_skipped', autoSkipReason: reason });
+        skip(reason);
+        continue;
+      }
+      const text = this.currentText(rec);
+      if (policy.requireDisclosureLast) {
+        const lines = text.trimEnd().split('\n');
+        const lastNonTag = [...lines].reverse().find(l => !isHashtagLine(l)) ?? '';
+        if (lastNonTag.trim() !== this.config.disclosure.trim()) {
+          this.audit.append({ ...rec, status: 'auto_skipped', autoSkipReason: 'disclosure is not the final line' });
+          skip('disclosure is not the final line');
+          continue;
+        }
+      }
+
+      if (dryRun) {
+        this.audit.append({ ...rec, status: 'auto_dry_run' });
+        summary.published.push({ id: rec.id, symbol: setup.symbol, text, dryRun: true });
+        continue;
+      }
+
+      const approver = new SocialWorkflow({ config: this.config, audit: this.audit, now: this.now, actor: 'auto-publish policy' });
+      const approved = approver.approve(rec.id, model);
+      const pub = await approver.publish(approved.id, model, { creds, fetchImpl });
+      if (pub.status === 'published') summary.published.push({ id: pub.id, symbol: setup.symbol, text, url: pub.publication.url, xPostId: pub.publication.xPostId });
+      else skip(`publish failed: ${pub.error}`);
+    }
+    return summary;
   }
 
   mustGet(id) {

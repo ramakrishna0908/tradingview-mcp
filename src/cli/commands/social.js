@@ -11,8 +11,10 @@
  *   tv social reject  <draftId> --reason "..."
  *   tv social publish <draftId>            (official X API, env credentials)
  *   tv social record  <draftId> --post-id <id> [--url <url>]
+ *   tv social auto    [--report <html>] [--dry-run]   policy-gated unattended publish
  *
- * Nothing auto-publishes: publish requires an explicit prior `approve`.
+ * Manual commands never auto-publish. `auto` publishes only what passes every
+ * guard in config posting.autoPublish and is audited like a human approval.
  */
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, resolve, dirname } from 'node:path';
@@ -212,6 +214,26 @@ const subcommands = new Map([
     },
   }],
 ]);
+
+subcommands.set('auto', {
+  description: 'Policy-gated auto-publish for the latest report (see config posting.autoPublish)',
+  options: { ...reportOpt, 'dry-run': { type: 'boolean', description: 'Evaluate the policy and show what would be posted, without posting' }, ...jsonOpt },
+  handler: async (values) => {
+    const wf = new SocialWorkflow();
+    const path = reportPathFrom(values);
+    const { model } = loadReportModel(path);
+    const summary = await wf.autoPublish(model, { reportPath: path, dryRun: !!values['dry-run'] });
+    if (values.json) return out(summary);
+    console.log(`auto-publish · report ${summary.reportDate}${summary.dryRun ? ' · DRY RUN' : ''}`);
+    if (summary.refused) { console.log(`refused: ${summary.refused}`); done(2); }
+    for (const p of summary.published) {
+      console.log(`\n${p.dryRun ? 'WOULD POST' : 'POSTED'} ${p.symbol} (${p.id})${p.url ? ' → ' + p.url : ''}\n${p.text}`);
+    }
+    for (const s of summary.skipped) console.log(`skip ${s.symbol.padEnd(6)} ${s.signal}/${s.confidence.padEnd(6)} ${s.setup} — ${s.reason}`);
+    if (!summary.published.length) console.log('\nnothing published');
+    done(0);
+  },
+});
 
 register('social', {
   description: 'Social summary table + compliance-gated X post workflow',

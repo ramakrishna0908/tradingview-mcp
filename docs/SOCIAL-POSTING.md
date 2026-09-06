@@ -7,8 +7,10 @@ setup table and compliance-gated X (Twitter) posts.
 Report → Generate Draft → Compliance Validation → Preview/Edit → User Approval → Publish to X
 ```
 
-Nothing auto-publishes. `publish` refuses anything that is not `approved`,
-re-validates the frozen approved text, and only then calls the official X API.
+The manual commands never auto-publish: `publish` refuses anything that is not
+`approved`, re-validates the frozen approved text, and only then calls the
+official X API. Unattended posting exists only as `tv social auto`, which is
+policy-gated (see below) and audited exactly like a human approval.
 
 ## Source of truth
 
@@ -32,6 +34,7 @@ npm run social -- approve  <draftId> [--acknowledge-stale "reason"]
 npm run social -- reject   <draftId> --reason "..."
 npm run social -- publish  <draftId>                 # official X API, env credentials
 npm run social -- record   <draftId> --post-id <id>  # audit a post made outside the API
+npm run social -- auto     [--report <html>] [--dry-run]   # policy-gated auto-publish
 ```
 
 `table` columns: `Ticker | Setup | Price | RSI | CMF | Support | Resistance | Signal | Confidence`.
@@ -52,7 +55,8 @@ Legal/compliance can change any of these without a code change:
 
 | Check | Code | Default |
 |---|---|---|
-| X character limit (weighted: emoji = 2, URLs = 23) | `char_limit` | 280 (`charLimit`; raise for X Premium — the rationale line is added automatically when it fits) |
+| X character limit (weighted: emoji = 2, URLs = 23) | `char_limit` | 280 (`charLimit`; raise for X Premium — the rationale line and more engagement hashtags are added automatically when they fit) |
+| Required / prohibited hashtags | `missing_hashtag`, `prohibited_hashtag`, `too_many_hashtags` | `#NFA #DYOR` required; promotional tags blocked; > 6 warns |
 | Prohibited / promotional wording | `prohibited_wording` | guaranteed, easy profit, you should buy, must buy, risk-free, … |
 | Personalized advice | `personalized_advice` | "for your portfolio", "if you're retired", "buy it now", … |
 | Missing / misplaced disclosure | `missing_disclosure` | `Educational market analysis only. Not investment advice. Trading involves risk.` |
@@ -65,6 +69,42 @@ Legal/compliance can change any of these without a code change:
 | No downside context | `missing_risk_context` | a `Risk:` sentence is required |
 | No data timestamp | `missing_timestamp` | `Data: <Mon D, YYYY h:mm AM ET>` required |
 
+## Hashtags
+
+`hashtags.required` (default `#NFA #DYOR`) must appear in every post — a
+missing one is a blocking `missing_hashtag`. `hashtags.engagement` tags are
+appended in priority order only while the post still fits `charLimit`
+(`#Breakout`/`#Breakdown` are added only when the setup is literally that, so a
+tag can never upgrade a signal). `hashtags.prohibited` blocks promotional tags
+(`#ToTheMoon`, `#Guaranteed`, `#FinancialAdvice`, …) and `maxTotal` warns on
+hashtag spam. The hashtag line sits after the disclosure; validation allows a
+trailing hashtag-only line but nothing else after the disclosure.
+
+## Auto-publish (`tv social auto`)
+
+Runs from `scripts/daily-report.sh` right after the report is written
+(weekdays ~9:50 AM ET via launchd), reading X credentials from `.env.social`
+(copy `.env.social.example`, `chmod 600`). Guards, all in
+`config/social-compliance.json → posting.autoPublish`:
+
+| Guard | Default |
+|---|---|
+| `enabled` | `true` — `SOCIAL_AUTO_PUBLISH=0` in the environment overrides to off |
+| Freshness | report must be within `maxReportAgeHours`; **auto mode can never acknowledge stale data** |
+| `requireSignal` / `minConfidence` | `CONFIRMED` / `High` only |
+| `maxPostsPerRun` | 2 |
+| `symbolCooldownDays` | 3 — a ticker published within the window is skipped |
+| `skipFlaggedRows` | skip rows the report flagged (⚑ catalyst, ◉ macro cross-check) |
+| `skipBiasKeywords` | skip when the report's note mentions earnings, trial, avoid, no position, pre-news, stale, removed, demoted, catalyst |
+| `allowWarnings` | `false` — every compliance check must be clean, not just non-blocking |
+| `requireDisclosureLast` | the disclosure must be the last sentence line (hashtags may follow) |
+| Credentials | must come from the environment; there is no browser/manual path in auto mode |
+
+Every decision is audited: published posts have `approval.by = "auto-publish policy"`,
+skipped candidates are stored as `auto_skipped` with the reason, `--dry-run`
+stores `auto_dry_run` and calls nothing. `tv social auto --dry-run` is the way
+to preview what a morning run would post.
+
 ## Audit trail
 
 `docs/social/audit.jsonl` is append-only; each line is a full snapshot of a
@@ -76,7 +116,7 @@ method `x-api` or `manual`).
 
 ## X API credentials
 
-Only from the environment — never in files in this repo:
+Only from the environment — never committed. For the launchd job put them in `.env.social` (gitignored, `chmod 600`); interactively, export them:
 
 ```bash
 # OAuth 1.0a user context (app with Read and Write permission)

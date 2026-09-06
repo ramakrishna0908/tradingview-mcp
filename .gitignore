@@ -9,3 +9,5 @@ docs/reports/
 __pycache__/
 .env
 .env.*
+.env.social
+!.env.social.example

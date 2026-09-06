@@ -16,6 +16,19 @@ export const DEFAULT_CONFIG_PATH = join(ROOT, 'config', 'social-compliance.json'
 export const DEFAULT_DISCLOSURE =
   'Educational market analysis only. Not investment advice. Trading involves risk.';
 
+/** Auto-publish is opt-in and every guard has a conservative default. */
+export const AUTO_PUBLISH_OFF = Object.freeze({
+  enabled: false,
+  requireSignal: 'CONFIRMED',
+  minConfidence: 'High',
+  maxPostsPerRun: 1,
+  symbolCooldownDays: 3,
+  skipFlaggedRows: true,
+  skipBiasKeywords: ['earnings', 'trial', 'avoid', 'no position', 'pre-news', 'stale'],
+  allowWarnings: false,
+  requireDisclosureLast: true,
+});
+
 const FALLBACK = {
   disclosure: DEFAULT_DISCLOSURE,
   charLimit: 280,
@@ -30,7 +43,8 @@ const FALLBACK = {
   preferredPhrases: ['Watch', 'Potential setup', 'Technical signal', 'Breakout watch', 'Bearish exhaustion watch'],
   riskContextKeywords: ['risk', 'invalidat', 'rejection', 'back under', 'lose'],
   signalLabels: { WATCH: 'Watch', CONFIRMED: 'Confirmed Setup' },
-  posting: { autoPublish: false, maxDraftsPerReport: 3, minConfidence: 'Medium', allowedSignals: ['CONFIRMED', 'WATCH'] },
+  hashtags: { required: ['#NFA', '#DYOR'], engagement: { default: [], bullish: [], bearish: [] }, maxTotal: 6, prohibited: [] },
+  posting: { maxDraftsPerReport: 3, minConfidence: 'Medium', allowedSignals: ['CONFIRMED', 'WATCH'], autoPublish: AUTO_PUBLISH_OFF },
 };
 
 let cached = null;
@@ -47,13 +61,17 @@ export function loadConfig(path = process.env.SOCIAL_COMPLIANCE_CONFIG || DEFAUL
     ...FALLBACK,
     ...parsed,
     posting: { ...FALLBACK.posting, ...(parsed.posting || {}) },
+    hashtags: { ...FALLBACK.hashtags, ...(parsed.hashtags || {}), engagement: { ...FALLBACK.hashtags.engagement, ...(parsed.hashtags?.engagement || {}) } },
     signalLabels: { ...FALLBACK.signalLabels, ...(parsed.signalLabels || {}) },
   };
+  // autoPublish: a bare boolean is not enough — it must be the full policy object,
+  // and the kill switch SOCIAL_AUTO_PUBLISH=0 always wins.
+  const ap = parsed.posting?.autoPublish;
+  cfg.posting.autoPublish = ap && typeof ap === 'object' ? { ...AUTO_PUBLISH_OFF, ...ap } : { ...AUTO_PUBLISH_OFF };
+  if (process.env.SOCIAL_AUTO_PUBLISH === '0') cfg.posting.autoPublish = { ...cfg.posting.autoPublish, enabled: false, disabledBy: 'SOCIAL_AUTO_PUBLISH=0' };
   if (typeof cfg.disclosure !== 'string' || !cfg.disclosure.trim()) {
     throw new Error('Compliance config: "disclosure" must be a non-empty string');
   }
-  // autoPublish is never honoured: the workflow requires a human approval step.
-  cfg.posting.autoPublish = false;
   Object.defineProperty(cfg, '__path', { value: path, enumerable: false });
   cached = cfg;
   return cfg;

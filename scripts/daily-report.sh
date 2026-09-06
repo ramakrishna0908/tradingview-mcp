@@ -109,6 +109,17 @@ EOF
 if [ -f "$REPORT" ]; then
   echo "$(date): report ready -> $REPORT" >> "$LOG"
   /usr/bin/open "$REPORT"
+
+  # Social auto-publish (policy-gated, see config/social-compliance.json →
+  # posting.autoPublish and docs/SOCIAL-POSTING.md). X API credentials are read
+  # from $REPO/.env.social (gitignored, chmod 600) because launchd has no env.
+  # Set SOCIAL_AUTO_PUBLISH=0 in that file to stop posting without editing code.
+  if [ -f "$REPO/.env.social" ]; then
+    set -a; . "$REPO/.env.social"; set +a
+  fi
+  echo "$(date): social auto-publish starting" >> "$LOG"
+  /usr/local/bin/node "$REPO/src/cli/index.js" social auto --report "$REPORT" >> "$LOG" 2>&1 \
+    || echo "$(date): social auto-publish exited $?" >> "$LOG"
 else
   echo "$(date): FAILED — no report generated. Opening log." >> "$LOG"
   /usr/bin/open "$LOG"

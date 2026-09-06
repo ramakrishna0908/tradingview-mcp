@@ -362,7 +362,10 @@ npm test
 (`Ticker | Setup | Price | RSI | CMF | Support | Resistance | Signal | Confidence`)
 and generates compliance-checked X posts for the highest-quality setups:
 report → draft → validation → preview/edit → approval → publish (official X API,
-credentials from env only). Nothing auto-publishes. See
+credentials from env only). Manual commands never auto-publish; `tv social auto`
+is a policy-gated unattended mode (CONFIRMED/High only, fresh data only,
+catalyst-flagged names skipped, per-symbol cooldown, kill switch) that the daily
+launchd job runs after each report. Posts carry `#NFA #DYOR`. See
 [docs/SOCIAL-POSTING.md](docs/SOCIAL-POSTING.md); rules live in
 `config/social-compliance.json`.
 
