@@ -1,0 +1,103 @@
+{
+  "$comment": "Compliance configuration for the X (Twitter) post generator. Legal/compliance may edit this file without code changes. Every value here is read at runtime by src/social/config.js.",
+
+  "disclosure": "Educational market analysis only. Not investment advice. Trading involves risk.",
+
+  "charLimit": 280,
+
+  "maxReportAgeHours": 24,
+
+  "requiredIndicators": ["Price", "RSI", "CMF"],
+  "requireSupportOrResistance": true,
+  "requireRiskContext": true,
+  "requireDataTimestamp": true,
+
+  "prohibitedPhrases": [
+    "guaranteed",
+    "guarantee",
+    "easy profit",
+    "easy money",
+    "free money",
+    "you should buy",
+    "you should sell",
+    "you should",
+    "must buy",
+    "must sell",
+    "buy now",
+    "sell now",
+    "risk-free",
+    "risk free",
+    "can't lose",
+    "cannot lose",
+    "sure thing",
+    "sure bet",
+    "no-brainer",
+    "to the moon",
+    "moon shot",
+    "mooning",
+    "load up",
+    "back up the truck",
+    "all in",
+    "yolo",
+    "print money",
+    "get rich",
+    "double your money",
+    "10x",
+    "100x"
+  ],
+
+  "personalizedAdvicePatterns": [
+    "\\bfor your (portfolio|retirement|401k|ira|age|income|risk tolerance)\\b",
+    "\\bbased on your\\b",
+    "\\bif you(?:'re| are) (young|old|retired|a beginner|new)\\b",
+    "\\bi recommend\\b",
+    "\\bwe recommend\\b",
+    "\\b(buy|sell|short|long) (it|this|here|now)\\b"
+  ],
+
+  "unsupportedClaimPatterns": [
+    "\\bwill (rally|rise|fall|drop|break|hit|reach|go|move|bounce|crash|surge|pump|dump)\\b",
+    "\\b(price )?target(?:s|ed)?\\b",
+    "\\bprojected\\b",
+    "\\bforecast(?:s|ed)?\\b",
+    "\\bexpect(?:ed|s)? to (reach|hit|rally|fall)\\b",
+    "\\b\\d+(?:\\.\\d+)?% (upside|downside|gain|return)\\b",
+    "\\bguaranteed\\b",
+    "\\bnext (week|month) (it|price)\\b"
+  ],
+
+  "preferredPhrases": [
+    "Watch",
+    "Potential setup",
+    "Technical signal",
+    "Breakout watch",
+    "Bearish exhaustion watch"
+  ],
+
+  "riskContextKeywords": [
+    "risk",
+    "invalidat",
+    "rejection",
+    "reject",
+    "back under",
+    "back above",
+    "loses",
+    "lose",
+    "failure",
+    "fails",
+    "negate",
+    "reverse"
+  ],
+
+  "signalLabels": {
+    "WATCH": "Watch",
+    "CONFIRMED": "Confirmed Setup"
+  },
+
+  "posting": {
+    "autoPublish": false,
+    "maxDraftsPerReport": 3,
+    "minConfidence": "Medium",
+    "allowedSignals": ["CONFIRMED", "WATCH"]
+  }
+}

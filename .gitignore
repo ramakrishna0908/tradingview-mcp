@@ -7,3 +7,5 @@ discovery-log.json
 reports/
 docs/reports/
 __pycache__/
+.env
+.env.*

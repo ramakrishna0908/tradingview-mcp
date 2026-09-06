@@ -354,6 +354,17 @@ npm test
 ```
 
 29 tests covering: Pine Script static analysis, server-side compilation, and CLI routing.
+`npm run test:unit` runs the connection-free suites (including the social posting tests).
+
+## Social posting (X)
+
+`tv social` turns a daily report into a compact setup table
+(`Ticker | Setup | Price | RSI | CMF | Support | Resistance | Signal | Confidence`)
+and generates compliance-checked X posts for the highest-quality setups:
+report → draft → validation → preview/edit → approval → publish (official X API,
+credentials from env only). Nothing auto-publishes. See
+[docs/SOCIAL-POSTING.md](docs/SOCIAL-POSTING.md); rules live in
+`config/social-compliance.json`.
 
 ## Architecture
 
