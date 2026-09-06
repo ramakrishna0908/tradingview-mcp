@@ -172,10 +172,13 @@ describe('setup classification (labels only — never recomputes the score)', ()
     assert.equal(s.signal, SIGNAL.WATCH);
   });
 
-  it('stretched at the band with RSI ≥ 68 → exhaustion watch, Low', () => {
+  it('stretched at the band with RSI ≥ 68, or above the band at any RSI → exhaustion watch, Low', () => {
     const s = classifySetup(ROW({ price: 123.0, rsi: 71 }));
     assert.match(s.setup, /exhaustion watch/);
     assert.equal(s.confidence, 'Low');
+    const above = classifySetup(ROW({ price: 125.0, rsi: 65 })); // through the 123.5 upper band
+    assert.match(above.setup, /exhaustion watch/);
+    assert.equal(above.signal, SIGNAL.WATCH);
   });
 
   it('bullish score without flow/cloud alignment is only a WATCH', () => {

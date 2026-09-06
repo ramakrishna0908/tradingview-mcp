@@ -75,11 +75,13 @@ export function classifySetup(row) {
     if (structOk) alignment.push('higher highs');
     const confirmed = cloudOk && flowOk && structOk;
 
-    if (nearUpper && rsi >= 68) {
+    if (nearUpper && (rsi >= 68 || (bbUpper != null && price > bbUpper))) {
       setup = 'Extended momentum — exhaustion watch';
       signal = SIGNAL.WATCH;
       confidence = 'Low';
-      rationale = `Pinned to the upper band with RSI ${rsi.toFixed(0)}: continuation only, not a fresh entry.`;
+      rationale = price > bbUpper
+        ? 'Trading above the upper band: extended, a retest is the higher-quality entry.'
+        : `Pinned to the upper band with RSI ${rsi.toFixed(0)}: continuation only, not a fresh entry.`;
       risk = 'stretched; a rejection can retrace.';
     } else if (nearUpper) {
       setup = 'Breakout watch';
