@@ -231,6 +231,20 @@ subcommands.set('ready', {
   },
 });
 
+subcommands.set('rehearse', {
+  description: 'Rehearsal queue for the browser poster: text + chart from the latest report, no guards, no audit, cannot be recorded',
+  options: { ...reportOpt, limit: { type: 'string', description: 'How many (default 1)' }, ...jsonOpt },
+  handler: async (values) => {
+    const wf = new SocialWorkflow();
+    const path = reportPathFrom(values);
+    const { model } = loadReportModel(path);
+    const recs = await wf.rehearse(model, { limit: Number(values.limit || 1) });
+    if (values.json) return out(recs);
+    for (const r of recs) console.log(`# ${r.id} (REHEARSAL — do not post)\n${r.text}\nchart: ${r.chart ?? 'none'}\n`);
+    done();
+  },
+});
+
 subcommands.set('auto', {
   description: 'Policy-gated auto-publish for the latest report (see config posting.autoPublish)',
   options: { ...reportOpt, 'dry-run': { type: 'boolean', description: 'Evaluate the policy and show what would be posted, without posting' }, ...jsonOpt },

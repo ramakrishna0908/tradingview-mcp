@@ -12,3 +12,4 @@ __pycache__/
 .env.social
 !.env.social.example
 docs/social/charts/
+docs/social/REHEARSE

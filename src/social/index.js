@@ -356,6 +356,29 @@ export class SocialWorkflow {
     return summary;
   }
 
+  /**
+   * Rehearsal: build what the browser poster would receive (text + chart) for
+   * the latest report WITHOUT any guard, approval or audit record. Used once to
+   * walk the Chrome steps and pre-approve tools; nothing here can be posted
+   * because the ids are not audit ids and `record` will not find them.
+   */
+  async rehearse(model, { limit = 1, chartOpts = {} } = {}) {
+    const table = this.summaryTable(model);
+    let candidates = cohortCandidates(model, table);
+    if (!candidates.length) candidates = selectPostCandidates(table, this.config.posting);
+    const out = [];
+    for (const setup of candidates.slice(0, limit)) {
+      let chart = null;
+      if (this.config.charts?.enabled) {
+        const c = await makeChart(setup, model, this.config, chartOpts);
+        chart = c.error ? { path: null, error: c.error } : { path: c.path, altText: c.altText, volumeRatio: c.volumeRatio };
+      }
+      const { text } = generatePost(setup, model, this.config, { chart });
+      out.push({ id: `rehearsal-${model.reportDate}-${setup.symbol}`, rehearsal: true, symbol: setup.symbol, reportDate: model.reportDate, text, chart: chart?.path ?? null, altText: chart?.altText ?? null });
+    }
+    return out;
+  }
+
   mustGet(id) {
     const rec = this.audit.get(id);
     if (!rec) throw new Error(`Draft not found: ${id}`);

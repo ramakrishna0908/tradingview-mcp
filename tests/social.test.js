@@ -686,6 +686,17 @@ describe('auto-publish: policy-gated, audited, never overrides freshness', () =>
     assert.equal(again.published.length, 0);   // duplicate / cooldown
   });
 
+  it('rehearse builds poster input from the latest report without guards or audit records', async () => {
+    const model = MODEL([ROW({ price: 118 })], { reportDate: '2026-09-07', dataAsOf: new Date(Date.now() - 90 * 3600_000).toISOString() }); // holiday + stale
+    const recs = await wf.rehearse(model);
+    assert.equal(recs.length, 1);
+    assert.equal(recs[0].rehearsal, true);
+    assert.match(recs[0].id, /^rehearsal-/);
+    assert.match(recs[0].text, /\$XYZ/);
+    assert.equal(wf.audit.latest().length, 0);
+    assert.throws(() => wf.recordManualPublication(recs[0].id, model, { xPostId: '1' }), /not found/);
+  });
+
   it('dry-run records auto_dry_run and calls nothing', async () => {
     let called = false;
     const r = await wf.autoPublish(MODEL([ROW({ price: 118 })]), { dryRun: true, creds: null, fetchImpl: async () => { called = true; } });

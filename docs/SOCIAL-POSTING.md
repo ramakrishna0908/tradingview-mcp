@@ -105,6 +105,12 @@ signed in as @ai_king0206 (text + chart image), and calls
 is never edited by the poster. Switch `via` to `"api"` to publish directly
 through the X API from the launchd job instead (needs `.env.social`).
 
+**Rehearsal.** `touch docs/social/REHEARSE` then "Run now" on the scheduled
+task: it uses `tv social rehearse --json` (latest report, no guards, no
+audit record, an id that can never be recorded), composes one post with its
+chart in Chrome, stops before clicking Post, discards the draft, and removes
+the flag. Use it once to pre-approve the task's tools.
+
 **What it posts.** With `candidateSource: "report-cohort"` (the default) the
 candidates are exactly the names the report lists under **Calls** and
 **Puts** in its Cohort Summary, in report order, Calls first. The report's
