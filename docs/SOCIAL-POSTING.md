@@ -210,4 +210,320 @@ dependencies) and stores the returned post id in the audit record.
 
 ```bash
 npm run test:social   # parser, classifier, generator, every compliance check, workflow/audit, OAuth signing
+                      # plus the crypto suite: 24/7 calendar, sub-dollar precision, queue isolation
 ```
+
+## Publishing strategy
+
+The account publishes **one highest-quality technical setup per run, follows
+each setup through its lifecycle with event-driven updates, and scores itself
+every Friday**. Everything below is computed from two append-only files —
+`docs/social/audit.jsonl` (posts) and `docs/social/setups.jsonl` (lifecycle) —
+so every number the account publishes about itself is reproducible.
+
+### One setup per run, never forced
+
+`posting.autoPublish` in both configs: `maxPostsPerRun: 1`,
+`candidateOrder: "quality"`, `minConfidence: "Medium"`, `skipTracked: true`.
+The report's cohort is ranked by the classifier — CONFIRMED before WATCH, then
+confidence, then |score| — with ties broken by historical engagement for that
+setup type (see *Metrics*) and then alphabetically. The first candidate that
+clears every guard is the day's post. If nothing is Medium-or-better the run
+publishes nothing and the summary says `noSetup`; a post is never forced. A
+symbol whose setup is still open in the tracker is skipped — its follow-ups
+cover it.
+
+The stock job (weekdays, report 9:35 ET, poster ~10:03 ET) lands in the
+9:45–10:30 window. The crypto job runs daily at 1:00 AM for the 24/7 market.
+
+### Lifecycle labels
+
+| Stage | When | Post label |
+|---|---|---|
+| `DEVELOPING` | posted as a WATCH | `DEVELOPING` (badge), setup name in the chip |
+| `CONFIRMED` | posted CONFIRMED, or a later report confirms a DEVELOPING one | `RECLAIM CONFIRMED` / `TREND CONFIRMED` / `BREAKDOWN CONFIRMED` |
+| `BREAKOUT` | a daily close beyond the 🎯 level | `BREAKOUT UPDATE` (`BREAKDOWN UPDATE` for bearish) |
+| `INVALIDATED` | a daily close beyond the 🛑 level | `INVALIDATED` |
+| `EXPIRED` | no resolution within `followUps.maxAgeSessions` bars | not posted, not scored |
+
+An intraday touch of 🎯 without a close beyond it is a `LEVEL TEST` follow-up
+(once per setup; `followUps.postLevelTests`). The word *confirmed* can only be
+produced for a CONFIRMED signal or a CONFIRMED/BREAKOUT stage — compliance
+re-checks every headline (`signal_upgraded`).
+
+### Event-driven follow-ups (`tv social track`)
+
+Both auto scripts run `social track --report <today>` right after `social
+auto`. For every open setup in that queue it fetches the daily bars since the
+post, graduates DEVELOPING setups the new report confirms, and detects
+breakouts, invalidations and level tests **on closes only** (invalidation wins
+over breakout inside one bar). Each event becomes a follow-up post through the
+same approval path as the daily setup, tagged `kind: "followup"` with
+`followUpOf` pointing at the setup's record, so the browser poster picks it up
+in the same run. Every number in a follow-up is a stored level, the event
+close/extreme, the entry price or the next listed level — compliance validates
+against exactly that set (`kind: 'followup'`). The freshness guard still
+applies: an event older than `maxReportAgeHours` is audited as skipped, never
+back-posted.
+
+```bash
+tv social track --dry-run          # detect and draft, change nothing
+tv social setups [--all]           # lifecycle state of every tracked setup
+```
+
+### Weekly Setup Scorecard (`tv social scorecard`)
+
+Every Friday the `post-weekly-scorecard` task settles the week's closes
+(`social track` for both queues), then queues the scorecard on the stocks
+queue: setups posted, breakouts / levels reached, invalidations, still active,
+hit rate (breakouts over resolved — expiries are neither), and the all-time
+line. The counts come from `scorecardStats` over `setups.jsonl`; compliance
+re-derives every number and blocks on a mismatch (`kind: 'scorecard'`). Only
+the stock config has `scorecard.enabled`, so the account posts one scorecard
+covering both queues. The card is rendered by the same renderer (`style:
+"scorecard"`).
+
+### Metrics and the feedback loop (`tv social metrics …`)
+
+`docs/social/metrics.jsonl` holds per-post snapshots (impressions, likes,
+replies, reposts, quotes, bookmarks, profile clicks) and account snapshots
+(followers). Two collectors write the same shape:
+
+- `tv social metrics collect` — X API v2 (`public_metrics` +
+  `non_public_metrics`, OAuth 1.0a user context) plus `/users/me` followers.
+- `tv social metrics record <xPostId> --impressions N --likes N …` and
+  `--followers N` — numbers read from the X analytics page, which is what the
+  scheduled browser tasks do after posting (no API access required).
+
+`tv social metrics report` joins snapshots with the audit log (asset class,
+setup type, post kind, posting hour/weekday) and the tracker (outcome),
+prints aggregates and recommendations, and writes `docs/social/insights.json`.
+`autoPublish` reads that file: when two candidates tie on quality, the one
+whose queue/setup-type bucket has the higher historical engagement rate wins
+(only buckets with ≥ 3 measured posts count). It is a tiebreak — it can never
+promote a weaker setup over a stronger one.
+
+## Educational explainers (`tv social educate`)
+
+Twice a week (Tuesday and Friday 8 AM, task `post-education-explainer`) the
+account posts one technical-analysis topic as a simple visual explainer: a
+short definition, three labelled examples drawn from specs (not market data),
+and a clear **Bullish / Bearish / Neutral** takeaway for each, on a 1080×1350
+mobile-first card whose footer reads *Educational only. Not financial advice.*
+
+- **Library:** `src/social/education.js` — support & resistance, candlestick
+  basics, RSI, CMF, breakouts, fakeouts, trendlines, volume confirmation, moving
+  averages, Bollinger Bands. Each example carries an illustration spec
+  (`candles`, `osc` or `line`) that `scripts/render-chart-sweep.py` (style
+  `explainer`) draws.
+- **Rotation:** never-posted topics first in library order, then the one posted
+  longest ago, so the curriculum cycles. `tv social educate --list` shows when
+  each ran; `--topic <id>` forces one.
+- **Compliance profile** (`kind: 'education'`): the prohibited-wording and
+  forward-looking-claim checks apply as usual; a cashtag anywhere blocks
+  (`ticker_in_education`) so an explainer can never read as a call on a name;
+  the indicator/level/timestamp/risk-context requirements of a setup post do
+  not apply. The card is required (it carries the footer). Hashtags come from
+  `education.hashtags` (two by default).
+- **One per day**, on the `education.queue` (stocks). Only the stock config has
+  `education.enabled`.
+- **Metrics:** posts carry `topic`, and `tv social metrics report` adds a
+  *By educational topic* table and a recommendation naming the best-engaging
+  topic. Metrics are collected through the browser by the task (the X API path
+  exists but is a fallback, and only for metrics).
+
+```bash
+tv social educate --dry-run        # text + card for the next topic, queue nothing
+tv social educate --topic rsi      # queue a specific topic
+```
+
+## Post format: "sweep" (the Daily Setup Sweep layout)
+
+Both shipped configs set `"postFormat": "sweep"`. `"classic"` restores the
+previous layout without a code change. The generator lives in
+`src/social/generate.js` (`generateSweepPost`); the wording table shared by the
+text and the chart is `src/social/sweep-labels.js`.
+
+```
+📈 $ETH has reclaimed its 20-day base — reclaim confirmed.
+CMF +0.22 shows positive money flow while RSI 64 keeps momentum healthy.
+🎯 Above $2,579 → potential breakout
+🛑 Below $2,449 → setup invalidated
+Current price: $2,498 · RVOL 0.8× · Setup score +2.5
+Which level gets hit first — $2,579 or $2,449? 👇
+Data: daily · Sep 7, 2026 10:11 AM ET
+#ETH #Crypto
+```
+
+What each line is, and what guards it:
+
+- **Headline.** The verb phrase comes from `sweep-labels.js`, keyed on the
+  classifier's setup name and signal. The word *confirmed* — "reclaim
+  confirmed", the chart's "RECLAIM CONFIRMED" badge, any phrasing — can only be
+  produced for `signal === CONFIRMED`. A WATCH gets "reclaim watch" and a blue
+  "RECLAIM WATCH" badge. Compliance re-checks the finished text: any
+  `confirmed` in a WATCH headline is `signal_upgraded` (block); a CONFIRMED
+  setup with no `confirmed` is `signal_label` (warn, which auto-publish
+  treats as a skip).
+- **Narrative.** Present-tense description of the current CMF and RSI readings
+  (`cmfPhrase`, `rsiPhrase`). Both numbers are integrity-checked.
+- **🎯 / 🛑 levels.** The nearest report level in the setup's direction and the
+  one that negates it (`sweepLevels`). Bearish setups flip the roles: "Below $X
+  → breakdown continues" / "Above $Y → setup invalidated". The 🛑 line is the
+  risk context the validator requires. When the report has no level on one
+  side, only the 🛑 line is printed.
+- **Stats line.** Current price, RVOL (the chart's last-bar volume vs its
+  20-day average; omitted when there is no chart data) and the report's own
+  setup score. All three are integrity-checked (`value_mismatch`).
+- **CTA.** `cta.text` is a template: `{level1}` is the 🎯 level, `{level2}` the
+  🛑 level. With a single level the generator asks "Does $X hold? 👇" instead.
+- **Data line.** Unchanged — it is the freshness marker.
+- **Hashtags.** `hashtags.symbolTag` adds the cashtag as a hashtag and
+  `hashtags.assetTag` adds one class tag (`#Stocks` / `#Crypto`); `maxTotal` is
+  2 and `required` is empty. See the marker rule below.
+
+### Compact prices
+
+`"priceDisplay": "compact"` prints whole dollars once a price is in the
+thousands (`$2,579` for 2,578.88). Compliance did not get looser to allow this:
+the value scan now accepts a quoted number only if a report level **rounds to
+it at the precision shown** (`shownTolerance`). `$2,579` passes because
+2,578.88 rounds to it; `$2,579.40` and `$2,600` both block. Sub-dollar coins
+keep their significant digits (`$0.090922`), and the check tightens to match.
+
+### The disclaimer marker rule
+
+With `disclosurePlacement: "bio"` and no required hashtags, nothing in the
+post text carries a compliance marker — the disclaimer is printed on the chart
+card instead. So the chart cannot be optional: `config.js` refuses to load a
+policy where that is the case unless `charts.enabled` and
+`charts.requireForPublish` are both true. A renderer failure therefore
+**blocks** the post rather than publishing it text-only and unmarked. To go
+back to an in-post marker, put `#NFA #DYOR` back in `hashtags.required`.
+
+### The chart card (`charts.style: "sweep"`)
+
+`scripts/render-chart-sweep.py`, spec from `buildSweepChartSpec` in
+`src/social/chart.js`. Near-square (1200×1000, `charts.width`/`height`) so it
+renders large on a phone. Header with ticker and name; the verdict badge
+(green confirmed / red bearish confirmed / blue watch); candles with a 20-day MA
+computed from the same Yahoo closes and labelled as such; the two report
+levels and current price as dashed lines with role labels; volume; four stat
+tiles; the bull/bear/question strip; the disclaimer and data line. Same
+integrity rule as the classic chart: every level and figure is the report's,
+formatted with the same options as the text. The mockup's "Bigger Moves
+Ahead?" tagline is deliberately not drawn — nothing forward-looking goes on the
+card.
+
+To preview the format against any report without touching the audit log, use
+`tv social rehearse --report <html>` (text only) or the `sweep format` suite in
+`tests/social.test.js`, which asserts the ETH layout line by line.
+
+## The crypto sweep (second, independent queue)
+
+A second nightly pipeline sweeps the **top 20 crypto by market cap** and posts to
+the same X account. It reuses every stage above — the same classifier, the same
+compliance validator, the same audit log — and differs only where a 24/7 market
+genuinely differs from an exchange-listed one.
+
+| | Stocks | Crypto |
+|---|---|---|
+| Report job | `scripts/daily-report.sh`, weekdays 9:35 ET | `scripts/crypto-report.sh`, **every day 1:00 AM** |
+| launchd label | `com.ramakrishna.tvdailyreport` | `com.ramakrishna.tvcryptoreport` |
+| Reports in | `docs/reports/` | `docs/reports/crypto/` |
+| Policy file | `config/social-compliance.json` | `config/social-compliance-crypto.json` |
+| Publish job | `scripts/social-auto.sh` | `scripts/crypto-social-auto.sh` |
+| Queue tag | `stocks` | `crypto` |
+| Posting task | `post-daily-setups-to-x` | `post-daily-crypto-to-x` (1:15 AM daily) |
+
+### Why it is a separate job rather than more symbols in the daily one
+
+- **The calendar.** Auto-publish refuses on weekends and NYSE holidays, because a
+  stock report generated then can only be re-showing the prior session. Crypto has
+  no closed days, so that refusal would silently kill 2 of every 7 crypto runs.
+  The crypto policy sets `"marketCalendar": "24x7"`, which disables the weekend and
+  holiday gates *for that config only*. The default is `"nyse"`, so the stock policy
+  is unchanged.
+- **The clock.** 1:00 AM is chosen so the sweep does not contend with the 9:35 ET
+  stock job for the single TradingView chart window.
+- **Separate report directory.** Day-over-day CMF, the run log and the cached JSON
+  model are all resolved by filename within one directory. Sharing a directory would
+  make each sweep read the other's prior session.
+
+### Universe: resolved live, not hardcoded
+
+`scripts/crypto-universe.js` pulls the top coins from CoinGecko's public
+`/coins/markets` endpoint at run time, then filters out anything that cannot carry a
+technical setup:
+
+- **stablecoins** (USDT, USDC, DAI, USDS, …) — a peg has no trend, RSI or breakout
+- **wrapped / liquid-staked derivatives** (WBTC, wstETH, …) — they duplicate the
+  asset they track and would post the same setup twice
+- **non-spot tickers** (e.g. `FIGR_HELOC`) — no TradingView symbol exists
+
+The result is cached to `config/crypto-universe.json` and reused if CoinGecko is
+unreachable, so the 1 AM job always has a universe. A `reserves` list supplies
+replacements for any coin TradingView cannot chart.
+
+```bash
+node scripts/crypto-universe.js            # refresh + print the table
+node scripts/crypto-universe.js --symbols  # bare symbol list
+node scripts/crypto-universe.js --offline  # use the cache, never call the API
+```
+
+The list is deliberately **not** committed as a static universe: the top 20 by market
+cap reshuffles constantly, and a frozen list sweeps the wrong coins within weeks.
+
+### Price precision
+
+Crypto spans several orders of magnitude in one report — BTC in the tens of
+thousands, XLM and DOGE in fractions of a cent. `src/social/money.js` centralises
+formatting: two decimals at or above $1 (every equity, unchanged), and roughly five
+significant digits below it. Without this, a coin's price, support and resistance all
+round to the same two-decimal number and the invalidation line becomes meaningless.
+
+Two follow-on fixes came with it, both of which also harden the stock path:
+
+- the compliance value scan matched `\$[\d,]+\.\d{1,2}` — it silently **skipped**
+  every value with more than two decimals, so a fabricated sub-dollar level would not
+  have been caught. It now matches any precision, with the tolerance scaled to the
+  number of decimals actually shown.
+- Yahoo candles were rounded with `toFixed(2)`, which flattens a sub-cent coin's
+  entire price history to `0`.
+
+`"priceGrouping": true` in the crypto config renders BTC as `$79,611.00`. It is off
+for stocks, which keeps their post formatting byte-identical.
+
+### Queue isolation
+
+Both sweeps append to the same audit log, so every draft is tagged with the queue
+that produced it and each poster asks only for its own:
+
+```bash
+node src/cli/index.js social ready --queue crypto --json
+node src/cli/index.js social ready --queue stocks --json
+```
+
+Records written before queues existed read as `stocks`. Passing no `--queue` returns
+everything, as before. Without this the 9:35 stock poster would pick up any crypto
+post still sitting in `ready_to_post`.
+
+### Install
+
+```bash
+cp scripts/com.ramakrishna.tvcryptoreport.plist ~/Library/LaunchAgents/
+launchctl load ~/Library/LaunchAgents/com.ramakrishna.tvcryptoreport.plist
+launchctl list | grep tvcryptoreport
+```
+
+Run it by hand at any time (the whole chain is idempotent — a second run only posts
+what the first did not):
+
+```bash
+bash scripts/crypto-report.sh              # sweep + queue tonight's posts
+bash scripts/crypto-social-auto.sh         # queue only, if a report already exists
+```
+
+## Premarket market-direction post
+
+Weekdays ~8 AM ET the `premarket-market-direction` task builds the Daily Premarket Market Direction Report (`tv premarket`) and queues one post from it with `tv social premarket` (kind `premarket`, symbol `MKT`, stocks queue, card style `premarket`). Format, integrity checks and the flip-event rule are documented in [PREMARKET-REPORT.md](PREMARKET-REPORT.md#the-x-post).

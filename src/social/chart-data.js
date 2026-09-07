@@ -7,10 +7,30 @@
  * A failure here never blocks a post: the caller falls back to text-only.
  */
 
+import { roundPrice } from './money.js';
+
 export const YAHOO_CHART = 'https://query1.finance.yahoo.com/v8/finance/chart/';
 
-/** Yahoo symbol quirks: BRK.B → BRK-B, futures/indices untouched. */
-export function toYahooSymbol(symbol) {
+/**
+ * Yahoo ticker for a report symbol.
+ *
+ * Equities: BRK.B → BRK-B, everything else untouched.
+ * Crypto: Yahoo quotes coins as a pair, so a bare BTC has to become BTC-USD.
+ * A few coins are listed under a disambiguated ticker (Yahoo appends the
+ * CoinMarketCap id when a symbol collides with an equity), so an explicit
+ * override always wins over the derived name.
+ */
+export const YAHOO_CRYPTO_OVERRIDES = {
+  HYPE: 'HYPE32196-USD',
+  UNI: 'UNI7083-USD',
+};
+
+export function toYahooSymbol(symbol, { assetClass = 'equity' } = {}) {
+  if (assetClass === 'crypto') {
+    const sym = symbol.toUpperCase();
+    if (YAHOO_CRYPTO_OVERRIDES[sym]) return YAHOO_CRYPTO_OVERRIDES[sym];
+    return /-USD$/.test(sym) ? sym : `${sym}-USD`;
+  }
   return symbol.replace('.', '-');
 }
 
@@ -25,7 +45,7 @@ export function parseYahooChart(json) {
     const o = q.open?.[i], h = q.high?.[i], l = q.low?.[i], c = q.close?.[i];
     if ([o, h, l, c].some(v => v == null || !Number.isFinite(v))) continue;
     const t = new Date(ts[i] * 1000).toISOString().slice(0, 10);
-    out.push({ t, o: +o.toFixed(2), h: +h.toFixed(2), l: +l.toFixed(2), c: +c.toFixed(2), v: q.volume?.[i] ?? null });
+    out.push({ t, o: roundPrice(o), h: roundPrice(h), l: roundPrice(l), c: roundPrice(c), v: q.volume?.[i] ?? null });
   }
   return out;
 }
@@ -35,8 +55,8 @@ export function parseYahooChart(json) {
  * Candles after the report date are dropped so the chart never shows price
  * action the report could not have seen.
  */
-export async function fetchDailyCandles(symbol, { bars = 60, endDate = null, fetchImpl = fetch, timeoutMs = 10_000 } = {}) {
-  const url = `${YAHOO_CHART}${encodeURIComponent(toYahooSymbol(symbol))}?range=6mo&interval=1d`;
+export async function fetchDailyCandles(symbol, { bars = 60, endDate = null, fetchImpl = fetch, timeoutMs = 10_000, assetClass = 'equity' } = {}) {
+  const url = `${YAHOO_CHART}${encodeURIComponent(toYahooSymbol(symbol, { assetClass }))}?range=6mo&interval=1d`;
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {

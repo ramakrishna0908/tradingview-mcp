@@ -1,0 +1,181 @@
+/**
+ * Labels for the "Daily Setup Sweep" post format — shared by the text
+ * generator and the chart renderer so the two can never disagree about what
+ * a setup is called.
+ *
+ * Everything here is keyed on the classifier's output (setup name + signal +
+ * direction). The classifier is the only thing that can say CONFIRMED, so the
+ * word "confirmed" — in a headline, a badge, anywhere — can only appear when
+ * setup.signal === CONFIRMED. A WATCH gets a WATCH badge, full stop. That is
+ * the "RECLAIM CONFIRMED only when the technical criteria are met" rule, and
+ * compliance re-checks it on the finished text (signal_upgraded).
+ */
+import { SIGNAL } from './setup.js';
+
+const CONFIRMED = SIGNAL.CONFIRMED;
+
+/**
+ * Per-setup wording. `headline` is the verb phrase after "$SYM" in the first
+ * line; `badge` is the chart's big label; `subtitle` sits under the badge;
+ * `annotation` is the short tag drawn on the chart at the last bar.
+ */
+const TABLE = {
+  'Basis reclaim': {
+    confirmed: { headline: 'has reclaimed its 20-day base — reclaim confirmed.', badge: 'RECLAIM CONFIRMED', subtitle: 'Price has reclaimed its 20-day base with positive money flow', annotation: '20D Base Reclaimed' },
+    watch: { headline: 'has reclaimed its 20-day base — reclaim watch.', badge: 'RECLAIM WATCH', subtitle: 'Reclaimed the 20-day base — cloud, flow and structure are not all aligned yet', annotation: '20D Base Reclaimed' },
+  },
+  'Trend continuation': {
+    confirmed: { headline: 'is holding above its 20-day base — trend confirmed.', badge: 'TREND CONFIRMED', subtitle: 'Holding above the 20-day base and cloud with money flow supporting', annotation: 'Trend Intact' },
+    watch: { headline: 'is holding above its 20-day base — continuation watch.', badge: 'CONTINUATION WATCH', subtitle: 'Above the base, but cloud, flow and structure are not all aligned yet', annotation: 'Above Base' },
+  },
+  'Breakout watch': {
+    watch: { headline: 'is pressing its upper band — breakout watch.', badge: 'BREAKOUT WATCH', subtitle: 'Momentum is constructive, but a confirmed move above the band is still needed', annotation: 'At Upper Band' },
+  },
+  'Extended momentum — exhaustion watch': {
+    watch: { headline: 'is extended above its upper band — exhaustion watch.', badge: 'EXHAUSTION WATCH', subtitle: 'Stretched through the upper band — continuation only, not a fresh entry', annotation: 'Extended' },
+  },
+  'Breakdown': {
+    confirmed: { headline: 'has broken below its 20-day base — breakdown confirmed.', badge: 'BREAKDOWN CONFIRMED', subtitle: 'Broke below the 20-day base and cloud with money flow negative', annotation: '20D Base Lost' },
+    watch: { headline: 'has slipped below its 20-day base — breakdown watch.', badge: 'BREAKDOWN WATCH', subtitle: 'Below the base, but cloud, flow and structure have not all confirmed it', annotation: 'Below Base' },
+  },
+  'Seller exhaustion watch': {
+    watch: { headline: 'is broken but selling is fading — seller exhaustion watch.', badge: 'SELLER EXHAUSTION WATCH', subtitle: 'Money flow is no longer negative — sellers may be tiring', annotation: 'Selling Fading' },
+  },
+  'Bearish exhaustion watch': {
+    watch: { headline: 'is pinned to its lower band — bearish exhaustion watch.', badge: 'BEARISH EXHAUSTION WATCH', subtitle: 'Already at the lower band after the breakdown — late, not early', annotation: 'At Lower Band' },
+  },
+  'Bullish divergence watch': {
+    watch: { headline: 'is below its base while money flow turns positive — divergence watch.', badge: 'DIVERGENCE WATCH', subtitle: 'Accumulation into weakness — a base reclaim would confirm', annotation: 'Flow Diverging' },
+  },
+  'Bearish divergence watch': {
+    watch: { headline: 'holds structure while money flow turns negative — divergence watch.', badge: 'DIVERGENCE WATCH', subtitle: 'Distribution under the surface — watching cloud support', annotation: 'Flow Diverging' },
+  },
+};
+
+const GENERIC = {
+  confirmed: { headline: 'shows a confirmed setup.', badge: 'SETUP CONFIRMED', subtitle: 'Score, cloud, flow and structure all agree', annotation: 'Setup' },
+  watch: { headline: 'is on watch.', badge: 'SETUP WATCH', subtitle: 'Mixed readings — no confirmed edge yet', annotation: 'Watch' },
+};
+
+/**
+ * Setup lifecycle. Every tracked setup moves through these in order and the
+ * label on a post is always the stage it is in:
+ *
+ *   DEVELOPING  — posted as a WATCH: the read is constructive but not confirmed
+ *   CONFIRMED   — score, cloud, flow and structure agree (badge names the setup:
+ *                 RECLAIM CONFIRMED / TREND CONFIRMED / BREAKDOWN CONFIRMED)
+ *   BREAKOUT    — a daily close beyond the 🎯 level ("BREAKOUT UPDATE")
+ *   INVALIDATED — a daily close beyond the 🛑 level
+ *   EXPIRED     — neither happened within the tracking window (not posted,
+ *                 not counted in the hit rate)
+ */
+export const STAGE = Object.freeze({
+  DEVELOPING: 'DEVELOPING',
+  CONFIRMED: 'CONFIRMED',
+  BREAKOUT: 'BREAKOUT',
+  INVALIDATED: 'INVALIDATED',
+  EXPIRED: 'EXPIRED',
+  REMOVED: 'REMOVED',   // the post was taken down on X — closed, never scored
+});
+
+/** The stage a setup enters when first posted. */
+export function initialStage(setup) {
+  return setup.signal === CONFIRMED ? STAGE.CONFIRMED : STAGE.DEVELOPING;
+}
+
+/** Display label for a stage. CONFIRMED names the setup; BREAKOUT names the direction. */
+export function stageLabel(stage, { setup = null, direction = 'bullish' } = {}) {
+  switch (stage) {
+    case STAGE.DEVELOPING: return 'DEVELOPING';
+    case STAGE.CONFIRMED: {
+      const entry = setup ? TABLE[setup] : null;
+      return entry?.confirmed?.badge ?? 'SETUP CONFIRMED';
+    }
+    case STAGE.BREAKOUT: return direction === 'bearish' ? 'BREAKDOWN UPDATE' : 'BREAKOUT UPDATE';
+    case STAGE.INVALIDATED: return 'INVALIDATED';
+    case STAGE.EXPIRED: return 'EXPIRED';
+    case STAGE.REMOVED: return 'REMOVED';
+    default: return String(stage);
+  }
+}
+
+/**
+ * Wording for one classified setup. Never returns a "confirmed" label for a
+ * WATCH: a WATCH is posted at the DEVELOPING stage, with the setup's own name
+ * in the chip above the badge so the reader still sees what kind of setup it is.
+ */
+export function sweepLabels(setup) {
+  const entry = TABLE[setup.setup] ?? GENERIC;
+  const confirmed = setup.signal === CONFIRMED && entry.confirmed;
+  const words = confirmed ? entry.confirmed : (entry.watch ?? GENERIC.watch);
+  const stage = confirmed ? STAGE.CONFIRMED : STAGE.DEVELOPING;
+  return {
+    ...words,
+    stage,
+    badge: confirmed ? words.badge : 'DEVELOPING',
+    chip: confirmed ? 'TECHNICAL SETUP' : words.badge,
+    confirmed: !!confirmed,
+    icon: setup.direction === 'bearish' ? '📉' : confirmed ? '📈' : '👀',
+  };
+}
+
+/** "shows positive money flow" — present tense, descriptive, no forecast. */
+export function cmfPhrase(cmf) {
+  if (cmf > 0.1) return 'shows positive money flow';
+  if (cmf >= 0) return 'shows flat money flow';
+  if (cmf > -0.1) return 'shows money flow softening';
+  return 'shows money leaving';
+}
+
+/** "RSI 64 keeps momentum healthy" — descriptive of the current reading only. */
+export function rsiPhrase(rsi, direction) {
+  const r = rsi.toFixed(0);
+  if (direction === 'bearish') {
+    if (rsi <= 32) return `RSI ${r} is washed out`;
+    if (rsi < 40) return `RSI ${r} stays weak`;
+    if (rsi < 50) return `RSI ${r} sits below the midline`;
+    return `RSI ${r} has not followed the move`; // never "confirmed" — that word is the signal's
+  }
+  if (rsi >= 68) return `RSI ${r} is stretched`;
+  if (rsi >= 60) return `RSI ${r} keeps momentum healthy`;
+  if (rsi >= 50) return `RSI ${r} holds above the midline`;
+  return `RSI ${r} lags the move`;
+}
+
+/** Subtitles for the chart's stat tiles. */
+export function rsiTile(rsi) {
+  if (rsi >= 70) return 'Overbought — stretched';
+  if (rsi >= 60) return 'Strong momentum (not overbought)';
+  if (rsi >= 50) return 'Above the midline';
+  if (rsi >= 40) return 'Below the midline';
+  if (rsi > 30) return 'Weak momentum';
+  return 'Oversold';
+}
+
+export function cmfTile(cmf) {
+  if (cmf > 0.1) return 'Positive money flow';
+  if (cmf >= -0.1) return 'Flat money flow';
+  return 'Negative money flow';
+}
+
+export function rvolTile(ratio) {
+  if (ratio == null) return null;
+  if (ratio < 0.9) return 'Below average';
+  if (ratio <= 1.1) return 'Around average';
+  return 'Above average';
+}
+
+/**
+ * The two levels the format is built around, in the order the post states
+ * them: the level in the setup's direction (🎯) and the one that negates it (🛑).
+ * Either may be null when the report has no level on that side of price.
+ */
+export function sweepLevels(setup) {
+  const bearish = setup.direction === 'bearish';
+  const target = bearish ? setup.support : setup.resistance;
+  const stop = bearish ? setup.resistance : setup.support;
+  return {
+    target: target ? { ...target, side: bearish ? 'Below' : 'Above', outcome: bearish ? 'breakdown continues' : 'potential breakout', tile: bearish ? 'Breakdown level' : 'Breakout level' } : null,
+    stop: stop ? { ...stop, side: bearish ? 'Above' : 'Below', outcome: 'setup invalidated', tile: 'Invalidation level' } : null,
+  };
+}

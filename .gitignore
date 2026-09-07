@@ -13,3 +13,5 @@ __pycache__/
 !.env.social.example
 docs/social/charts/
 docs/social/REHEARSE
+.firecrawl/
+.playwright-mcp/

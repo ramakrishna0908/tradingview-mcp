@@ -1,0 +1,552 @@
+{
+  "fetchedAt": "2026-09-07T14:00:28.384Z",
+  "source": "coingecko /coins/markets (market_cap_desc)",
+  "size": 20,
+  "universe": [
+    {
+      "rank": 1,
+      "symbol": "BTC",
+      "name": "Bitcoin",
+      "id": "bitcoin",
+      "priceUsd": 79368,
+      "marketCapUsd": 1593858262644,
+      "marketCapRank": 1,
+      "tv": "BTCUSD",
+      "tvCandidates": [
+        "BTCUSD",
+        "COINBASE:BTCUSD",
+        "BINANCE:BTCUSDT",
+        "CRYPTO:BTCUSD"
+      ],
+      "yahoo": "BTC-USD"
+    },
+    {
+      "rank": 2,
+      "symbol": "ETH",
+      "name": "Ethereum",
+      "id": "ethereum",
+      "priceUsd": 2499.03,
+      "marketCapUsd": 304987752659,
+      "marketCapRank": 2,
+      "tv": "ETHUSD",
+      "tvCandidates": [
+        "ETHUSD",
+        "COINBASE:ETHUSD",
+        "BINANCE:ETHUSDT",
+        "CRYPTO:ETHUSD"
+      ],
+      "yahoo": "ETH-USD"
+    },
+    {
+      "rank": 3,
+      "symbol": "BNB",
+      "name": "BNB",
+      "id": "binancecoin",
+      "priceUsd": 745.57,
+      "marketCapUsd": 99289874136,
+      "marketCapRank": 4,
+      "tv": "BNBUSD",
+      "tvCandidates": [
+        "BNBUSD",
+        "COINBASE:BNBUSD",
+        "BINANCE:BNBUSDT",
+        "CRYPTO:BNBUSD"
+      ],
+      "yahoo": "BNB-USD"
+    },
+    {
+      "rank": 4,
+      "symbol": "XRP",
+      "name": "XRP",
+      "id": "ripple",
+      "priceUsd": 1.4,
+      "marketCapUsd": 88015353902,
+      "marketCapRank": 5,
+      "tv": "XRPUSD",
+      "tvCandidates": [
+        "XRPUSD",
+        "COINBASE:XRPUSD",
+        "BINANCE:XRPUSDT",
+        "CRYPTO:XRPUSD"
+      ],
+      "yahoo": "XRP-USD"
+    },
+    {
+      "rank": 5,
+      "symbol": "SOL",
+      "name": "Solana",
+      "id": "solana",
+      "priceUsd": 105.07,
+      "marketCapUsd": 61590221460,
+      "marketCapRank": 7,
+      "tv": "SOLUSD",
+      "tvCandidates": [
+        "SOLUSD",
+        "COINBASE:SOLUSD",
+        "BINANCE:SOLUSDT",
+        "CRYPTO:SOLUSD"
+      ],
+      "yahoo": "SOL-USD"
+    },
+    {
+      "rank": 6,
+      "symbol": "TRX",
+      "name": "TRON",
+      "id": "tron",
+      "priceUsd": 0.335275,
+      "marketCapUsd": 31831211236,
+      "marketCapRank": 8,
+      "tv": "TRXUSD",
+      "tvCandidates": [
+        "TRXUSD",
+        "COINBASE:TRXUSD",
+        "BINANCE:TRXUSDT",
+        "CRYPTO:TRXUSD"
+      ],
+      "yahoo": "TRX-USD"
+    },
+    {
+      "rank": 7,
+      "symbol": "ZEC",
+      "name": "Zcash",
+      "id": "zcash",
+      "priceUsd": 1185.1,
+      "marketCapUsd": 20042835751,
+      "marketCapRank": 9,
+      "tv": "ZECUSD",
+      "tvCandidates": [
+        "ZECUSD",
+        "COINBASE:ZECUSD",
+        "BINANCE:ZECUSDT",
+        "CRYPTO:ZECUSD"
+      ],
+      "yahoo": "ZEC-USD"
+    },
+    {
+      "rank": 8,
+      "symbol": "HYPE",
+      "name": "Hyperliquid",
+      "id": "hyperliquid",
+      "priceUsd": 87.58,
+      "marketCapUsd": 19488312814,
+      "marketCapRank": 10,
+      "tv": "HYPEUSD",
+      "tvCandidates": [
+        "HYPEUSD",
+        "COINBASE:HYPEUSD",
+        "BINANCE:HYPEUSDT",
+        "CRYPTO:HYPEUSD"
+      ],
+      "yahoo": "HYPE-USD"
+    },
+    {
+      "rank": 9,
+      "symbol": "DOGE",
+      "name": "Dogecoin",
+      "id": "dogecoin",
+      "priceUsd": 0.090908,
+      "marketCapUsd": 14163721521,
+      "marketCapRank": 11,
+      "tv": "DOGEUSD",
+      "tvCandidates": [
+        "DOGEUSD",
+        "COINBASE:DOGEUSD",
+        "BINANCE:DOGEUSDT",
+        "CRYPTO:DOGEUSD"
+      ],
+      "yahoo": "DOGE-USD"
+    },
+    {
+      "rank": 10,
+      "symbol": "RAIN",
+      "name": "Rain",
+      "id": "rain",
+      "priceUsd": 0.01646043,
+      "marketCapUsd": 11675436253,
+      "marketCapRank": 12,
+      "tv": "RAINUSD",
+      "tvCandidates": [
+        "RAINUSD",
+        "COINBASE:RAINUSD",
+        "BINANCE:RAINUSDT",
+        "CRYPTO:RAINUSD"
+      ],
+      "yahoo": "RAIN-USD"
+    },
+    {
+      "rank": 11,
+      "symbol": "XMR",
+      "name": "Monero",
+      "id": "monero",
+      "priceUsd": 536.5,
+      "marketCapUsd": 10085595124,
+      "marketCapRank": 13,
+      "tv": "XMRUSD",
+      "tvCandidates": [
+        "XMRUSD",
+        "COINBASE:XMRUSD",
+        "BINANCE:XMRUSDT",
+        "CRYPTO:XMRUSD"
+      ],
+      "yahoo": "XMR-USD"
+    },
+    {
+      "rank": 12,
+      "symbol": "LINK",
+      "name": "Chainlink",
+      "id": "chainlink",
+      "priceUsd": 13.15,
+      "marketCapUsd": 9838483452,
+      "marketCapRank": 15,
+      "tv": "LINKUSD",
+      "tvCandidates": [
+        "LINKUSD",
+        "COINBASE:LINKUSD",
+        "BINANCE:LINKUSDT",
+        "CRYPTO:LINKUSD"
+      ],
+      "yahoo": "LINK-USD"
+    },
+    {
+      "rank": 13,
+      "symbol": "WBT",
+      "name": "WhiteBIT Coin",
+      "id": "whitebit",
+      "priceUsd": 73.2,
+      "marketCapUsd": 8635378247,
+      "marketCapRank": 16,
+      "tv": "WBTUSD",
+      "tvCandidates": [
+        "WBTUSD",
+        "COINBASE:WBTUSD",
+        "BINANCE:WBTUSDT",
+        "CRYPTO:WBTUSD"
+      ],
+      "yahoo": "WBT-USD"
+    },
+    {
+      "rank": 14,
+      "symbol": "LEO",
+      "name": "LEO Token",
+      "id": "leo-token",
+      "priceUsd": 9.18,
+      "marketCapUsd": 8444409979,
+      "marketCapRank": 17,
+      "tv": "LEOUSD",
+      "tvCandidates": [
+        "LEOUSD",
+        "COINBASE:LEOUSD",
+        "BINANCE:LEOUSDT",
+        "CRYPTO:LEOUSD"
+      ],
+      "yahoo": "LEO-USD"
+    },
+    {
+      "rank": 15,
+      "symbol": "ADA",
+      "name": "Cardano",
+      "id": "cardano",
+      "priceUsd": 0.222709,
+      "marketCapUsd": 8350761107,
+      "marketCapRank": 18,
+      "tv": "ADAUSD",
+      "tvCandidates": [
+        "ADAUSD",
+        "COINBASE:ADAUSD",
+        "BINANCE:ADAUSDT",
+        "CRYPTO:ADAUSD"
+      ],
+      "yahoo": "ADA-USD"
+    },
+    {
+      "rank": 16,
+      "symbol": "XLM",
+      "name": "Stellar",
+      "id": "stellar",
+      "priceUsd": 0.192408,
+      "marketCapUsd": 6695823537,
+      "marketCapRank": 19,
+      "tv": "XLMUSD",
+      "tvCandidates": [
+        "XLMUSD",
+        "COINBASE:XLMUSD",
+        "BINANCE:XLMUSDT",
+        "CRYPTO:XLMUSD"
+      ],
+      "yahoo": "XLM-USD"
+    },
+    {
+      "rank": 17,
+      "symbol": "BCH",
+      "name": "Bitcoin Cash",
+      "id": "bitcoin-cash",
+      "priceUsd": 260.5,
+      "marketCapUsd": 5233562185,
+      "marketCapRank": 20,
+      "tv": "BCHUSD",
+      "tvCandidates": [
+        "BCHUSD",
+        "COINBASE:BCHUSD",
+        "BINANCE:BCHUSDT",
+        "CRYPTO:BCHUSD"
+      ],
+      "yahoo": "BCH-USD"
+    },
+    {
+      "rank": 18,
+      "symbol": "LTC",
+      "name": "Litecoin",
+      "id": "litecoin",
+      "priceUsd": 57.54,
+      "marketCapUsd": 4462327688,
+      "marketCapRank": 22,
+      "tv": "LTCUSD",
+      "tvCandidates": [
+        "LTCUSD",
+        "COINBASE:LTCUSD",
+        "BINANCE:LTCUSDT",
+        "CRYPTO:LTCUSD"
+      ],
+      "yahoo": "LTC-USD"
+    },
+    {
+      "rank": 19,
+      "symbol": "UNI",
+      "name": "Uniswap",
+      "id": "uniswap",
+      "priceUsd": 7.09,
+      "marketCapUsd": 4417428251,
+      "marketCapRank": 23,
+      "tv": "UNIUSD",
+      "tvCandidates": [
+        "UNIUSD",
+        "COINBASE:UNIUSD",
+        "BINANCE:UNIUSDT",
+        "CRYPTO:UNIUSD"
+      ],
+      "yahoo": "UNI-USD"
+    },
+    {
+      "rank": 20,
+      "symbol": "CC",
+      "name": "Canton",
+      "id": "canton-network",
+      "priceUsd": 0.108536,
+      "marketCapUsd": 4292284044,
+      "marketCapRank": 25,
+      "tv": "CCUSD",
+      "tvCandidates": [
+        "CCUSD",
+        "COINBASE:CCUSD",
+        "BINANCE:CCUSDT",
+        "CRYPTO:CCUSD"
+      ],
+      "yahoo": "CC-USD"
+    }
+  ],
+  "reserves": [
+    {
+      "rank": 21,
+      "symbol": "GRAM",
+      "name": "Gram (prev. Toncoin)",
+      "id": "the-open-network",
+      "priceUsd": 1.42,
+      "marketCapUsd": 3938104629,
+      "marketCapRank": 27,
+      "tv": "GRAMUSD",
+      "tvCandidates": [
+        "GRAMUSD",
+        "COINBASE:GRAMUSD",
+        "BINANCE:GRAMUSDT",
+        "CRYPTO:GRAMUSD"
+      ],
+      "yahoo": "GRAM-USD"
+    },
+    {
+      "rank": 22,
+      "symbol": "HBAR",
+      "name": "Hedera",
+      "id": "hedera-hashgraph",
+      "priceUsd": 0.082994,
+      "marketCapUsd": 3638582956,
+      "marketCapRank": 28,
+      "tv": "HBARUSD",
+      "tvCandidates": [
+        "HBARUSD",
+        "COINBASE:HBARUSD",
+        "BINANCE:HBARUSDT",
+        "CRYPTO:HBARUSD"
+      ],
+      "yahoo": "HBAR-USD"
+    },
+    {
+      "rank": 23,
+      "symbol": "AVAX",
+      "name": "Avalanche",
+      "id": "avalanche-2",
+      "priceUsd": 8.08,
+      "marketCapUsd": 3488970431,
+      "marketCapRank": 29,
+      "tv": "AVAXUSD",
+      "tvCandidates": [
+        "AVAXUSD",
+        "COINBASE:AVAXUSD",
+        "BINANCE:AVAXUSDT",
+        "CRYPTO:AVAXUSD"
+      ],
+      "yahoo": "AVAX-USD"
+    },
+    {
+      "rank": 24,
+      "symbol": "SUI",
+      "name": "Sui",
+      "id": "sui",
+      "priceUsd": 0.832063,
+      "marketCapUsd": 3409610766,
+      "marketCapRank": 30,
+      "tv": "SUIUSD",
+      "tvCandidates": [
+        "SUIUSD",
+        "COINBASE:SUIUSD",
+        "BINANCE:SUIUSDT",
+        "CRYPTO:SUIUSD"
+      ],
+      "yahoo": "SUI-USD"
+    },
+    {
+      "rank": 25,
+      "symbol": "SHIB",
+      "name": "Shiba Inu",
+      "id": "shiba-inu",
+      "priceUsd": 0.00000552,
+      "marketCapUsd": 3254647221,
+      "marketCapRank": 32,
+      "tv": "SHIBUSD",
+      "tvCandidates": [
+        "SHIBUSD",
+        "COINBASE:SHIBUSD",
+        "BINANCE:SHIBUSDT",
+        "CRYPTO:SHIBUSD"
+      ],
+      "yahoo": "SHIB-USD"
+    },
+    {
+      "rank": 26,
+      "symbol": "NEAR",
+      "name": "NEAR Protocol",
+      "id": "near",
+      "priceUsd": 2.39,
+      "marketCapUsd": 3114397408,
+      "marketCapRank": 33,
+      "tv": "NEARUSD",
+      "tvCandidates": [
+        "NEARUSD",
+        "COINBASE:NEARUSD",
+        "BINANCE:NEARUSDT",
+        "CRYPTO:NEARUSD"
+      ],
+      "yahoo": "NEAR-USD"
+    },
+    {
+      "rank": 27,
+      "symbol": "CRO",
+      "name": "Cronos",
+      "id": "crypto-com-chain",
+      "priceUsd": 0.057846,
+      "marketCapUsd": 2801733991,
+      "marketCapRank": 36,
+      "tv": "CROUSD",
+      "tvCandidates": [
+        "CROUSD",
+        "COINBASE:CROUSD",
+        "BINANCE:CROUSDT",
+        "CRYPTO:CROUSD"
+      ],
+      "yahoo": "CRO-USD"
+    },
+    {
+      "rank": 28,
+      "symbol": "XAUT",
+      "name": "Tether Gold",
+      "id": "tether-gold",
+      "priceUsd": 4399.46,
+      "marketCapUsd": 2696208559,
+      "marketCapRank": 37,
+      "tv": "XAUTUSD",
+      "tvCandidates": [
+        "XAUTUSD",
+        "COINBASE:XAUTUSD",
+        "BINANCE:XAUTUSDT",
+        "CRYPTO:XAUTUSD"
+      ],
+      "yahoo": "XAUT-USD"
+    }
+  ],
+  "excluded": [
+    {
+      "symbol": "USDT",
+      "name": "Tether",
+      "reason": "denylisted (stablecoin, wrapper or non-spot instrument)"
+    },
+    {
+      "symbol": "USDC",
+      "name": "USDC",
+      "reason": "denylisted (stablecoin, wrapper or non-spot instrument)"
+    },
+    {
+      "symbol": "FIGR_HELOC",
+      "name": "Figure Heloc",
+      "reason": "denylisted (stablecoin, wrapper or non-spot instrument)"
+    },
+    {
+      "symbol": "USDS",
+      "name": "USDS",
+      "reason": "denylisted (stablecoin, wrapper or non-spot instrument)"
+    },
+    {
+      "symbol": "DAI",
+      "name": "Dai",
+      "reason": "denylisted (stablecoin, wrapper or non-spot instrument)"
+    },
+    {
+      "symbol": "USDE",
+      "name": "Ethena USDe",
+      "reason": "denylisted (stablecoin, wrapper or non-spot instrument)"
+    },
+    {
+      "symbol": "USD1",
+      "name": "USD1",
+      "reason": "denylisted (stablecoin, wrapper or non-spot instrument)"
+    },
+    {
+      "symbol": "USDG",
+      "name": "Global Dollar",
+      "reason": "stablecoin (pegged to $1)"
+    },
+    {
+      "symbol": "PYUSD",
+      "name": "PayPal USD",
+      "reason": "denylisted (stablecoin, wrapper or non-spot instrument)"
+    },
+    {
+      "symbol": "BUIDL",
+      "name": "BlackRock USD Institutional Digital Liquidity Fund",
+      "reason": "denylisted (stablecoin, wrapper or non-spot instrument)"
+    },
+    {
+      "symbol": "M",
+      "name": "MemeCore",
+      "reason": "ticker is not a spot pair symbol"
+    },
+    {
+      "symbol": "RLUSD",
+      "name": "Ripple USD",
+      "reason": "stablecoin (pegged to $1)"
+    },
+    {
+      "symbol": "USDD",
+      "name": "USDD",
+      "reason": "stablecoin (pegged to $1)"
+    }
+  ]
+}

@@ -9,12 +9,22 @@
  */
 import { loadConfig } from './config.js';
 import { loadReportModel, findRow } from './report-model.js';
-import { buildSummaryTable, selectPostCandidates, classifySetup, cohortCandidates, CONFIDENCE_RANK } from './setup.js';
+import { buildSummaryTable, selectPostCandidates, classifySetup, cohortCandidates, CONFIDENCE_RANK, qualityRank } from './setup.js';
+import { SetupTracker, openFromSetup, detectEvents, graduate, scorecardStats, weekBounds, EVENT, markRemoved } from './tracker.js';
+import { generateFollowUp, followUpModel, followUpSetup, followUpRow, followUpChartOverrides, generateScorecard, buildScorecardSpec, scorecardAltText } from './followup.js';
+import { MetricsStore, readInsights, insightsBoost } from './metrics.js';
+import { TOPICS, getTopic, nextTopic, generateEducationPost, buildEducationSpec, educationAltText } from './education.js';
+import { initialStage } from './sweep-labels.js';
+import { generatePremarketPost, buildPremarketSpec, premarketAltText } from './premarket-post.js';
+import { loadReport as loadPremarketReport, DEFAULT_OUT_DIR as PREMARKET_DIR } from '../premarket/index.js';
+import { etDate } from '../premarket/data.js';
+import { join, dirname } from 'node:path';
 import { generatePost } from './generate.js';
 import { validatePost, blocking, textHash, isHashtagLine } from './compliance.js';
 import { AuditStore } from './audit.js';
 import { postTweet, uploadMedia, getCredentialsFromEnv } from './x-client.js';
-import { makeChart } from './chart.js';
+import { makeChart, renderChartSpec, DEFAULT_CHART_DIR } from './chart.js';
+import { fetchDailyCandles } from './chart-data.js';
 
 export * from './setup.js';
 export * from './compliance.js';
@@ -24,13 +34,28 @@ export { loadConfig } from './config.js';
 export { AuditStore } from './audit.js';
 export { makeChart, buildChartSpec, chartAltText } from './chart.js';
 export { fetchDailyCandles, parseYahooChart } from './chart-data.js';
+export * from './tracker.js';
+export * from './followup.js';
+export * from './metrics.js';
+export * from './education.js';
+export { STAGE, stageLabel, initialStage, sweepLabels } from './sweep-labels.js';
 
 export class SocialWorkflow {
-  constructor({ config = loadConfig(), audit = new AuditStore(), now = () => new Date(), actor = process.env.USER || 'user' } = {}) {
+  constructor({ config = loadConfig(), audit = new AuditStore(), tracker = null, metrics = null, now = () => new Date(), actor = process.env.USER || 'user', insights = undefined } = {}) {
     this.config = config;
     this.audit = audit;
+    // The lifecycle tracker and the metrics log live next to the audit log, so
+    // a workflow pointed at a scratch audit file (tests, dry runs) never touches
+    // the real docs/social/ state. Explicit env paths still win.
+    this.tracker = tracker ?? new SetupTracker(process.env.SOCIAL_TRACKER_PATH || join(dirname(audit.path), 'setups.jsonl'));
+    this.metrics = metrics ?? new MetricsStore(process.env.SOCIAL_METRICS_PATH || join(dirname(audit.path), 'metrics.jsonl'));
     this.now = now;
     this.actor = actor;
+    this.insights = insights; // undefined = read docs/social/insights.json lazily; null = none
+  }
+
+  get queue() {
+    return this.config.queue ?? 'stocks';
   }
 
   // ─── report → table ────────────────────────────────────────────────────────
@@ -50,16 +75,26 @@ export class SocialWorkflow {
   }
 
   validateRecord(rec, model, { staleAcknowledged = !!rec.staleAcknowledged } = {}) {
+    const common = { config: this.config, now: this.now(), priorRecords: this.audit.latest(), draftId: rec.id, staleAcknowledged, chart: rec.chart ?? null };
+    if (rec.kind === 'followup') {
+      // Numbers come from the tracker record + the event, never from a report row.
+      const tr = this.tracker.get(rec.followUpOf);
+      if (!tr) return [{ code: 'missing_tracker', severity: 'block', message: `No tracked setup ${rec.followUpOf} for this follow-up` }];
+      const setup = followUpSetup(tr, rec.event);
+      return validatePost(this.currentText(rec), { ...common, setup, row: followUpRow(tr, rec.event), model: followUpModel(tr, rec.event), kind: 'followup', stage: setup.stage });
+    }
+    if (rec.kind === 'scorecard') {
+      return validatePost(this.currentText(rec), { ...common, setup: null, row: null, model: { reportDate: rec.reportDate, dataAsOf: rec.dataAsOf }, kind: 'scorecard', scorecard: rec.scorecard });
+    }
+    if (rec.kind === 'education') {
+      return validatePost(this.currentText(rec), { ...common, setup: null, row: null, model: { reportDate: rec.reportDate, dataAsOf: rec.dataAsOf }, kind: 'education' });
+    }
+    if (rec.kind === 'premarket') {
+      return validatePost(this.currentText(rec), { ...common, setup: null, row: null, model: { reportDate: rec.reportDate, dataAsOf: rec.dataAsOf }, kind: 'premarket', premarket: rec.premarket });
+    }
     const row = findRow(model, rec.symbol);
     const setup = row ? classifySetup(row) : null;
-    return validatePost(this.currentText(rec), {
-      setup, row, model, config: this.config,
-      now: this.now(),
-      priorRecords: this.audit.latest(),
-      draftId: rec.id,
-      staleAcknowledged,
-      chart: rec.chart ?? null,
-    });
+    return validatePost(this.currentText(rec), { ...common, setup, row, model });
   }
 
   /**
@@ -91,6 +126,9 @@ export class SocialWorkflow {
       const id = this.audit.newId(setup.symbol, model.reportDate);
       const base = {
         id,
+        kind: 'setup',
+        stage: initialStage(setup),
+        queue: this.queue,
         symbol: setup.symbol,
         reportDate: model.reportDate,
         reportPath,
@@ -207,13 +245,43 @@ export class SocialWorkflow {
     if (!result.ok) {
       return this.audit.append({ ...rec, issues, status: 'failed', error: result.error, publication: null });
     }
-    return this.audit.append({
+    const pub = this.audit.append({
       ...rec,
       issues,
       status: 'published',
       error: null,
       publication: { at: this.now().toISOString(), xPostId: result.id, url: result.url, method: 'x-api', mediaIds, chartNote },
     });
+    this.afterPublished(pub, model);
+    return pub;
+  }
+
+  /**
+   * Once a post is live, the tracker learns about it: a setup post opens (or
+   * completes) its lifecycle record; a follow-up is appended to the record it
+   * belongs to. Scorecards are not tracked.
+   */
+  afterPublished(pub, model) {
+    const post = { stage: pub.stage ?? null, auditId: pub.id, xPostId: pub.publication?.xPostId ?? null, url: pub.publication?.url ?? null, at: pub.publication?.at ?? this.now().toISOString() };
+    if (pub.kind === 'followup') {
+      const tr = this.tracker.get(pub.followUpOf);
+      if (tr && !tr.posts.some(p => p.auditId === pub.id)) this.tracker.append({ ...tr, posts: [...tr.posts, post] });
+      return;
+    }
+    if (pub.kind === 'scorecard' || pub.kind === 'education' || pub.kind === 'premarket') return;
+    const existing = this.tracker.get(pub.id);
+    if (existing) {
+      this.tracker.append({ ...existing, posts: existing.posts.map(p => (p.auditId === pub.id ? { ...p, ...post } : p)) });
+      return;
+    }
+    const row = model ? findRow(model, pub.symbol) : null;
+    const setup = row ? classifySetup(row) : null;
+    if (!setup) return;
+    // Records written before queues existed are stock posts; only a record
+    // tagged with this job's own queue inherits this config's asset class.
+    const queue = pub.queue ?? 'stocks';
+    const assetClass = queue === this.queue ? (this.config.assetClass ?? 'equity') : queue === 'crypto' ? 'crypto' : 'equity';
+    this.tracker.append(openFromSetup(pub, setup, { queue, assetClass, now: this.now() }));
   }
 
   /**
@@ -226,17 +294,25 @@ export class SocialWorkflow {
     if (!['approved', 'ready_to_post'].includes(rec.status)) throw new Error(`Only approved drafts can be recorded as published (status: ${rec.status})`);
     if (!xPostId) throw new Error('xPostId is required');
     const issues = this.validateRecord(rec, model);
-    return this.audit.append({
+    const pub = this.audit.append({
       ...rec,
       issues,
       status: 'published',
       publication: { at: this.now().toISOString(), xPostId, url: url ?? `https://x.com/i/web/status/${xPostId}`, method: rec.status === 'ready_to_post' ? 'browser' : 'manual' },
     });
+    this.afterPublished(pub, model);
+    return pub;
   }
 
-  /** Drafts approved by the auto-publish policy that are waiting for the browser poster. */
-  ready() {
-    return this.audit.latest().filter(r => r.status === 'ready_to_post');
+  /**
+   * Drafts approved by the auto-publish policy that are waiting for the browser
+   * poster. `queue` scopes the result to one sweep ('stocks' | 'crypto'); records
+   * written before queues existed are treated as 'stocks'.
+   */
+  ready({ queue = null } = {}) {
+    return this.audit.latest()
+      .filter(r => r.status === 'ready_to_post')
+      .filter(r => queue == null || (r.queue ?? 'stocks') === queue);
   }
 
   // ─── auto-publish (policy-gated, unattended) ───────────────────────────────
@@ -260,9 +336,14 @@ export class SocialWorkflow {
     const refuse = reason => { summary.refused = reason; return summary; };
 
     if (!policy.enabled) return refuse(policy.disabledBy ? `auto-publish disabled by ${policy.disabledBy}` : 'auto-publish is disabled in config (posting.autoPublish.enabled)');
-    if ((this.config.marketHolidays ?? []).includes(model.reportDate)) return refuse(`${model.reportDate} is a market holiday — the report only re-shows the prior session`);
-    const dow = new Date(model.reportDate + 'T12:00:00Z').getUTCDay();
-    if (dow === 0 || dow === 6) return refuse(`${model.reportDate} is a weekend`);
+    // Session calendar. 'nyse' (the default) refuses on exchange holidays and
+    // weekends, when a report can only be re-showing the prior session. '24x7'
+    // markets — crypto — have no closed days, so neither gate applies there.
+    if ((this.config.marketCalendar ?? 'nyse') !== '24x7') {
+      if ((this.config.marketHolidays ?? []).includes(model.reportDate)) return refuse(`${model.reportDate} is a market holiday — the report only re-shows the prior session`);
+      const dow = new Date(model.reportDate + 'T12:00:00Z').getUTCDay();
+      if (dow === 0 || dow === 6) return refuse(`${model.reportDate} is a weekend`);
+    }
     const ageH = (now - new Date(model.dataAsOf)) / 3600_000;
     if (!Number.isFinite(ageH) || ageH > this.config.maxReportAgeHours) {
       return refuse(`report data is ${Number.isFinite(ageH) ? ageH.toFixed(1) + 'h' : 'of unknown age'} (limit ${this.config.maxReportAgeHours}h) — auto mode never overrides freshness`);
@@ -297,6 +378,21 @@ export class SocialWorkflow {
       candidates = table;
     }
 
+    // "1 highest-quality setup": rank by the classifier's quality (confirmed,
+    // confidence, |score|), then by what has historically engaged (a tiebreak
+    // read from docs/social/insights.json), then alphabetically — and cap by
+    // maxPostsPerRun below. When nothing clears minConfidence/requireSignal the
+    // run publishes nothing; a post is never forced.
+    if ((policy.candidateOrder ?? 'report') === 'quality') {
+      const insights = this.insights === undefined ? readInsights() : this.insights;
+      candidates = [...candidates].sort((a, b) =>
+        qualityRank(b) - qualityRank(a)
+        || insightsBoost(insights, b, this.queue) - insightsBoost(insights, a, this.queue)
+        || Math.abs(b.score ?? 0) - Math.abs(a.score ?? 0)
+        || a.symbol.localeCompare(b.symbol));
+      summary.candidateOrder = candidates.map(c => `${c.symbol}:${c.signal}/${c.confidence}`);
+    }
+
     for (const setup of candidates) {
       if (summary.published.length >= (policy.maxPostsPerRun ?? 1)) { summary.capped = true; break; }
       const row = findRow(model, setup.symbol);
@@ -310,6 +406,10 @@ export class SocialWorkflow {
       if (kw) { skip(`report note mentions "${kw}": ${row.biasNext}`); continue; }
       const cool = recent.find(r => r.symbol === setup.symbol);
       if (cool) { skip(`posted ${cool.publication.at.slice(0, 16)}Z — within ${cooldownLabel} cooldown (${cool.id})`); continue; }
+      if (policy.skipTracked !== false) {
+        const open = this.tracker.openFor(setup.symbol, this.queue);
+        if (open) { skip(`already tracked as ${open.stageLabel} since ${open.reportDate} (${open.id}) — follow-ups cover it`); continue; }
+      }
 
       const [rec] = await this.draft(model, { symbol: setup.symbol, reportPath, chartOpts: { fetchImpl: fetchImplForCharts } });
       const issues = rec.issues;
@@ -353,6 +453,215 @@ export class SocialWorkflow {
       if (pub.status === 'published') summary.published.push({ id: pub.id, symbol: setup.symbol, cohort: setup.cohort, text, url: pub.publication.url, xPostId: pub.publication.xPostId, chart: rec.chart?.path ?? null, chartNote: pub.publication.chartNote });
       else skip(`publish failed: ${pub.error}`);
     }
+    if (!summary.published.length && !summary.refused) summary.noSetup = 'no setup met the quality bar — nothing posted (by design)';
+    return summary;
+  }
+
+  /**
+   * A published post has been taken down on X. The audit record moves to
+   * status 'removed' (so it holds no cooldown, no duplicate claim and no
+   * metrics), and its lifecycle record — if it is a setup — closes as REMOVED,
+   * which the scorecard neither counts nor scores.
+   */
+  removePost(id, { reason = 'post removed on X' } = {}) {
+    const rec = this.mustGet(id);
+    if (rec.status !== 'published') throw new Error(`Only published posts can be marked removed (status: ${rec.status})`);
+    const audit = this.audit.append({ ...rec, status: 'removed', removal: { by: this.actor, reason, at: this.now().toISOString() } });
+    const tr = this.tracker.get(rec.followUpOf ?? rec.id);
+    let tracked = null;
+    if (tr && rec.kind !== 'followup') tracked = this.tracker.append(markRemoved(tr, { reason, now: this.now() }));
+    return { audit, tracked };
+  }
+
+  // ─── lifecycle follow-ups ──────────────────────────────────────────────────
+
+  /** Draft one follow-up post for a lifecycle event on a tracked setup. */
+  async draftFollowUp(tr, event, { chartOpts = {} } = {}) {
+    const model = followUpModel(tr, event);
+    const setup = followUpSetup(tr, event);
+    let chartRec = null;
+    if (this.config.charts?.enabled) {
+      const chart = await makeChart(setup, model, this.config, { ...chartOpts, overrides: followUpChartOverrides(tr, event, this.config), name: `${tr.symbol}-${event.type}` });
+      chartRec = chart.error
+        ? { path: null, error: chart.error }
+        : { path: chart.path, altText: chart.altText, bars: chart.bars, lastBar: chart.lastBar, volumeRatio: chart.volumeRatio, volumeAvg: chart.volumeAvg };
+    }
+    const { text } = generateFollowUp(tr, event, this.config);
+    const base = {
+      id: this.audit.newId(`${tr.symbol}-${event.type}`, event.bar),
+      kind: 'followup',
+      stage: setup.stage,
+      followUpOf: tr.id,
+      event,
+      queue: tr.queue ?? this.queue,
+      symbol: tr.symbol,
+      reportDate: event.bar,
+      reportPath: tr.reportPath ?? null,
+      dataAsOf: model.dataAsOf,
+      setup: { setup: tr.setupName, signal: tr.signal, confidence: tr.confidence, direction: tr.direction, score: tr.score },
+      originalText: text,
+      editedText: null,
+      textHash: textHash(text),
+      status: 'draft',
+      issues: [],
+      staleAcknowledged: null,
+      approval: null,
+      publication: null,
+      error: null,
+      createdAt: this.now().toISOString(),
+      chart: chartRec,
+    };
+    base.issues = this.validateRecord(base, model);
+    return this.audit.append(base);
+  }
+
+  /**
+   * Walk every open setup in this queue: graduate DEVELOPING ones the latest
+   * report now confirms, detect breakouts / invalidations / level tests on the
+   * daily closes since the post, and queue a follow-up for each event through
+   * the same approval path as a daily post. Expiries close the record quietly.
+   */
+  async trackEvents({ dryRun = false, model = null, fetchImplForCandles, fetchImplForCharts, creds = getCredentialsFromEnv(), fetchImpl } = {}) {
+    const fu = this.config.followUps ?? {};
+    const policy = this.config.posting.autoPublish ?? {};
+    const via = policy.via ?? 'api';
+    const now = this.now();
+    const summary = { dryRun, queue: this.queue, checked: 0, events: [], queued: [], skipped: [], expired: [], refused: null };
+    if (fu.enabled === false) { summary.refused = 'follow-ups are disabled in config (followUps.enabled)'; return summary; }
+    if (policy.disabledBy) { summary.refused = `auto-publish disabled by ${policy.disabledBy}`; return summary; }
+
+    for (const rec of this.tracker.active().filter(r => (r.queue ?? 'stocks') === this.queue)) {
+      summary.checked++;
+      let candles;
+      try {
+        candles = await fetchDailyCandles(rec.symbol, { bars: 120, fetchImpl: fetchImplForCandles, assetClass: rec.assetClass ?? 'equity' });
+      } catch (err) {
+        summary.skipped.push({ id: rec.id, symbol: rec.symbol, reason: `no candles: ${err.message}` });
+        continue;
+      }
+      let next = rec;
+      const events = [];
+      if (model) {
+        const row = findRow(model, rec.symbol);
+        const s = row ? classifySetup(row) : null;
+        const g = s ? graduate(next, s, model, { now }) : null;
+        if (g) { events.push(g.event); next = g.next; }
+      }
+      // `pre` is the record as it stood before this run's bars were applied
+      // (after any graduation). A level test is drafted against that state —
+      // it happened while the setup was still open — while terminal events
+      // are drafted against the closed record.
+      const pre = next;
+      const det = detectEvents(next, candles, { maxAgeSessions: fu.maxAgeSessions ?? 15, now });
+      events.push(...det.events);
+      next = det.next;
+
+      for (const ev of events) {
+        summary.events.push({ id: rec.id, symbol: rec.symbol, type: ev.type, bar: ev.bar, price: ev.price, pct: ev.pct });
+        if (ev.type === EVENT.EXPIRED) { summary.expired.push({ id: rec.id, symbol: rec.symbol, bar: ev.bar }); continue; }
+        if (ev.type === EVENT.LEVEL_TEST && fu.postLevelTests === false) continue;
+        const basis = ev.type === EVENT.LEVEL_TEST || ev.type === EVENT.CONFIRMED ? pre : next;
+        const d = await this.draftFollowUp(basis, ev, { chartOpts: { fetchImpl: fetchImplForCharts, candles } });
+        const blockers = blocking(d.issues);
+        const warns = d.issues.filter(i => i.severity === 'warn');
+        if (blockers.length || (warns.length && !policy.allowWarnings)) {
+          const reason = [...blockers, ...warns].map(i => `${i.code}: ${i.message}`).join('; ');
+          this.audit.append({ ...d, status: 'auto_skipped', autoSkipReason: reason });
+          summary.skipped.push({ id: d.id, symbol: rec.symbol, type: ev.type, reason });
+          continue;
+        }
+        const text = this.currentText(d);
+        if (dryRun) {
+          this.audit.append({ ...d, status: 'auto_dry_run' });
+          summary.queued.push({ id: d.id, symbol: rec.symbol, type: ev.type, text, chart: d.chart?.path ?? null, dryRun: true });
+          continue;
+        }
+        const approver = new SocialWorkflow({ config: this.config, audit: this.audit, tracker: this.tracker, metrics: this.metrics, now: this.now, actor: 'lifecycle policy', insights: this.insights });
+        const approved = approver.approve(d.id, null);
+        if (via === 'browser') {
+          const ready = this.audit.append({ ...approved, status: 'ready_to_post' });
+          summary.queued.push({ id: ready.id, symbol: rec.symbol, type: ev.type, text, chart: d.chart?.path ?? null, ready: true });
+        } else {
+          const pub = await approver.publish(approved.id, null, { creds, fetchImpl });
+          if (pub.status === 'published') summary.queued.push({ id: pub.id, symbol: rec.symbol, type: ev.type, text, url: pub.publication.url, chart: d.chart?.path ?? null });
+          else summary.skipped.push({ id: pub.id, symbol: rec.symbol, type: ev.type, reason: `publish failed: ${pub.error}` });
+        }
+      }
+      if (!dryRun && (events.length || next.lastCheckedBar !== rec.lastCheckedBar)) this.tracker.append(next);
+    }
+    return summary;
+  }
+
+  // ─── weekly scorecard ──────────────────────────────────────────────────────
+
+  /** Build, validate and queue the weekly scorecard for the week containing `date`. */
+  async queueScorecard({ date = this.now().toISOString().slice(0, 10), dryRun = false, chartOpts = {}, creds = getCredentialsFromEnv(), fetchImpl } = {}) {
+    const sc = this.config.scorecard ?? {};
+    const policy = this.config.posting.autoPublish ?? {};
+    const via = policy.via ?? 'api';
+    const { from, to } = weekBounds(date);
+    const stats = scorecardStats(this.tracker.latest(), { from, to });
+    const summary = { dryRun, from, to, stats, refused: null, record: null };
+    if (sc.enabled === false) { summary.refused = 'scorecard is disabled in config (scorecard.enabled)'; return summary; }
+    if (policy.disabledBy) { summary.refused = `auto-publish disabled by ${policy.disabledBy}`; return summary; }
+    const dup = this.audit.latest().find(r => r.kind === 'scorecard' && r.reportDate === to && ['approved', 'ready_to_post', 'published', 'publishing'].includes(r.status));
+    if (dup) { summary.refused = `scorecard for the week ending ${to} is already ${dup.status} (${dup.id})`; return summary; }
+
+    const { text } = generateScorecard(stats, this.config);
+    let chartRec = null;
+    if (this.config.charts?.enabled) {
+      try {
+        const out = join(chartOpts.dir ?? DEFAULT_CHART_DIR, to, 'SCORECARD.png');
+        renderChartSpec(buildScorecardSpec(stats, this.config, out), { python: chartOpts.python });
+        chartRec = { path: out, altText: scorecardAltText(stats, this.config) };
+      } catch (err) {
+        chartRec = { path: null, error: err.message };
+      }
+    }
+    const base = {
+      id: this.audit.newId('SCORECARD', to),
+      kind: 'scorecard',
+      stage: null,
+      queue: sc.queue ?? 'stocks',
+      symbol: 'SCORECARD',
+      reportDate: to,
+      reportPath: null,
+      dataAsOf: this.now().toISOString(),
+      scorecard: stats,
+      setup: { setup: 'Weekly Setup Scorecard', signal: 'SCORECARD', confidence: '-', direction: 'neutral', score: null },
+      originalText: text,
+      editedText: null,
+      textHash: textHash(text),
+      status: 'draft',
+      issues: [],
+      staleAcknowledged: null,
+      approval: null,
+      publication: null,
+      error: null,
+      createdAt: this.now().toISOString(),
+      chart: chartRec,
+    };
+    base.issues = this.validateRecord(base, null);
+    const rec = this.audit.append(base);
+    const blockers = blocking(rec.issues);
+    const warns = rec.issues.filter(i => i.severity === 'warn');
+    if (blockers.length || (warns.length && !policy.allowWarnings)) {
+      const reason = [...blockers, ...warns].map(i => `${i.code}: ${i.message}`).join('; ');
+      this.audit.append({ ...rec, status: 'auto_skipped', autoSkipReason: reason });
+      summary.refused = reason;
+      return summary;
+    }
+    if (dryRun) { this.audit.append({ ...rec, status: 'auto_dry_run' }); summary.record = { id: rec.id, text, chart: chartRec?.path ?? null, dryRun: true }; return summary; }
+    const approver = new SocialWorkflow({ config: this.config, audit: this.audit, tracker: this.tracker, metrics: this.metrics, now: this.now, actor: 'scorecard policy', insights: this.insights });
+    const approved = approver.approve(rec.id, null);
+    if (via === 'browser') {
+      const ready = this.audit.append({ ...approved, status: 'ready_to_post' });
+      summary.record = { id: ready.id, text, chart: chartRec?.path ?? null, ready: true };
+    } else {
+      const pub = await approver.publish(approved.id, null, { creds, fetchImpl });
+      summary.record = pub.status === 'published' ? { id: pub.id, text, url: pub.publication.url, chart: chartRec?.path ?? null } : null;
+      if (pub.status !== 'published') summary.refused = `publish failed: ${pub.error}`;
+    }
     return summary;
   }
 
@@ -377,6 +686,167 @@ export class SocialWorkflow {
       out.push({ id: `rehearsal-${model.reportDate}-${setup.symbol}`, rehearsal: true, symbol: setup.symbol, reportDate: model.reportDate, text, chart: chart?.path ?? null, altText: chart?.altText ?? null });
     }
     return out;
+  }
+
+  // ─── educational explainers ────────────────────────────────────────────────
+
+  /**
+   * Build, render, validate and queue one educational explainer. Picks the
+   * next topic in rotation unless `topic` is given. Same approval path and
+   * audit trail as every other post (kind 'education', symbol 'EDU').
+   */
+  async queueEducation({ topic = null, dryRun = false, chartOpts = {}, creds = getCredentialsFromEnv(), fetchImpl } = {}) {
+    const ed = this.config.education ?? {};
+    const policy = this.config.posting.autoPublish ?? {};
+    const via = policy.via ?? 'api';
+    const today = this.now().toISOString().slice(0, 10);
+    const summary = { dryRun, topic: null, refused: null, record: null, topics: TOPICS.map(t => t.id) };
+    if (ed.enabled === false) { summary.refused = 'education posts are disabled in config (education.enabled)'; return summary; }
+    if (policy.disabledBy) { summary.refused = `auto-publish disabled by ${policy.disabledBy}`; return summary; }
+    const t = topic ? getTopic(topic) : nextTopic(this.audit.latest());
+    if (!t) { summary.refused = topic ? `unknown topic "${topic}" (known: ${TOPICS.map(x => x.id).join(', ')})` : 'no topic available'; return summary; }
+    summary.topic = t.id;
+    const dup = this.audit.latest().find(r => r.kind === 'education' && r.reportDate === today && ['approved', 'ready_to_post', 'published', 'publishing'].includes(r.status));
+    if (dup) { summary.refused = `an education post for ${today} is already ${dup.status} (${dup.id}, topic ${dup.topic})`; return summary; }
+
+    const { text } = generateEducationPost(t, this.config);
+    let chartRec = null;
+    if (this.config.charts?.enabled) {
+      try {
+        const out = join(chartOpts.dir ?? DEFAULT_CHART_DIR, today, `EDU-${t.id}.png`);
+        renderChartSpec(buildEducationSpec(t, this.config, out), { python: chartOpts.python });
+        chartRec = { path: out, altText: educationAltText(t, this.config) };
+      } catch (err) {
+        chartRec = { path: null, error: err.message };
+      }
+    }
+    const base = {
+      id: this.audit.newId(`EDU-${t.id}`, today),
+      kind: 'education',
+      topic: t.id,
+      stage: null,
+      queue: ed.queue ?? 'stocks',
+      symbol: 'EDU',
+      reportDate: today,
+      reportPath: null,
+      dataAsOf: this.now().toISOString(),
+      setup: { setup: `${t.series}: ${t.title}`, signal: 'EDUCATION', confidence: '-', direction: 'neutral', score: null },
+      originalText: text,
+      editedText: null,
+      textHash: textHash(text),
+      status: 'draft',
+      issues: [],
+      staleAcknowledged: null,
+      approval: null,
+      publication: null,
+      error: null,
+      createdAt: this.now().toISOString(),
+      chart: chartRec,
+    };
+    base.issues = this.validateRecord(base, null);
+    const rec = this.audit.append(base);
+    const blockers = blocking(rec.issues);
+    const warns = rec.issues.filter(i => i.severity === 'warn');
+    if (blockers.length || (warns.length && !policy.allowWarnings)) {
+      const reason = [...blockers, ...warns].map(i => `${i.code}: ${i.message}`).join('; ');
+      this.audit.append({ ...rec, status: 'auto_skipped', autoSkipReason: reason });
+      summary.refused = reason;
+      return summary;
+    }
+    if (dryRun) { this.audit.append({ ...rec, status: 'auto_dry_run' }); summary.record = { id: rec.id, topic: t.id, text, chart: chartRec?.path ?? null, dryRun: true }; return summary; }
+    const approver = new SocialWorkflow({ config: this.config, audit: this.audit, tracker: this.tracker, metrics: this.metrics, now: this.now, actor: 'education policy', insights: this.insights });
+    const approved = approver.approve(rec.id, null);
+    if (via === 'browser') {
+      const ready = this.audit.append({ ...approved, status: 'ready_to_post' });
+      summary.record = { id: ready.id, topic: t.id, text, chart: chartRec?.path ?? null, ready: true };
+    } else {
+      const pub = await approver.publish(approved.id, null, { creds, fetchImpl });
+      summary.record = pub.status === 'published' ? { id: pub.id, topic: t.id, text, url: pub.publication.url, chart: chartRec?.path ?? null } : null;
+      if (pub.status !== 'published') summary.refused = `publish failed: ${pub.error}`;
+    }
+    return summary;
+  }
+
+  // ─── premarket market-direction post ───────────────────────────────────────
+
+  /**
+   * Build, render, validate and queue the X post for the premarket report of
+   * `date` (docs/reports/premarket/premarket-<date>.json, written by
+   * `tv premarket`). One post per session date; same approval path and audit
+   * trail as every other kind (kind 'premarket', symbol 'MKT').
+   */
+  async queuePremarket({ date = null, dryRun = false, chartOpts = {}, creds = getCredentialsFromEnv(), fetchImpl } = {}) {
+    const pm = this.config.premarket ?? {};
+    const policy = this.config.posting.autoPublish ?? {};
+    const via = policy.via ?? 'api';
+    const day = date ?? etDate(this.now());
+    const summary = { dryRun, date: day, sessionDate: null, bias: null, refused: null, record: null };
+    if (pm.enabled === false) { summary.refused = 'premarket posts are disabled in config (premarket.enabled)'; return summary; }
+    if (policy.disabledBy) { summary.refused = `auto-publish disabled by ${policy.disabledBy}`; return summary; }
+    const report = loadPremarketReport(chartOpts.reportDir ?? PREMARKET_DIR, day);
+    if (!report) { summary.refused = `no premarket report for ${day} — run "tv premarket" first`; return summary; }
+    summary.sessionDate = report.sessionDate;
+    summary.bias = report.bias;
+    const dup = this.audit.latest().find(r => r.kind === 'premarket' && r.premarket?.sessionDate === report.sessionDate && ['approved', 'ready_to_post', 'published', 'publishing'].includes(r.status));
+    if (dup) { summary.refused = `a premarket post for session ${report.sessionDate} is already ${dup.status} (${dup.id})`; return summary; }
+
+    const { text, levels } = generatePremarketPost(report, this.config);
+    let chartRec = null;
+    if (this.config.charts?.enabled) {
+      try {
+        const out = join(chartOpts.dir ?? DEFAULT_CHART_DIR, day, `MKT-premarket-${report.sessionDate}.png`);
+        renderChartSpec(buildPremarketSpec(report, this.config, out), { python: chartOpts.python });
+        chartRec = { path: out, altText: premarketAltText(report, this.config) };
+      } catch (err) {
+        chartRec = { path: null, error: err.message };
+      }
+    }
+    const base = {
+      id: this.audit.newId('MKT-premarket', day),
+      kind: 'premarket',
+      topic: null,
+      stage: null,
+      queue: pm.queue ?? 'stocks',
+      symbol: 'MKT',
+      reportDate: day,
+      reportPath: join(chartOpts.reportDir ?? PREMARKET_DIR, `premarket-${day}.json`),
+      dataAsOf: report.dataAsOf ?? report.generatedAt,
+      premarket: { sessionDate: report.sessionDate, bias: report.bias, confidence: report.confidence, composite: report.composite, levels, holiday: report.holiday?.name ?? null },
+      setup: { setup: `Premarket: ${report.bias}`, signal: 'PREMARKET', confidence: `${report.confidence}/100`, direction: report.bias === 'Bullish' ? 'bullish' : report.bias === 'Bearish' ? 'bearish' : 'neutral', score: report.composite },
+      originalText: text,
+      editedText: null,
+      textHash: textHash(text),
+      status: 'draft',
+      issues: [],
+      staleAcknowledged: null,
+      approval: null,
+      publication: null,
+      error: null,
+      createdAt: this.now().toISOString(),
+      chart: chartRec,
+    };
+    base.issues = this.validateRecord(base, null);
+    const rec = this.audit.append(base);
+    const blockers = blocking(rec.issues);
+    const warns = rec.issues.filter(i => i.severity === 'warn');
+    if (blockers.length || (warns.length && !policy.allowWarnings)) {
+      const reason = [...blockers, ...warns].map(i => `${i.code}: ${i.message}`).join('; ');
+      this.audit.append({ ...rec, status: 'auto_skipped', autoSkipReason: reason });
+      summary.refused = reason;
+      return summary;
+    }
+    if (dryRun) { this.audit.append({ ...rec, status: 'auto_dry_run' }); summary.record = { id: rec.id, text, chart: chartRec?.path ?? null, dryRun: true }; return summary; }
+    const approver = new SocialWorkflow({ config: this.config, audit: this.audit, tracker: this.tracker, metrics: this.metrics, now: this.now, actor: 'premarket policy', insights: this.insights });
+    const approved = approver.approve(rec.id, null);
+    if (via === 'browser') {
+      const ready = this.audit.append({ ...approved, status: 'ready_to_post' });
+      summary.record = { id: ready.id, text, chart: chartRec?.path ?? null, ready: true };
+    } else {
+      const pub = await approver.publish(approved.id, null, { creds, fetchImpl });
+      summary.record = pub.status === 'published' ? { id: pub.id, text, url: pub.publication.url, chart: chartRec?.path ?? null } : null;
+      if (pub.status !== 'published') summary.refused = `publish failed: ${pub.error}`;
+    }
+    return summary;
   }
 
   mustGet(id) {

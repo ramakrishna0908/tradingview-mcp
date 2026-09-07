@@ -7,6 +7,7 @@
  */
 import { createHash } from 'node:crypto';
 import { SIGNAL } from './setup.js';
+import { priceDecimals, roundPrice } from './money.js';
 
 // ─── X weighted length ───────────────────────────────────────────────────────
 // X counts code points in a few "cheap" ranges as 1 and everything else
@@ -59,7 +60,33 @@ function phraseRe(phrase) {
 }
 
 function money(v) {
-  return v == null ? null : Number(v.toFixed(2));
+  return v == null ? null : roundPrice(v);
+}
+
+/**
+ * How far a quoted value may sit from a report value before it is a mismatch.
+ * A post prints each price rounded to `priceDecimals`, so anything within half
+ * a unit of the last shown decimal is the same number. Values at two decimals
+ * (every stock) keep the original fixed tolerances.
+ */
+export function valueTolerance(v, floor) {
+  const d = priceDecimals(v);
+  return d <= 2 ? floor : 0.5 * Math.pow(10, -d) + 1e-12;
+}
+
+/**
+ * Tolerance for a value as it was PRINTED. "$2,579" (no decimals) is the
+ * report's 2,578.88 rounded for display, so anything within half a dollar is
+ * that level; "$0.090922" (six decimals) must match to half a millionth. This
+ * is what lets the compact sweep format round for readability without the
+ * integrity check losing its teeth: the number must still round FROM a report
+ * value, not merely be near one.
+ */
+export function shownTolerance(shown, floor) {
+  const m = String(shown).match(/\.(\d+)$/);
+  const d = m ? m[1].length : 0;
+  const half = 0.5 * Math.pow(10, -d) + 1e-9;
+  return d <= 2 ? Math.max(floor, half) : half;
 }
 
 export function isHashtagLine(line) {
@@ -76,6 +103,7 @@ export function allowedNumbers(setup, row) {
   add(row?.vwap); add(row?.cloudA); add(row?.cloudB); add(row?.atr);
   add(setup.support?.value); add(setup.resistance?.value);
   add(setup.nextSupport?.value); add(setup.nextResistance?.value);
+  for (const x of setup.extraLevels ?? []) add(x?.value ?? x);
   return vals;
 }
 
@@ -96,6 +124,7 @@ export function allowedNumbers(setup, row) {
  */
 export function validatePost(text, ctx) {
   const { setup, row, model, config } = ctx;
+  const kind = ctx.kind ?? 'setup'; // 'setup' | 'followup' | 'scorecard' | 'education' | 'premarket'
   const now = ctx.now ?? new Date();
   const issues = [];
   const push = (code, severity, message) => issues.push({ code, severity, message });
@@ -143,8 +172,12 @@ export function validatePost(text, ctx) {
     push('missing_data_timestamp', 'block', 'Report model has no data timestamp');
   } else {
     const ageH = (now - asOf) / 3600_000;
-    if (ageH > config.maxReportAgeHours) {
-      const msg = `Report data is ${ageH.toFixed(1)}h old (limit ${config.maxReportAgeHours}h)`;
+    // A follow-up is dated by the bar that triggered it, and the next run after
+    // a Friday close is Monday morning — so follow-ups carry their own window
+    // (followUps.maxEventAgeHours, default long enough for a holiday weekend).
+    const limit = kind === 'followup' ? (config.followUps?.maxEventAgeHours ?? config.maxReportAgeHours) : config.maxReportAgeHours;
+    if (ageH > limit) {
+      const msg = `Report data is ${ageH.toFixed(1)}h old (limit ${limit}h)`;
       if (ctx.staleAcknowledged) push('stale_data_acknowledged', 'warn', `${msg} — publishing with explicit acknowledgement`);
       else push('stale_data', 'block', msg);
     }
@@ -166,11 +199,25 @@ export function validatePost(text, ctx) {
     }
   }
 
-  // 7. required indicators
-  for (const ind of config.requiredIndicators ?? []) {
+  // 7. required indicators — a follow-up or scorecard has no fresh RSI/CMF
+  // reading to cite, so only the price is required there.
+  const requiredIndicators = kind === 'setup' ? (config.requiredIndicators ?? []) : kind === 'followup' ? ['Price'] : [];
+  // An educational explainer teaches a concept; it must not read as a call on
+  // a specific name, so no cashtags at all.
+  if (kind === 'education' && /\$[A-Z]{1,6}\b/.test(t)) push('ticker_in_education', 'block', 'Educational posts must not name a ticker');
+  for (const ind of requiredIndicators) {
     if (!new RegExp(`\\b${escapeRe(ind)}\\b`, 'i').test(t)) push('missing_indicator', 'block', `Missing indicator: ${ind}`);
   }
-  if (config.requireSupportOrResistance && !/\b(support|resistance)\b/i.test(t)) {
+  // The post must name a price level with its role. Classic: the words
+  // support/resistance. Sweep: the "Above/Below $X →" level lines. Each format
+  // keeps its own structural test so neither is loosened for the other.
+  const namesLevel = kind === 'scorecard' || kind === 'education' ? true
+    : kind === 'premarket' ? /\b\d[\d,]*(?:\.\d+)? above \(.+?\) · \d[\d,]*(?:\.\d+)? below \(/.test(t)
+    : kind === 'followup' ? /\$[\d,]+(?:\.\d+)? (cleared|lost|intraday)|\b(Above|Below|above|below) \$[\d,]+(?:\.\d+)?/.test(t)
+    : config.postFormat === 'sweep'
+      ? /\b(Above|Below) \$[\d,]+(?:\.\d+)? →/.test(t)
+      : /\b(support|resistance)\b/i.test(t);
+  if (config.requireSupportOrResistance && !namesLevel) {
     push('missing_indicator', 'block', 'Missing support/resistance level');
   }
 
@@ -183,13 +230,14 @@ export function validatePost(text, ctx) {
     }
     const priceMatch = t.match(/Price:?\s*\$?([\d,]+(?:\.\d+)?)/i);
     if (!priceMatch) push('price_mismatch', 'block', 'No "Price:" value found');
-    else if (Math.abs(Number(priceMatch[1].replace(/,/g, '')) - row.price) > 0.005) {
+    else if (Math.abs(Number(priceMatch[1].replace(/,/g, '')) - row.price) > Math.max(valueTolerance(row.price, 0.005), shownTolerance(priceMatch[1], 0.005))) {
       push('price_mismatch', 'block', `Price ${priceMatch[1]} does not match report price ${row.price}`);
     }
     const allowed = allowedNumbers(setup, row);
-    for (const m of t.matchAll(/\$([\d,]+\.\d{1,2})\b/g)) {
+    for (const m of t.matchAll(/\$([\d,]+(?:\.\d+)?)\b/g)) {
       const v = Number(m[1].replace(/,/g, ''));
-      if (![...allowed].some(a => Math.abs(a - v) < 0.006)) {
+      const tol = shownTolerance(m[1], 0.006);
+      if (![...allowed].some(a => Math.abs(a - v) < Math.max(tol, valueTolerance(a, 0.006)))) {
         push('value_mismatch', 'block', `Dollar value $${m[1]} is not a level from the report`);
       }
     }
@@ -209,35 +257,102 @@ export function validatePost(text, ctx) {
       else if (Math.abs(v - setup.cmfDelta) > 0.006) push('value_mismatch', 'block', `CMF change ${deltaMatch[1]}${deltaMatch[2]} does not match the report-derived ${setup.cmfDelta}`);
     }
 
-    const volMatch = t.match(/Volume:\s*(\d+(?:\.\d+)?)× 20-day avg/);
+    const volMatch = t.match(/(?:Volume:?|RVOL:?)\s*(\d+(?:\.\d+)?)×/);
     if (volMatch) {
       const v = Number(volMatch[1]);
       if (ctx.chart?.volumeRatio == null) push('value_mismatch', 'block', 'Post cites a volume ratio but no chart data backs it');
       else if (Math.abs(v - ctx.chart.volumeRatio) > 0.06) push('value_mismatch', 'block', `Volume ratio ${v}× does not match the chart data ${ctx.chart.volumeRatio}×`);
     }
 
-    // 9. signal integrity — never upgrade WATCH to CONFIRMED for engagement
-    const claimsConfirmed = /\bconfirmed\s+(setup|breakout|breakdown|move)\b/i.test(t.split('\n')[0] ?? '');
-    if (setup.signal === SIGNAL.WATCH && claimsConfirmed) {
-      push('signal_upgraded', 'block', 'Post labels a WATCH as confirmed — signal may not be upgraded');
+    const scoreMatch = t.match(/Setup score:?\s*([+\-−]?\d+(?:\.\d+)?)/i);
+    if (scoreMatch) {
+      const v = Number(scoreMatch[1].replace('−', '-'));
+      if (row.score == null || Math.abs(v - row.score) > 0.06) push('value_mismatch', 'block', `Setup score ${scoreMatch[1]} does not match the report score ${row.score}`);
     }
-    if (setup.signal === SIGNAL.CONFIRMED && !/\bconfirmed\b/i.test(t)) {
-      push('signal_label', 'warn', 'Confirmed setup is not labelled as such');
-    }
-    if (setup.signal === SIGNAL.WATCH && !/\bwatch\b/i.test(t)) {
-      push('signal_label', 'block', 'WATCH setups must be labelled as a watch');
+
+    // 9. signal integrity — never upgrade WATCH to CONFIRMED for engagement.
+    // The word "confirmed" in the headline is reserved for CONFIRMED signals in
+    // any phrasing ("Confirmed Setup", "reclaim confirmed", "RECLAIM CONFIRMED").
+    const headline = t.split('\n')[0] ?? '';
+    const claimsConfirmed = /\bconfirmed\b/i.test(headline);
+    if (kind === 'followup') {
+      // A follow-up is labelled by its lifecycle stage; "confirmed" may appear
+      // only once the setup has actually reached CONFIRMED or BREAKOUT.
+      const stage = setup.stage ?? ctx.stage ?? null;
+      if (claimsConfirmed && !['CONFIRMED', 'BREAKOUT'].includes(stage)) {
+        push('signal_upgraded', 'block', `Follow-up at stage ${stage} may not say "confirmed"`);
+      }
+      if (!/\b(DEVELOPING|CONFIRMED|BREAKOUT UPDATE|BREAKDOWN UPDATE|LEVEL TEST|INVALIDATED)\b/.test(headline)) {
+        push('signal_label', 'block', 'Follow-up headline must carry its lifecycle label');
+      }
+    } else {
+      if (setup.signal === SIGNAL.WATCH && claimsConfirmed) {
+        push('signal_upgraded', 'block', 'Post labels a WATCH as confirmed — signal may not be upgraded');
+      }
+      if (setup.signal === SIGNAL.CONFIRMED && !/\bconfirmed\b/i.test(t)) {
+        push('signal_label', 'warn', 'Confirmed setup is not labelled as such');
+      }
+      if (setup.signal === SIGNAL.WATCH && !/\bwatch\b/i.test(t)) {
+        push('signal_label', 'block', 'WATCH setups must be labelled as a watch');
+      }
     }
   }
 
+  // 9c. scorecard integrity — every published count must equal the tracker's.
+  if (kind === 'scorecard' && ctx.scorecard) {
+    const st = ctx.scorecard;
+    const check = (label, re, expected) => {
+      const m = t.match(re);
+      if (!m) { push('value_mismatch', 'block', `Scorecard is missing "${label}"`); return; }
+      if (Number(m[1]) !== Number(expected)) push('value_mismatch', 'block', `Scorecard ${label} ${m[1]} does not match the tracker (${expected})`);
+    };
+    check('Setups posted', /Setups posted:\s*(\d+)/, st.posted);
+    check('Breakouts', /levels reached:\s*(\d+)/, st.breakouts);
+    check('Invalidated', /Invalidated:\s*(\d+)/, st.invalidated);
+    check('Still active', /Still active:\s*(\d+)/, st.active);
+    if (st.hitRate != null) check('Hit rate', /Hit rate this week:\s*(\d+)%/, st.hitRate);
+    if (st.allTime?.hitRate != null) check('All-time hit rate', /All-time: \d+ setups · (\d+)% hit rate/, st.allTime.hitRate);
+  }
+
+  // 9d. premarket integrity — the bias word, the confidence score and the
+  // SPY levels must be the report's; the short disclaimer is part of the format.
+  if (kind === 'premarket' && ctx.premarket) {
+    const pm = ctx.premarket;
+    const headline = t.split('\n')[0] ?? '';
+    const words = ['BULLISH', 'NEUTRAL', 'BEARISH'];
+    const want = String(pm.bias ?? '').toUpperCase();
+    if (!headline.includes(want)) push('value_mismatch', 'block', `Headline does not carry the report bias ${want}`);
+    for (const w of words) if (w !== want && headline.includes(w)) push('value_mismatch', 'block', `Headline names ${w} but the report bias is ${want}`);
+    const cm = t.match(/confidence (\d+)\/100/i);
+    if (!cm) push('value_mismatch', 'block', 'Missing "confidence N/100"');
+    else if (Number(cm[1]) !== Number(pm.confidence)) push('value_mismatch', 'block', `Confidence ${cm[1]} does not match the report (${pm.confidence})`);
+    const lm = t.match(/SPY levels: ([\d,.]+) above .*? · ([\d,.]+) below/);
+    if (lm && Array.isArray(pm.levels) && pm.levels.length === 2) {
+      const [r, sp] = pm.levels.map(Number);
+      if (Math.abs(Number(lm[1].replace(/,/g, '')) - r) > 0.011 || Math.abs(Number(lm[2].replace(/,/g, '')) - sp) > 0.011) push('value_mismatch', 'block', `SPY levels ${lm[1]}/${lm[2]} do not match the report (${r}/${sp})`);
+    }
+    if (!t.includes('Educational market analysis only. Not investment advice.')) push('missing_disclosure', 'block', 'Premarket post must carry "Educational market analysis only. Not investment advice."');
+  }
+
+  // 9b. the chart is part of the post when the policy says so. With the
+  // disclosure in the bio and no marker hashtags, the chart card is the only
+  // place the disclaimer appears — so a draft with no rendered chart must not
+  // be approvable, queueable for the browser poster, or recordable. This is
+  // checked here, not only in publish(), so the browser path (via: 'browser')
+  // is covered too.
+  if (config.charts?.enabled && config.charts?.requireForPublish && !ctx.chart?.path) {
+    push('missing_chart', 'block', `Chart is required for publishing but none was rendered${ctx.chart?.error ? ` (${ctx.chart.error})` : ''}`);
+  }
+
   // 10. balanced presentation: risk context + timestamp
-  if (config.requireRiskContext) {
+  if (config.requireRiskContext && kind !== 'education') {
     const kws = config.riskContextKeywords ?? [];
     const body = t.replace(disclosure, '').toLowerCase(); // the disclosure's "risk" does not count
     if (!kws.some(k => body.includes(k.toLowerCase()))) {
       push('missing_risk_context', 'block', 'No downside/invalidation context in the post');
     }
   }
-  if (config.requireDataTimestamp && !/\bData:\s*(?:[\w]+ · )?\w{3} \d{1,2}, 20\d\d/i.test(t)) {
+  if (config.requireDataTimestamp && kind !== 'education' && !/\bData:\s*(?:[\w]+ · )?\w{3} \d{1,2}, 20\d\d/i.test(t)) {
     push('missing_timestamp', 'block', 'Missing "Data: <date>" line');
   }
 

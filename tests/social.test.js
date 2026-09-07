@@ -18,7 +18,7 @@ import { AuditStore } from '../src/social/audit.js';
 import { SocialWorkflow } from '../src/social/index.js';
 import { oauth1Signature, oauth1Header, percentEncode, postTweet, uploadMedia, getCredentialsFromEnv } from '../src/social/x-client.js';
 import { parseYahooChart, toYahooSymbol } from '../src/social/chart-data.js';
-import { buildChartSpec, chartAltText, makeChart, renderChartSpec } from '../src/social/chart.js';
+import { buildChartSpec, chartAltText, makeChart, renderChartSpec, buildSweepChartSpec, sweepChartAltText } from '../src/social/chart.js';
 import { spawnSync } from 'node:child_process';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -61,12 +61,26 @@ function freshConfig() {
   // Tests pin the free-tier limit, the per-post disclosure, charts off and the
   // API publish path so every check is exercised regardless of the shipped config.
   const cfg = loadConfig();
-  return {
+  return classicPins({
     ...cfg,
     charLimit: 280,
     disclosurePlacement: 'post',
     charts: { ...cfg.charts, enabled: false, volumeLine: false },
     posting: { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, via: 'api' } },
+  });
+}
+
+/** The shipped configs use the sweep layout; these suites test the classic one. */
+function classicPins(cfg) {
+  return {
+    ...cfg,
+    postFormat: 'classic',
+    priceDisplay: 'exact',
+    cta: { enabled: true, text: 'Watching this setup? Bookmark it and follow for daily breakdowns.' },
+    charts: { ...cfg.charts, style: 'classic', requireForPublish: false },
+    hashtags: { ...cfg.hashtags, required: ['#NFA', '#DYOR'], maxTotal: 6, symbolTag: false, assetTag: null },
+    // the classic suites assert cohort order and multi-post runs
+    posting: { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, candidateOrder: 'report', maxPostsPerRun: 20 } },
   };
 }
 
@@ -899,5 +913,921 @@ describe('X API client — OAuth 1.0a', () => {
     assert.equal(err.ok, false);
     assert.equal(err.retryable, true);
     assert.equal(err.error, 'Too Many Requests');
+  });
+});
+
+// ─── crypto sweep: 24/7 calendar, sub-dollar precision, queue isolation ──────
+
+describe('crypto sweep (24/7 market, sub-dollar precision, separate queue)', () => {
+  const CRYPTO_CFG_PATH = join(ROOT, 'config', 'social-compliance-crypto.json');
+
+  // A coin priced well under $1, where two decimals would collapse the levels.
+  const COIN = (over = {}) => ROW({
+    symbol: 'XLM', price: 0.19412, rsi: 63, rsiMa: 60, cmf: 0.19,
+    atr: 0.0087, bbLower: 0.17427, bbBasis: 0.18733, bbUpper: 0.20044,
+    vwap: 0.19024, cloudA: 0.18539, cloudB: 0.18247,
+    position: 'above_cloud', structure: 'HH-up', score: 2.5, biasNext: 'Calls', ...over,
+  });
+
+  function cryptoConfig(over = {}) {
+    resetConfigCache();
+    const cfg = loadConfig(CRYPTO_CFG_PATH);
+    resetConfigCache();
+    return { ...classicPins(cfg), ...over };
+  }
+
+  it('ships a crypto config whose calendar is 24x7 with its own queue and asset class', () => {
+    const cfg = cryptoConfig();
+    assert.equal(cfg.marketCalendar, '24x7');
+    assert.equal(cfg.queue, 'crypto');
+    assert.equal(cfg.assetClass, 'crypto');
+    assert.equal(cfg.priceGrouping, true);
+    assert.deepEqual(cfg.marketHolidays, []);
+    // Sweep policy: no in-post marker tags, so the chart (which carries the
+    // disclaimer) is mandatory — the loader refuses the config otherwise.
+    resetConfigCache();
+    const shipped = loadConfig(CRYPTO_CFG_PATH);
+    resetConfigCache();
+    assert.deepEqual(shipped.hashtags.required, []);
+    assert.equal(shipped.charts.requireForPublish, true);
+  });
+
+  it('sub-dollar levels keep enough decimals to stay distinct in a post', () => {
+    const cfg = { ...cryptoConfig(), disclosurePlacement: 'bio', charLimit: 4000 };
+    const setup = classifySetup(COIN());
+    const { text } = generatePost(setup, MODEL([COIN()]), cfg);
+    assert.match(text, /Price: \$0\.19412/);
+    // Nearest level below price is the Q2 VWAP (0.19024), nearest above is the
+    // upper band (0.20044). At two decimals price and support both render
+    // "$0.19" and the invalidation line becomes meaningless.
+    assert.match(text, /Support: \$0\.19024/);
+    assert.match(text, /Resistance: \$0\.20044/);
+    // Price, support and resistance must be three different numbers. (The
+    // level-to-watch and invalidation lines deliberately restate two of them,
+    // so compare the distinct set, not every occurrence.)
+    const shown = new Set([...text.matchAll(/\$(\d+\.\d+)/g)].map(m => m[1]));
+    assert.deepEqual([...shown].sort(), ['0.19024', '0.19412', '0.20044']);
+  });
+
+  it('groups thousands for a high-priced coin but leaves stock formatting untouched', () => {
+    const btc = ROW({ symbol: 'BTC', price: 79611, bbLower: 71000, bbBasis: 76800, bbUpper: 84200, vwap: 74000, cloudA: 75000, cloudB: 73000, atr: 2400 });
+    const cryptoText = generatePost(classifySetup(btc), MODEL([btc]), { ...cryptoConfig(), disclosurePlacement: 'bio', charLimit: 4000 }).text;
+    assert.match(cryptoText, /Price: \$79,611\.00/);
+    // The stock config must not group — its posts keep their existing shape.
+    const stockText = generatePost(classifySetup(btc), MODEL([btc]), { ...freshConfig(), charLimit: 4000 }).text;
+    assert.match(stockText, /Price: \$79611\.00/);
+  });
+
+  it('compliance still catches a fabricated sub-dollar value (it used to skip >2 decimals)', () => {
+    const cfg = { ...cryptoConfig(), disclosurePlacement: 'bio', charLimit: 4000 };
+    const row = COIN();
+    const setup = classifySetup(row);
+    const model = MODEL([row]);
+    const good = generatePost(setup, model, cfg).text;
+    assert.equal(blocking(validatePost(good, { setup, row, model, config: cfg })).length, 0);
+    // Invent a level that is not in the report.
+    const bad = good.replace('$0.20044', '$0.28888');
+    assert.notEqual(bad, good, 'the level must actually appear in the post');
+    const issues = validatePost(bad, { setup, row, model, config: cfg });
+    assert.ok(blocking(issues).some(i => i.code === 'value_mismatch'), 'fabricated level must block');
+  });
+
+  it('auto-publish runs on a weekend and on an NYSE holiday under the 24x7 calendar', async () => {
+    const row = COIN();
+    const cfg = {
+      ...cryptoConfig(), disclosurePlacement: 'bio', charLimit: 4000,
+      charts: { enabled: false, bars: 60, requireForPublish: false, volumeLine: false },
+    };
+    cfg.posting = { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, enabled: true, via: 'api', spacingSeconds: 0, maxPostsPerRun: 5 } };
+    const okFetch = async () => ({ ok: true, status: 201, json: async () => ({ data: { id: '9' } }) });
+
+    for (const date of ['2026-09-05', '2026-09-06', '2026-09-07']) { // Sat, Sun, Labor Day
+      const model = MODEL([row], {
+        reportDate: date, dataAsOf: new Date().toISOString(),
+        cohort: { source: 't', calls: [{ symbol: 'XLM', score: 2.5 }], puts: [], watches: [] },
+      });
+      const w = new SocialWorkflow({ config: cfg, audit: new AuditStore(join(mkdtempSync(join(tmpdir(), 'c247-')), 'a.jsonl')) });
+      const r = await w.autoPublish(model, { creds: { type: 'oauth2', accessToken: 't' }, fetchImpl: okFetch });
+      assert.equal(r.refused, null, `${date} must not be refused for a 24/7 market`);
+      assert.deepEqual(r.published.map(p => p.symbol), ['XLM']);
+    }
+  });
+
+  it('the stock calendar still refuses those same dates', async () => {
+    const row = COIN();
+    const cfg = { ...freshConfig(), charLimit: 4000 };
+    cfg.posting = { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, enabled: true, via: 'api', spacingSeconds: 0 } };
+    for (const [date, why] of [['2026-09-05', /weekend/], ['2026-09-07', /market holiday/]]) {
+      const model = MODEL([row], { reportDate: date, cohort: { source: 't', calls: [{ symbol: 'XLM', score: 2.5 }], puts: [], watches: [] } });
+      const w = new SocialWorkflow({ config: cfg, audit: new AuditStore(join(mkdtempSync(join(tmpdir(), 'cnyse-')), 'a.jsonl')) });
+      const r = await w.autoPublish(model, { creds: { type: 'oauth2', accessToken: 't' } });
+      assert.match(r.refused ?? '', why);
+    }
+  });
+
+  it('drafts carry their queue so the two posters never take each other\'s work', async () => {
+    const row = COIN();
+    const model = MODEL([row]);
+    const mk = (config, dir) => new SocialWorkflow({ config, audit: new AuditStore(join(mkdtempSync(join(tmpdir(), dir)), 'a.jsonl')) });
+
+    const cCfg = { ...cryptoConfig(), disclosurePlacement: 'bio', charLimit: 4000, charts: { enabled: false } };
+    const cw = mk(cCfg, 'qc-');
+    const [cRec] = await cw.draft(model, { symbol: 'XLM' });
+    assert.equal(cRec.queue, 'crypto');
+
+    const sCfg = { ...freshConfig(), charLimit: 4000, charts: { enabled: false } };
+    const sw = mk(sCfg, 'qs-');
+    const [sRec] = await sw.draft(model, { symbol: 'XLM' });
+    assert.equal(sRec.queue, 'stocks', 'a config without a queue defaults to stocks');
+
+    // ready() scopes by queue; an untagged legacy record reads as stocks.
+    const audit = new AuditStore(join(mkdtempSync(join(tmpdir(), 'qr-')), 'a.jsonl'));
+    audit.append({ ...cRec, status: 'ready_to_post' });
+    audit.append({ ...sRec, id: 'legacy-1', queue: undefined, status: 'ready_to_post' });
+    const w = new SocialWorkflow({ config: cCfg, audit });
+    assert.deepEqual(w.ready({ queue: 'crypto' }).map(r => r.id), [cRec.id]);
+    assert.deepEqual(w.ready({ queue: 'stocks' }).map(r => r.id), ['legacy-1']);
+    assert.equal(w.ready().length, 2, 'no filter returns both');
+  });
+
+  it('crypto chart candles are fetched as a Yahoo pair, equities are untouched', () => {
+    assert.equal(toYahooSymbol('BTC', { assetClass: 'crypto' }), 'BTC-USD');
+    assert.equal(toYahooSymbol('XLM', { assetClass: 'crypto' }), 'XLM-USD');
+    assert.equal(toYahooSymbol('HYPE', { assetClass: 'crypto' }), 'HYPE32196-USD', 'collision override wins');
+    assert.equal(toYahooSymbol('BTC-USD', { assetClass: 'crypto' }), 'BTC-USD', 'already a pair');
+    assert.equal(toYahooSymbol('BRK.B'), 'BRK-B');
+    assert.equal(toYahooSymbol('AAPL'), 'AAPL');
+  });
+
+  it('candle parsing keeps sub-cent precision instead of rounding to zero', () => {
+    const json = { chart: { result: [{ timestamp: [1757000000], indicators: { quote: [{ open: [0.0000123456], high: [0.0000133], low: [0.0000119], close: [0.0000128], volume: [42] }] } }] } };
+    const [c] = parseYahooChart(json);
+    assert.ok(c.o > 0, 'a sub-cent open must not round to 0');
+    assert.equal(c.o, 0.000012346); // ~5 significant digits, not 0.00
+    // Equity-scale values still land on two decimals exactly as before.
+    const eq = parseYahooChart({ chart: { result: [{ timestamp: [1757000000], indicators: { quote: [{ open: [123.456], high: [124.5], low: [122.1], close: [123.9], volume: [10] }] } }] } });
+    assert.equal(eq[0].o, 123.46);
+  });
+});
+
+// ─── Daily Setup Sweep format ────────────────────────────────────────────────
+
+describe('sweep format: verdict gated on the signal, compact prices, level CTA, 0-2 tags', () => {
+  const STOCK_CFG = join(ROOT, 'config', 'social-compliance.json');
+  const CRYPTO_CFG = join(ROOT, 'config', 'social-compliance-crypto.json');
+  const ETH = (over = {}) => ROW({
+    symbol: 'ETH', price: 2498.20, rsi: 64, rsiMa: 60, cmf: 0.22, atr: 95,
+    bbLower: 2300.10, bbBasis: 2448.62, bbUpper: 2578.88, vwap: 2410.55, cloudA: 2380.00, cloudB: 2350.00,
+    position: 'above_cloud', structure: 'HH-up', score: 2.5, biasNext: 'Calls', ...over,
+  });
+  const sweep = (path, over = {}) => { resetConfigCache(); const c = loadConfig(path); resetConfigCache(); return { ...c, ...over }; };
+  const chart = { path: '/tmp/eth.png', volumeRatio: 0.8 };
+
+  it('a draft with no rendered chart cannot pass validation under the shipped policy (browser path included)', async () => {
+    const cfg = sweep(CRYPTO_CFG);
+    const row = ETH();
+    const setup = classifySetup(row);
+    const model = MODEL([row]);
+    const { text } = generatePost(setup, model, cfg, { chart: null });
+    const codes = blocking(validatePost(text, { setup, row, model, config: cfg, chart: { path: null, error: 'renderer failed' } })).map(i => i.code);
+    assert.ok(codes.includes('missing_chart'), codes.join(','));
+    // The auto-publish browser path audits it as a skip instead of queueing it.
+    const bad = { ...cfg, charts: { ...cfg.charts, enabled: true, requireForPublish: true } };
+    bad.posting = { ...bad.posting, autoPublish: { ...bad.posting.autoPublish, enabled: true, via: 'browser', spacingSeconds: 0 } };
+    const w = new SocialWorkflow({ config: bad, audit: new AuditStore(join(mkdtempSync(join(tmpdir(), 'nochart-')), 'a.jsonl')) });
+    const m = MODEL([row], { cohort: { source: 't', calls: [{ symbol: 'ETH', score: 2.5 }], puts: [], watches: [] } });
+    const r = await w.autoPublish(m, { fetchImplForCharts: async () => ({ ok: false, status: 503 }) });
+    assert.equal(r.refused, null);
+    assert.deepEqual(r.published, []);
+    assert.ok(r.skipped.some(s => s.symbol === 'ETH' && /missing_chart/.test(s.reason)), JSON.stringify(r.skipped));
+    assert.equal(w.ready({ queue: 'crypto' }).length, 0, 'nothing may reach the browser poster without a chart');
+    // The classic policy (chart optional) still allows a text-only post.
+    const lax = classicPins(cfg);
+    assert.ok(!blocking(validatePost(generatePost(setup, model, lax).text, { setup, row, model, config: lax, chart: null })).some(i => i.code === 'missing_chart'));
+  });
+
+  it('renders the ETH mockup layout from a confirmed basis reclaim', () => {
+    const cfg = sweep(CRYPTO_CFG);
+    const row = ETH();
+    const setup = classifySetup(row);
+    assert.equal(setup.setup, 'Basis reclaim');
+    assert.equal(setup.signal, SIGNAL.CONFIRMED);
+    const model = MODEL([row]);
+    const { text } = generatePost(setup, model, cfg, { chart });
+    const lines = text.split('\n');
+    assert.equal(lines[0], '📈 $ETH has reclaimed its 20-day base — reclaim confirmed.');
+    assert.equal(lines[1], 'CMF +0.22 shows positive money flow while RSI 64 keeps momentum healthy.');
+    assert.equal(lines[2], '🎯 Above $2,579 → potential breakout');
+    assert.equal(lines[3], '🛑 Below $2,449 → setup invalidated');
+    assert.equal(lines[4], 'Current price: $2,498 · RVOL 0.8× · Setup score +2.5');
+    assert.equal(lines[5], 'Which level gets hit first — $2,579 or $2,449? 👇');
+    assert.match(lines[6], /^Data: daily · \w{3} \d{1,2}, 20\d\d/);
+    assert.equal(lines[7], '#ETH #Crypto');
+    assert.equal(lines.length, 8);
+    assert.deepEqual(blocking(validatePost(text, { setup, row, model, config: cfg, chart })), []);
+  });
+
+  it('the stock config yields the same layout with #SYM #Stocks', () => {
+    const cfg = sweep(STOCK_CFG);
+    const row = ROW({ price: 118 });
+    const setup = classifySetup(row);
+    const model = MODEL([row]);
+    const { text } = generatePost(setup, model, cfg, { chart });
+    assert.match(text, /^📈 \$XYZ is holding above its 20-day base — trend confirmed\.\n/);
+    assert.match(text, /\n#XYZ #Stocks$/);
+    assert.ok(!/#NFA|#DYOR/.test(text), 'no marker tags in the sweep layout');
+    assert.deepEqual(blocking(validatePost(text, { setup, row, model, config: cfg, chart })), []);
+  });
+
+  it('a WATCH can never carry a confirmed verdict — text, badge, or tampered headline', () => {
+    const cfg = sweep(CRYPTO_CFG);
+    const row = ETH({ position: 'in_cloud' });           // cloud not aligned → WATCH
+    const setup = classifySetup(row);
+    assert.equal(setup.signal, SIGNAL.WATCH);
+    const model = MODEL([row]);
+    const { text, parts } = generatePost(setup, model, cfg, { chart });
+    assert.match(text.split('\n')[0], /reclaim watch\.$/);
+    assert.ok(!/confirmed/i.test(text.split('\n')[0]));
+    assert.equal(parts.labels.badge, 'DEVELOPING', 'a WATCH is posted at the DEVELOPING stage');
+    assert.equal(parts.labels.chip, 'RECLAIM WATCH', 'the setup name moves to the chip');
+    assert.equal(parts.labels.stage, 'DEVELOPING');
+    assert.equal(parts.labels.confirmed, false);
+    assert.deepEqual(blocking(validatePost(text, { setup, row, model, config: cfg, chart })), []);
+    // Any "confirmed" in a WATCH headline blocks, whatever the phrasing.
+    const forged = text.replace('reclaim watch.', 'reclaim confirmed.');
+    assert.ok(blocking(validatePost(forged, { setup, row, model, config: cfg, chart })).some(i => i.code === 'signal_upgraded'));
+  });
+
+  it('compact prices pass integrity because they round FROM a report level; a fabricated one still blocks', () => {
+    const cfg = sweep(CRYPTO_CFG);
+    const row = ETH();
+    const setup = classifySetup(row);
+    const model = MODEL([row]);
+    const { text } = generatePost(setup, model, cfg, { chart });
+    assert.ok(text.includes('$2,579') && text.includes('$2,449') && text.includes('$2,498'));
+    assert.deepEqual(blocking(validatePost(text, { setup, row, model, config: cfg, chart })), []);
+    const bad = text.replace('$2,579', '$2,600');
+    assert.ok(blocking(validatePost(bad, { setup, row, model, config: cfg, chart })).some(i => i.code === 'value_mismatch'));
+    // whole-dollar rounding is only accepted at whole-dollar precision
+    const off = text.replace('$2,579', '$2,579.40');
+    assert.ok(blocking(validatePost(off, { setup, row, model, config: cfg, chart })).some(i => i.code === 'value_mismatch'));
+  });
+
+  it('setup score and RVOL are integrity-checked like every other number', () => {
+    const cfg = sweep(CRYPTO_CFG);
+    const row = ETH();
+    const setup = classifySetup(row);
+    const model = MODEL([row]);
+    const { text } = generatePost(setup, model, cfg, { chart });
+    assert.ok(blocking(validatePost(text.replace('Setup score +2.5', 'Setup score +3.0'), { setup, row, model, config: cfg, chart })).some(i => i.code === 'value_mismatch'));
+    assert.ok(blocking(validatePost(text.replace('RVOL 0.8×', 'RVOL 2.4×'), { setup, row, model, config: cfg, chart })).some(i => i.code === 'value_mismatch'));
+    assert.ok(blocking(validatePost(text, { setup, row, model, config: cfg, chart: null })).some(i => i.code === 'value_mismatch'), 'RVOL without chart data must block');
+  });
+
+  it('bearish confirmed breakdown flips the level roles and the CTA', () => {
+    const cfg = sweep(CRYPTO_CFG);
+    const row = ETH({ price: 2300, rsi: 38, cmf: -0.24, position: 'below_cloud', structure: 'LL-down', score: -2.5, bbLower: 2210.00, bbBasis: 2448.62, bbUpper: 2578.88, vwap: 2410.55, cloudA: 2380, cloudB: 2350 });
+    const setup = classifySetup(row);
+    assert.equal(setup.setup, 'Breakdown');
+    assert.equal(setup.signal, SIGNAL.CONFIRMED);
+    const model = MODEL([row]);
+    const { text } = generatePost(setup, model, cfg, { chart });
+    const lines = text.split('\n');
+    assert.equal(lines[0], '📉 $ETH has broken below its 20-day base — breakdown confirmed.');
+    assert.equal(lines[1], 'CMF -0.24 shows money leaving while RSI 38 stays weak.');
+    assert.equal(lines[2], '🎯 Below $2,210 → breakdown continues');
+    assert.equal(lines[3], '🛑 Above $2,350 → setup invalidated');
+    assert.equal(lines[5], 'Which level gets hit first — $2,210 or $2,350? 👇');
+    assert.deepEqual(blocking(validatePost(text, { setup, row, model, config: cfg, chart })), []);
+  });
+
+  it('with only one level on the relevant side the CTA becomes a single-level question', () => {
+    const cfg = sweep(CRYPTO_CFG);
+    // price above every level: no resistance
+    const row = ETH({ price: 2700, rsi: 73, bbUpper: 2578.88 });
+    const setup = classifySetup(row);
+    assert.equal(setup.resistance, null);
+    const model = MODEL([row]);
+    const { text } = generatePost(setup, model, cfg, { chart });
+    assert.ok(!text.includes('🎯'));
+    assert.match(text, /🛑 Below \$2,579 → setup invalidated/);
+    assert.match(text, /Does \$2,579 hold\? 👇/);
+    assert.match(text.split('\n')[0], /exhaustion watch\.$/);
+    assert.deepEqual(blocking(validatePost(text, { setup, row, model, config: cfg, chart })), []);
+  });
+
+  it('config loader refuses a marker-less policy whose chart is optional', () => {
+    resetConfigCache();
+    const p = join(mkdtempSync(join(tmpdir(), 'mk-')), 'c.json');
+    writeFileSync(p, JSON.stringify({ disclosurePlacement: 'bio', hashtags: { required: [] }, charts: { enabled: true, requireForPublish: false } }));
+    assert.throws(() => loadConfig(p), /requireForPublish/);
+    resetConfigCache();
+    writeFileSync(p, JSON.stringify({ disclosurePlacement: 'bio', hashtags: { required: [] }, charts: { enabled: true, requireForPublish: true } }));
+    assert.doesNotThrow(() => loadConfig(p));
+    resetConfigCache();
+  });
+
+  it('sweep chart spec: report levels only, MA derived from the candles, tiles and strip restate the post', () => {
+    const cfg = sweep(CRYPTO_CFG);
+    const row = ETH();
+    const setup = classifySetup(row);
+    const model = MODEL([row]);
+    const candles = Array.from({ length: 40 }, (_, i) => ({ t: `2026-08-${String(i % 28 + 1).padStart(2, '0')}`, o: 2400 + i, h: 2420 + i, l: 2390 + i, c: 2410 + i, v: 1000 + i }));
+    const spec = buildSweepChartSpec(setup, model, candles, cfg, '/tmp/x.png');
+    assert.equal(spec.style, 'sweep');
+    assert.equal(spec.badge, 'RECLAIM CONFIRMED');
+    assert.equal(spec.confirmed, true);
+    assert.deepEqual(spec.levels.map(l => [l.label, l.role]), [['$2,579', 'Breakout level'], ['$2,498', 'Current price'], ['$2,449', 'Invalidation level']]);
+    assert.deepEqual(spec.levels.map(l => l.value), [2578.88, 2498.20, 2448.62]);
+    assert.equal(spec.ma.length, 40);
+    assert.equal(spec.ma[18], null);
+    assert.ok(Math.abs(spec.ma[19] - (2410 + 9.5)) < 1e-6, '20-bar SMA of closes');
+    assert.deepEqual(spec.tiles.map(t => t.label), ['Price', 'RSI (14)', 'CMF (20)', 'Volume (RVOL)']);
+    assert.equal(spec.tiles[1].sub, 'Strong momentum (not overbought)');
+    assert.deepEqual(spec.bottom.map(b => b.text), ['Above $2,579', 'Below $2,449', 'Which level gets hit first?']);
+    assert.ok(!JSON.stringify(spec).match(/target|projection|ahead/i), 'nothing forward-looking in the spec');
+    assert.equal(spec.disclosure, cfg.disclosure);
+    const alt = sweepChartAltText(setup, model, cfg);
+    assert.match(alt, /RECLAIM CONFIRMED\. Current price \$2,498\. Breakout level \$2,579\. Invalidation level \$2,449\./);
+  });
+
+  it('renders the sweep PNG through the Pillow script', { skip: !HAVE_PIL }, async () => {
+    const cfg = sweep(CRYPTO_CFG);
+    const row = ETH();
+    const setup = classifySetup(row);
+    const model = MODEL([row]);
+    const candles = Array.from({ length: 60 }, (_, i) => ({ t: `2026-07-${String(i % 28 + 1).padStart(2, '0')}`, o: 2300 + i * 3, h: 2330 + i * 3, l: 2280 + i * 3, c: 2320 + i * 3, v: 1000 + i * 10 }));
+    const dir = mkdtempSync(join(tmpdir(), 'sweep-'));
+    const out = await makeChart(setup, model, cfg, { dir, candles });
+    assert.ok(!out.error, out.error);
+    assert.ok(existsSync(out.path));
+    assert.ok(out.altText.includes('RECLAIM CONFIRMED'));
+    assert.equal(out.volumeRatio != null, true);
+  });
+});
+
+// ─── publishing strategy: lifecycle tracker, follow-ups, scorecard, metrics ─────
+
+import { SetupTracker, openFromSetup, detectEvents, graduate, scorecardStats, weekBounds, EVENT, TERMINAL } from '../src/social/tracker.js';
+import { generateFollowUp, followUpModel, followUpSetup, followUpRow, generateScorecard, buildScorecardSpec, barCloseIso } from '../src/social/followup.js';
+import { MetricsStore, parseTweetMetrics, recordManual, buildReport, insightsBoost, collectPostMetrics, engagementRate } from '../src/social/metrics.js';
+import { STAGE, stageLabel, initialStage } from '../src/social/sweep-labels.js';
+
+describe('lifecycle tracker: DEVELOPING → CONFIRMED → BREAKOUT / INVALIDATED on daily closes', () => {
+  const CRYPTO_CFG = join(ROOT, 'config', 'social-compliance-crypto.json');
+  const cfg = () => { resetConfigCache(); const c = loadConfig(CRYPTO_CFG); resetConfigCache(); return { ...c, charts: { ...c.charts, enabled: false, requireForPublish: false } }; };
+  const ETH = (over = {}) => ROW({
+    symbol: 'ETH', price: 2498.20, rsi: 64, rsiMa: 60, cmf: 0.22, atr: 95,
+    bbLower: 2300.10, bbBasis: 2448.62, bbUpper: 2578.88, vwap: 2410.55, cloudA: 2380.00, cloudB: 2350.00,
+    position: 'above_cloud', structure: 'HH-up', score: 2.5, biasNext: 'Calls', ...over,
+  });
+  const audit = (over = {}) => ({ id: '2026-09-07-ETH-abc123', queue: 'crypto', reportDate: '2026-09-07', reportPath: '/r.html', publication: { xPostId: '1', url: 'u', at: '2026-09-07T16:00:00Z' }, ...over });
+  const bar = (t, o, h, l, c, v = 1000) => ({ t, o, h, l, c, v });
+  const open = (over = {}, rowOver = {}) => openFromSetup(audit(over), classifySetup(ETH(rowOver)), { queue: 'crypto', assetClass: 'crypto', now: new Date('2026-09-07T16:00:00Z') });
+
+  it('opens a CONFIRMED setup with the post\'s two levels and a DEVELOPING one from a WATCH', () => {
+    const rec = open();
+    assert.equal(rec.stage, STAGE.CONFIRMED);
+    assert.equal(rec.stageLabel, 'RECLAIM CONFIRMED');
+    assert.deepEqual(rec.target, { value: 2578.88, label: 'upper band' });
+    assert.deepEqual(rec.stop, { value: 2448.62, label: '20d basis' });
+    assert.equal(rec.entryPrice, 2498.20);
+    assert.equal(rec.posts[0].xPostId, '1');
+    const dev = open({}, { position: 'in_cloud' });
+    assert.equal(dev.stage, STAGE.DEVELOPING);
+    assert.equal(dev.stageLabel, 'DEVELOPING');
+    assert.equal(initialStage(classifySetup(ETH({ position: 'in_cloud' }))), STAGE.DEVELOPING);
+  });
+
+  it('level test then breakout, on closes only; re-running the same bars is a no-op', () => {
+    const rec = open();
+    const candles = [
+      bar('2026-09-07', 2480, 2510, 2470, 2498.20),         // the report bar — ignored
+      bar('2026-09-08', 2500, 2585.10, 2490, 2560.20),      // tags 🎯 intraday, closes below → LEVEL_TEST
+      bar('2026-09-09', 2565, 2620, 2550, 2610.40),         // closes above 🎯 → BREAKOUT (terminal)
+      bar('2026-09-10', 2610, 2700, 2400, 2420),            // would be an invalidation — never reached
+    ];
+    const { events, next } = detectEvents(rec, candles, { now: new Date('2026-09-11T00:00:00Z') });
+    assert.deepEqual(events.map(e => e.type), [EVENT.LEVEL_TEST, EVENT.BREAKOUT]);
+    assert.equal(events[0].extreme, 2585.10);
+    assert.equal(events[1].price, 2610.40);
+    assert.equal(events[1].pct, 4.49);
+    assert.equal(next.stage, STAGE.BREAKOUT);
+    assert.equal(next.stageLabel, 'BREAKOUT UPDATE');
+    assert.equal(next.outcome, 'breakout');
+    assert.equal(next.closedBar, '2026-09-09');
+    assert.ok(TERMINAL.has(next.stage));
+    const again = detectEvents(next, candles);
+    assert.deepEqual(again.events, []);
+  });
+
+  it('a close beyond 🛑 invalidates, and wins over a breakout in the same bar', () => {
+    const rec = open();
+    const r1 = detectEvents(rec, [bar('2026-09-08', 2490, 2500, 2400, 2430.00)]);
+    assert.deepEqual(r1.events.map(e => e.type), [EVENT.INVALIDATED]);
+    assert.equal(r1.next.outcome, 'invalidated');
+    assert.equal(r1.next.stageLabel, 'INVALIDATED');
+    const wild = detectEvents(rec, [bar('2026-09-08', 2490, 2700, 2300, 2300)]); // closes below stop after trading above target
+    assert.equal(wild.events[0].type, EVENT.INVALIDATED);
+  });
+
+  it('bearish setups mirror the levels', () => {
+    const rec = open({}, { price: 2300, rsi: 38, cmf: -0.24, position: 'below_cloud', structure: 'LL-down', score: -2.5, bbLower: 2210.00 });
+    assert.equal(rec.direction, 'bearish');
+    assert.equal(rec.target.value, 2210.00);   // support is the 🎯 for a breakdown
+    assert.equal(rec.stop.value, 2350.00);     // cloud B is the nearest level above
+    const r = detectEvents(rec, [bar('2026-09-08', 2290, 2300, 2190, 2200)]);
+    assert.equal(r.events[0].type, EVENT.BREAKOUT);
+    assert.equal(r.next.stageLabel, 'BREAKDOWN UPDATE');
+  });
+
+  it('expires quietly after maxAgeSessions without resolution', () => {
+    const rec = open();
+    const candles = Array.from({ length: 16 }, (_, i) => bar(`2026-09-${String(8 + i).padStart(2, '0')}`, 2500, 2520, 2480, 2500));
+    const r = detectEvents(rec, candles, { maxAgeSessions: 15 });
+    assert.deepEqual(r.events.map(e => e.type), [EVENT.EXPIRED]);
+    assert.equal(r.next.outcome, 'expired');
+  });
+
+  it('a DEVELOPING setup graduates when a later report confirms the same direction', () => {
+    const dev = open({}, { position: 'in_cloud' });
+    const later = MODEL([ETH()], { reportDate: '2026-09-09' });
+    const g = graduate(dev, classifySetup(ETH()), later, { now: new Date('2026-09-09T14:00:00Z') });
+    assert.ok(g);
+    assert.equal(g.event.type, EVENT.CONFIRMED);
+    assert.equal(g.next.stage, STAGE.CONFIRMED);
+    assert.equal(g.next.stageLabel, 'RECLAIM CONFIRMED');
+    assert.equal(graduate(dev, classifySetup(ETH({ price: 2300, rsi: 38, cmf: -0.24, position: 'below_cloud', structure: 'LL-down', score: -2.5 })), later), null, 'opposite direction does not graduate');
+    assert.equal(graduate(open(), classifySetup(ETH()), later), null, 'already CONFIRMED does not graduate again');
+  });
+
+  it('weekBounds and scorecard stats: counts, hit rate on resolved only, all-time', () => {
+    assert.deepEqual(weekBounds('2026-09-09'), { from: '2026-09-07', to: '2026-09-11' });
+    assert.deepEqual(weekBounds('2026-09-13'), { from: '2026-09-07', to: '2026-09-11' }, 'a Sunday belongs to the week just ended');
+    const mk = (id, symbol, reportDate, outcome, closedBar, pct) => ({ ...open({ id, reportDate }), symbol, outcome, closedBar, stage: outcome ? (outcome === 'breakout' ? STAGE.BREAKOUT : outcome === 'invalidated' ? STAGE.INVALIDATED : STAGE.EXPIRED) : STAGE.CONFIRMED, events: outcome ? [{ type: outcome.toUpperCase(), pct }] : [] });
+    const recs = [
+      mk('a', 'ETH', '2026-09-07', 'breakout', '2026-09-09', 4.5),
+      mk('b', 'SOL', '2026-09-07', 'invalidated', '2026-09-10', -2.7),
+      mk('c', 'BTC', '2026-09-08', null, null, null),
+      mk('d', 'ADA', '2026-09-08', 'breakout', '2026-09-11', 3.1),
+      mk('e', 'OLD', '2026-08-24', 'invalidated', '2026-08-28', -1.0),   // last week's — all-time only
+      mk('f', 'EXP', '2026-08-20', 'expired', '2026-09-10', 0.2),        // expired this week — not scored
+    ];
+    const st = scorecardStats(recs, weekBounds('2026-09-11'));
+    assert.equal(st.posted, 4);
+    assert.equal(st.breakouts, 2);
+    assert.equal(st.invalidated, 1);
+    assert.equal(st.expired, 1);
+    assert.equal(st.active, 1);
+    assert.equal(st.hitRate, 67);
+    assert.deepEqual(st.allTime, { setups: 6, breakouts: 2, invalidated: 2, resolved: 4, hitRate: 50 });
+    assert.equal(st.best.symbol, 'ETH');
+    assert.equal(st.worst.symbol, 'SOL');
+  });
+
+  it('follow-up posts: every number is a stored level or the event close, labelled by stage, compliance-clean', () => {
+    const c = cfg();
+    const rec = open();
+    const cases = [
+      [{ type: EVENT.BREAKOUT, bar: '2026-09-09', price: 2610.40, level: 2578.88, pct: 4.49 }, /^✅ \$ETH — BREAKOUT UPDATE\. \$2,579 cleared on the daily close\.$/, ['Price: $2,610 (daily close) · +4.5% from $2,498 at the setup', '🛑 A close back under $2,579 negates the breakout']],
+      [{ type: EVENT.LEVEL_TEST, bar: '2026-09-08', price: 2560.20, level: 2578.88, extreme: 2585.10, pct: 2.48 }, /^👀 \$ETH — LEVEL TEST\. Tagged \$2,579 intraday \(high \$2,585\) but did not close above it\.$/, ['🎯 A daily close above $2,579 → breakout', '🛑 Below $2,449 → setup invalidated']],
+      [{ type: EVENT.INVALIDATED, bar: '2026-09-10', price: 2430.00, level: 2448.62, pct: -2.73 }, /^🛑 \$ETH — INVALIDATED\. \$2,449 lost on the daily close\.$/, ['Price: $2,430 (daily close) · −2.7% from $2,498 at the setup']],
+    ];
+    for (const [ev, head, mustHave] of cases) {
+      const { text } = generateFollowUp(rec, ev, c);
+      const lines = text.split('\n');
+      assert.match(lines[0], head);
+      for (const m of mustHave) assert.ok(text.includes(m), `${ev.type}: missing "${m}"\n${text}`);
+      assert.match(text, /\nData: daily · Sep \d+, 2026\n#ETH #Crypto$/);
+      const setup = followUpSetup(rec, ev);
+      const issues = validatePost(text, { setup, row: followUpRow(rec, ev), model: followUpModel(rec, ev), config: c, kind: 'followup', stage: setup.stage, now: new Date(`${ev.bar}T23:00:00Z`) });
+      assert.deepEqual(blocking(issues), [], `${ev.type}: ${JSON.stringify(blocking(issues))}`);
+      // a fabricated level still blocks
+      const shown = ev.level >= 2500 ? '$2,579' : '$2,449';
+      assert.ok(text.includes(shown));
+      const bad = validatePost(text.replace(shown, '$2,650'), { setup, row: followUpRow(rec, ev), model: followUpModel(rec, ev), config: c, kind: 'followup', stage: setup.stage, now: new Date(`${ev.bar}T23:00:00Z`) });
+      assert.ok(blocking(bad).some(i => i.code === 'value_mismatch'), `${ev.type}: fabricated level must block`);
+    }
+    // graduation update may say "confirmed"; a level test on a DEVELOPING setup may not
+    const dev = open({}, { position: 'in_cloud' });
+    const gEv = { type: EVENT.CONFIRMED, bar: '2026-09-09', price: 2498.20, level: null, pct: 0 };
+    const g = generateFollowUp(dev, gEv, c);
+    assert.match(g.text.split('\n')[0], /^📈 \$ETH — RECLAIM CONFIRMED \(update\)\./);
+    assert.match(g.text, /First posted Sep 7 as DEVELOPING\./);
+    const gs = followUpSetup(dev, gEv);
+    assert.deepEqual(blocking(validatePost(g.text, { setup: gs, row: followUpRow(dev, gEv), model: followUpModel(dev, gEv), config: c, kind: 'followup', stage: gs.stage, now: new Date('2026-09-09T23:00:00Z') })), []);
+    const lt = { type: EVENT.LEVEL_TEST, bar: '2026-09-08', price: 2560.20, level: 2578.88, extreme: 2585.10, pct: 2.48 };
+    const forged = generateFollowUp(dev, lt, c).text.replace('LEVEL TEST.', 'LEVEL TEST — reclaim confirmed.');
+    const ls = followUpSetup(dev, lt);
+    assert.ok(blocking(validatePost(forged, { setup: ls, row: followUpRow(dev, lt), model: followUpModel(dev, lt), config: c, kind: 'followup', stage: ls.stage, now: new Date('2026-09-08T23:00:00Z') })).some(i => i.code === 'signal_upgraded'));
+    assert.equal(barCloseIso('2026-09-09', 'crypto'), '2026-09-10T00:00:00.000Z');
+    assert.equal(barCloseIso('2026-09-09', 'equity'), '2026-09-09T20:00:00.000Z');
+  });
+
+  it('scorecard text restates the tracker exactly, never says "targets", and a tampered count blocks', () => {
+    const c = cfg();
+    const stats = { from: '2026-09-07', to: '2026-09-11', posted: 4, breakouts: 2, invalidated: 1, expired: 1, active: 1, resolved: 3, hitRate: 67, allTime: { setups: 6, breakouts: 2, invalidated: 2, resolved: 4, hitRate: 50 }, best: { symbol: 'ETH', pct: 4.5 }, worst: { symbol: 'SOL', pct: -2.7 }, symbols: { posted: [], breakouts: ['ETH', 'ADA'], invalidated: ['SOL'], active: ['BTC'] } };
+    const { text } = generateScorecard(stats, c);
+    const lines = text.split('\n');
+    assert.equal(lines[0], '📊 Weekly Setup Scorecard · Sep 7–11, 2026');
+    assert.equal(lines[1], 'Setups posted: 4');
+    assert.equal(lines[2], '✅ Breakouts / levels reached: 2');
+    assert.equal(lines[3], '🛑 Invalidated: 1');
+    assert.equal(lines[4], '👀 Still active: 1');
+    assert.equal(lines[5], 'Hit rate this week: 67% (2 of 3 resolved)');
+    assert.equal(lines[6], 'All-time: 6 setups · 50% hit rate (2 of 4 resolved)');
+    assert.equal(lines[7], 'Best this week: $ETH +4.5% · Worst: $SOL −2.7%');
+    assert.match(text, /\nData: daily · Sep 11, 2026\n#Stocks #Crypto$/);
+    assert.ok(!/target/i.test(text));
+    const ctx = { setup: null, row: null, model: { reportDate: '2026-09-11', dataAsOf: new Date().toISOString() }, config: c, kind: 'scorecard', scorecard: stats };
+    assert.deepEqual(blocking(validatePost(text, ctx)), []);
+    assert.ok(blocking(validatePost(text.replace('Setups posted: 4', 'Setups posted: 9'), ctx)).some(i => i.code === 'value_mismatch'));
+    assert.ok(blocking(validatePost(text.replace('67%', '90%'), ctx)).some(i => i.code === 'value_mismatch'));
+    const spec = buildScorecardSpec(stats, c, '/tmp/s.png');
+    assert.equal(spec.style, 'scorecard');
+    assert.equal(spec.hitRate, 67);
+    assert.deepEqual(spec.tiles.map(t => t.value), ['4', '2', '1', '1']);
+  });
+
+  it('renders the scorecard card', { skip: !HAVE_PIL }, () => {
+    const c = cfg();
+    const stats = scorecardStats([open()], weekBounds('2026-09-07'));
+    const out = join(mkdtempSync(join(tmpdir(), 'sc-')), 'SCORECARD.png');
+    renderChartSpec(buildScorecardSpec(stats, c, out));
+    assert.ok(existsSync(out));
+  });
+});
+
+describe('publishing policy: one highest-quality setup per run, tracked, followed up, scored weekly', () => {
+  const CRYPTO_CFG = join(ROOT, 'config', 'social-compliance-crypto.json');
+  const STOCK_CFG = join(ROOT, 'config', 'social-compliance.json');
+  const load = (p, over = {}) => { resetConfigCache(); const c = loadConfig(p); resetConfigCache(); return { ...c, charts: { ...c.charts, enabled: false, requireForPublish: false }, ...over }; };
+  const ETH = (over = {}) => ROW({
+    symbol: 'ETH', price: 2498.20, rsi: 64, rsiMa: 60, cmf: 0.22, atr: 95,
+    bbLower: 2300.10, bbBasis: 2448.62, bbUpper: 2578.88, vwap: 2410.55, cloudA: 2380.00, cloudB: 2350.00,
+    position: 'above_cloud', structure: 'HH-up', score: 2.5, biasNext: 'Calls', ...over,
+  });
+  const bar = (t, o, h, l, c, v = 1000) => ({ t, o, h, l, c, v });
+  const fresh = (p, over = {}) => {
+    const dir = mkdtempSync(join(tmpdir(), 'policy-'));
+    const cfg = load(p, over);
+    cfg.posting = { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, enabled: true, via: 'browser', spacingSeconds: 0 } };
+    return { cfg, wf: new SocialWorkflow({ config: cfg, audit: new AuditStore(join(dir, 'audit.jsonl')), insights: null }), dir };
+  };
+  const cohort = syms => ({ source: 't', calls: syms.map(s => ({ symbol: s, score: 2.5 })), puts: [], watches: [] });
+
+  it('posts exactly one setup — the highest-quality one — and never forces a post below the bar', async () => {
+    const { wf } = fresh(CRYPTO_CFG);
+    const rows = [
+      ETH({ symbol: 'AAA', position: 'in_cloud' }),                // WATCH / Low
+      ETH({ symbol: 'BBB', cmf: 0.12 }),                            // CONFIRMED / Medium (cmf < 0.15)
+      ETH({ symbol: 'CCC' }),                                       // CONFIRMED / High
+    ];
+    const model = MODEL(rows, { cohort: cohort(['AAA', 'BBB', 'CCC']) });
+    const r = await wf.autoPublish(model);
+    assert.equal(r.refused, null);
+    assert.deepEqual(r.published.map(p => p.symbol), ['CCC']);
+    assert.equal(r.capped, true);
+    assert.equal(r.candidateOrder[0], 'CCC:CONFIRMED/High');
+    assert.equal(wf.ready({ queue: 'crypto' }).length, 1);
+    // nothing meets Medium → nothing posted, and the summary says so
+    const { wf: w2 } = fresh(CRYPTO_CFG);
+    const low = MODEL([ETH({ symbol: 'AAA', position: 'in_cloud' })], { cohort: cohort(['AAA']) });
+    const r2 = await w2.autoPublish(low);
+    assert.deepEqual(r2.published, []);
+    assert.match(r2.noSetup, /nothing posted/);
+    assert.ok(r2.skipped.some(s => s.symbol === 'AAA' && /confidence Low/.test(s.reason)));
+  });
+
+  it('a DEVELOPING setup is posted when it is the best Medium-or-better candidate', async () => {
+    const { wf } = fresh(CRYPTO_CFG);
+    // breakout watch at the band with confirmation → WATCH / Medium
+    const row = ETH({ symbol: 'DDD', price: 2570 });
+    const setup = classifySetup(row);
+    assert.equal(setup.signal, SIGNAL.WATCH);
+    assert.equal(setup.confidence, 'Medium');
+    const r = await wf.autoPublish(MODEL([row], { cohort: cohort(['DDD']) }));
+    assert.deepEqual(r.published.map(p => p.symbol), ['DDD']);
+    const rec = wf.ready({ queue: 'crypto' })[0];
+    assert.equal(rec.stage, STAGE.DEVELOPING);
+    assert.match(rec.originalText.split('\n')[0], /breakout watch\.$/);
+  });
+
+  it('recording the browser post opens the lifecycle record; the symbol is then skipped until it resolves', async () => {
+    const { wf } = fresh(CRYPTO_CFG);
+    const model = MODEL([ETH()], { cohort: cohort(['ETH']) });
+    await wf.autoPublish(model);
+    const [ready] = wf.ready({ queue: 'crypto' });
+    assert.equal(wf.tracker.active().length, 0, 'not tracked until it is actually live');
+    wf.recordManualPublication(ready.id, model, { xPostId: '999', url: 'https://x.com/a/status/999' });
+    const [tr] = wf.tracker.active();
+    assert.equal(tr.id, ready.id);
+    assert.equal(tr.stage, STAGE.CONFIRMED);
+    assert.equal(tr.posts[0].xPostId, '999');
+    assert.equal(tr.target.value, 2578.88);
+    // next morning: the 20h cooldown has passed, so it is the tracker that holds the symbol back
+    const tomorrow = new Date(Date.now() + 26 * 3600_000);
+    const later = new SocialWorkflow({ config: wf.config, audit: wf.audit, tracker: wf.tracker, now: () => tomorrow, insights: null });
+    const again = await later.autoPublish(MODEL([ETH()], { reportDate: '2026-09-08', dataAsOf: tomorrow.toISOString(), cohort: cohort(['ETH']) }));
+    assert.deepEqual(again.published, []);
+    assert.ok(again.skipped.some(s => s.symbol === 'ETH' && /already tracked as RECLAIM CONFIRMED/.test(s.reason)), JSON.stringify(again.skipped));
+  });
+
+  it('trackEvents queues a compliance-clean follow-up per event and advances the tracker; dry-run changes nothing', async () => {
+    const { wf } = fresh(CRYPTO_CFG);
+    const model = MODEL([ETH()], { reportDate: '2026-09-07', cohort: cohort(['ETH']) });
+    await wf.autoPublish(model);
+    const [ready] = wf.ready({ queue: 'crypto' });
+    wf.recordManualPublication(ready.id, model, { xPostId: '999' });
+    const candles = [
+      bar('2026-09-07', 2480, 2510, 2470, 2498.20),
+      bar('2026-09-08', 2500, 2585.10, 2490, 2560.20),
+      bar('2026-09-09', 2565, 2620, 2550, 2610.40),
+    ];
+    const yahoo = async () => ({ ok: true, json: async () => ({ chart: { result: [{ timestamp: candles.map(c => Date.parse(c.t + 'T00:00:00Z') / 1000), indicators: { quote: [{ open: candles.map(c => c.o), high: candles.map(c => c.h), low: candles.map(c => c.l), close: candles.map(c => c.c), volume: candles.map(c => c.v) }] } }] } }) });
+    const frozen = () => new Date('2026-09-10T05:00:00Z');
+    const dry = new SocialWorkflow({ config: wf.config, audit: wf.audit, tracker: wf.tracker, now: frozen, insights: null });
+    const d = await dry.trackEvents({ dryRun: true, fetchImplForCandles: yahoo });
+    assert.deepEqual(d.events.map(e => e.type), ['LEVEL_TEST', 'BREAKOUT']);
+    // The run is on the 10th; both events sit inside the follow-up freshness
+    // window (96h), so both are queued. Beyond it they are audited as skipped.
+    assert.equal(d.queued.length, 2, JSON.stringify(d.skipped));
+    assert.equal(wf.tracker.active().length, 1, 'dry run leaves the tracker alone');
+    assert.equal(wf.ready({ queue: 'crypto' }).length, 0);
+    const old = new SocialWorkflow({ config: wf.config, audit: wf.audit, tracker: wf.tracker, now: () => new Date('2026-09-20T05:00:00Z'), insights: null });
+    const o = await old.trackEvents({ dryRun: true, fetchImplForCandles: yahoo });
+    assert.equal(o.queued.length, 0);
+    assert.ok(o.skipped.every(x => /stale_data/.test(x.reason)), JSON.stringify(o.skipped));
+
+    const live = new SocialWorkflow({ config: wf.config, audit: wf.audit, tracker: wf.tracker, now: frozen, insights: null });
+    const r = await live.trackEvents({ fetchImplForCandles: yahoo });
+    assert.equal(r.queued.length, 2, JSON.stringify(r.skipped));
+    const readyNow = wf.ready({ queue: 'crypto' });
+    assert.deepEqual(readyNow.map(x => [x.kind, x.stage, x.symbol]), [['followup', 'CONFIRMED', 'ETH'], ['followup', 'BREAKOUT', 'ETH']]);
+    assert.match(readyNow[0].originalText, /^👀 \$ETH — LEVEL TEST\./);
+    assert.match(readyNow[1].originalText, /^✅ \$ETH — BREAKOUT UPDATE\./);
+    assert.equal(readyNow[0].followUpOf, ready.id);
+    const [tr] = wf.tracker.latest();
+    assert.equal(tr.stage, STAGE.BREAKOUT);
+    assert.equal(tr.outcome, 'breakout');
+    assert.equal(wf.tracker.active().length, 0);
+    // recording the follow-up appends it to the lifecycle record
+    live.recordManualPublication(readyNow[1].id, null, { xPostId: '1000' });
+    assert.equal(wf.tracker.latest()[0].posts.at(-1).xPostId, '1000');
+    // a second run finds nothing new
+    const r2 = await live.trackEvents({ fetchImplForCandles: yahoo });
+    assert.deepEqual(r2.events, []);
+  });
+
+  it('a later report graduates a DEVELOPING setup and queues the CONFIRMED update', async () => {
+    const { wf } = fresh(CRYPTO_CFG);
+    const devModel = MODEL([ETH({ price: 2570 })], { cohort: cohort(['ETH']) });
+    await wf.autoPublish(devModel);
+    const [ready] = wf.ready({ queue: 'crypto' });
+    wf.recordManualPublication(ready.id, devModel, { xPostId: '5' });
+    assert.equal(wf.tracker.active()[0].stage, STAGE.DEVELOPING);
+    const later = MODEL([ETH({ price: 2520 })], { reportDate: '2026-09-09' }); // basis reclaim, confirmed, same direction
+    assert.equal(classifySetup(later.rows[0]).signal, SIGNAL.CONFIRMED);
+    const flat = [bar('2026-09-08', 2560, 2575, 2510, 2530), bar('2026-09-09', 2530, 2545, 2505, 2520)];
+    const yahoo = async () => ({ ok: true, json: async () => ({ chart: { result: [{ timestamp: flat.map(c => Date.parse(c.t + 'T00:00:00Z') / 1000), indicators: { quote: [{ open: flat.map(c => c.o), high: flat.map(c => c.h), low: flat.map(c => c.l), close: flat.map(c => c.c), volume: flat.map(c => c.v) }] } }] } }) });
+    const live = new SocialWorkflow({ config: wf.config, audit: wf.audit, tracker: wf.tracker, now: () => new Date('2026-09-10T05:00:00Z'), insights: null });
+    const r = await live.trackEvents({ model: later, fetchImplForCandles: yahoo });
+    assert.deepEqual(r.events.map(e => e.type), ['CONFIRMED']);
+    assert.equal(wf.tracker.active()[0].stage, STAGE.CONFIRMED);
+    assert.match(wf.ready({ queue: 'crypto' })[0].originalText, /CONFIRMED \(update\)/);
+  });
+
+  it('queueScorecard produces one validated scorecard per week on the stocks queue', async () => {
+    const { wf } = fresh(STOCK_CFG);
+    const model = MODEL([ETH({ symbol: 'XYZ' })], { cohort: cohort(['XYZ']) });
+    await wf.autoPublish(model);
+    const [ready] = wf.ready({ queue: 'stocks' });
+    wf.recordManualPublication(ready.id, model, { xPostId: '7' });
+    const s = await wf.queueScorecard({ date: '2026-09-08' });
+    assert.equal(s.refused, null, s.refused);
+    assert.equal(s.stats.posted, 1);
+    assert.equal(s.stats.active, 1);
+    const sc = wf.ready({ queue: 'stocks' }).find(r => r.kind === 'scorecard');
+    assert.ok(sc);
+    assert.match(sc.originalText, /^📊 Weekly Setup Scorecard · Sep 7–11, 2026\nSetups posted: 1\n/);
+    assert.match(sc.originalText, /Hit rate this week: — \(nothing resolved yet\)/);
+    const dup = await wf.queueScorecard({ date: '2026-09-09' });
+    assert.match(dup.refused, /already ready_to_post/);
+    const { wf: crypto } = fresh(CRYPTO_CFG);
+    assert.match((await crypto.queueScorecard({ date: '2026-09-08' })).refused, /disabled/);
+  });
+
+  it('historical engagement breaks ties between equally-ranked candidates, never overrides quality', async () => {
+    const insights = { byQueueSetup: { 'crypto/Trend continuation': { withMetrics: 5, engagementRate: 0.08 }, 'crypto/Basis reclaim': { withMetrics: 5, engagementRate: 0.02 } } };
+    const { cfg, dir } = fresh(CRYPTO_CFG);
+    const wf = new SocialWorkflow({ config: cfg, audit: new AuditStore(join(dir, 'a2.jsonl')), insights });
+    const rows = [
+      ETH({ symbol: 'AAA' }),                          // Basis reclaim / CONFIRMED / High
+      ETH({ symbol: 'BBB', price: 2515, bbBasis: 2440, atr: 50, rsi: 62 }), // Trend continuation / CONFIRMED / High
+    ];
+    const r = await wf.autoPublish(MODEL(rows, { cohort: cohort(['AAA', 'BBB']) }));
+    assert.deepEqual(r.published.map(p => p.symbol), ['BBB'], r.candidateOrder.join(' '));
+    // with no evidence the tiebreak is alphabetical
+    const wf2 = new SocialWorkflow({ config: cfg, audit: new AuditStore(join(dir, 'a3.jsonl')), insights: null });
+    const r2 = await wf2.autoPublish(MODEL(rows, { cohort: cohort(['AAA', 'BBB']) }));
+    assert.deepEqual(r2.published.map(p => p.symbol), ['AAA']);
+    assert.equal(insightsBoost(insights, { setup: 'Basis reclaim' }, 'crypto'), 0.02);
+    assert.equal(insightsBoost({ bySetupType: { X: { withMetrics: 2, engagementRate: 0.9 } } }, { setup: 'X' }, 'crypto'), 0, 'fewer than 3 measured posts is not evidence');
+  });
+});
+
+describe('metrics: collection, manual recording, report and insights', () => {
+  it('normalises X API v2 metrics and manual entries the same way', () => {
+    const m = parseTweetMetrics({ id: '42', public_metrics: { impression_count: 1000, like_count: 10, reply_count: 2, retweet_count: 3, quote_count: 1, bookmark_count: 4 }, non_public_metrics: { user_profile_clicks: 6 } });
+    assert.equal(m.impressions, 1000);
+    assert.equal(m.engagements, 26);
+    assert.equal(engagementRate(m), 0.026);
+    const r = recordManual('42', { impressions: '500', likes: '5', bookmarks: '2' }, { source: 'browser' });
+    assert.equal(r.engagements, 7);
+    assert.equal(r.source, 'browser');
+  });
+
+  it('collectPostMetrics signs a GET with OAuth 1.0a and parses the batch', async () => {
+    const calls = [];
+    const fetchImpl = async (url, opts) => { calls.push({ url, opts }); return { ok: true, json: async () => ({ data: [{ id: '1', public_metrics: { impression_count: 10, like_count: 1, reply_count: 0, retweet_count: 0, quote_count: 0, bookmark_count: 0 } }] }) }; };
+    const creds = { type: 'oauth1', apiKey: 'k', apiSecret: 's', accessToken: 't', accessTokenSecret: 'ts' };
+    const out = await collectPostMetrics(['1'], { creds, fetchImpl });
+    assert.equal(out[0].impressions, 10);
+    assert.match(calls[0].url, /^https:\/\/api\.x\.com\/2\/tweets\?ids=1&tweet\.fields=/);
+    assert.match(calls[0].opts.headers.Authorization, /^OAuth oauth_consumer_key="k"/);
+  });
+
+  it('report joins metrics with the audit log and tracker, aggregates, recommends, and feeds insights', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'met-'));
+    const metrics = new MetricsStore(join(dir, 'm.jsonl'));
+    const auditRecords = [];
+    const trackerRecords = [];
+    const mk = (i, queue, setupType, outcome, imp, eng) => {
+      const id = `id${i}`;
+      auditRecords.push({ id, status: 'published', kind: 'setup', queue, symbol: `S${i}`, setup: { setup: setupType, signal: 'CONFIRMED' }, stage: 'CONFIRMED', publication: { xPostId: `p${i}`, url: 'u', at: `2026-09-0${(i % 5) + 1}T14:0${i}:00Z` } });
+      trackerRecords.push({ id, outcome });
+      metrics.append({ kind: 'post', xPostId: `p${i}`, impressions: imp, likes: eng, replies: 0, reposts: 0, quotes: 0, bookmarks: 0, profileClicks: 0 });
+    };
+    for (let i = 1; i <= 4; i++) mk(i, 'crypto', 'Basis reclaim', 'breakout', 1000, 50);
+    for (let i = 5; i <= 8; i++) mk(i, 'stocks', 'Trend continuation', i % 2 ? 'breakout' : 'invalidated', 400, 4);
+    metrics.append({ kind: 'account', followers: 10 });
+    metrics.append({ kind: 'account', followers: 14 });
+    const rep = buildReport({ metrics, auditRecords, trackerRecords });
+    assert.equal(rep.posts, 8);
+    assert.equal(rep.postsWithMetrics, 8);
+    assert.equal(rep.byQueue.crypto.engagementRate, 0.05);
+    assert.equal(rep.bySetupType['Basis reclaim'].hitRate, 100);
+    assert.equal(rep.bySetupType['Trend continuation'].hitRate, 50);
+    assert.equal(rep.followers.delta, 4);
+    assert.ok(rep.recommendations.some(r => /"Basis reclaim" has the highest engagement rate/.test(r)), rep.recommendations.join(' | '));
+    assert.ok(rep.recommendations.some(r => /crypto posts engage better/.test(r)));
+    assert.equal(insightsBoost(rep, { setup: 'Basis reclaim' }, 'crypto'), 0.05);
+    assert.equal(insightsBoost(rep, { setup: 'Trend continuation' }, 'stocks'), 0.01);
+  });
+});
+
+// ─── educational explainers ───────────────────────────────────────────────────
+
+import { TOPICS, getTopic, nextTopic, generateEducationPost, buildEducationSpec, educationAltText, TAKEAWAY } from '../src/social/education.js';
+
+describe('educational explainers: one topic per post, rotated, no tickers, footer on the card', () => {
+  const STOCK_CFG = join(ROOT, 'config', 'social-compliance.json');
+  const CRYPTO_CFG = join(ROOT, 'config', 'social-compliance-crypto.json');
+  const load = (p, over = {}) => { resetConfigCache(); const c = loadConfig(p); resetConfigCache(); return { ...c, ...over }; };
+
+  it('the library is well-formed: unique ids, three examples each with a takeaway and a drawable illustration', () => {
+    const ids = TOPICS.map(t => t.id);
+    assert.equal(new Set(ids).size, ids.length);
+    assert.ok(TOPICS.length >= 8);
+    for (const t of TOPICS) {
+      assert.equal(t.examples.length, 3, t.id);
+      assert.ok(t.definition.length <= 110, `${t.id} definition too long`);
+      assert.ok(t.question.endsWith('?'), t.id);
+      for (const e of t.examples) {
+        assert.ok(Object.values(TAKEAWAY).includes(e.takeaway), `${t.id}/${e.label}`);
+        assert.ok(['candles', 'osc', 'line'].includes(e.art.type), `${t.id}/${e.label} art`);
+        if (e.art.type === 'candles') assert.ok(e.art.bars.length >= 4);
+        if (e.art.type !== 'candles') assert.ok(e.art.points.length >= 4);
+        assert.ok(!/\$[A-Z]{1,6}\b/.test(e.text + e.note), 'no tickers in teaching copy');
+      }
+      const takeaways = new Set(t.examples.map(e => e.takeaway));
+      assert.equal(takeaways.size, 3, `${t.id} should cover bullish, bearish and neutral`);
+    }
+  });
+
+  it('every topic generates a compliance-clean post under the stock config; a ticker or a claim blocks', () => {
+    const cfg = load(STOCK_CFG);
+    for (const t of TOPICS) {
+      const { text } = generateEducationPost(t, cfg);
+      const lines = text.split('\n');
+      assert.match(lines[0], /^📚 (Chart Basics|Indicators|Price Action): /);
+      assert.ok(lines.some(l => l.startsWith('✅ Bullish — ')), t.id);
+      assert.ok(lines.some(l => l.startsWith('🛑 Bearish — ')), t.id);
+      assert.ok(lines.some(l => l.startsWith('⚖️ Neutral — ')), t.id);
+      assert.match(lines.at(-2), /\? 👇$/);
+      assert.equal(lines.at(-1), '#TechnicalAnalysis #Trading');
+      const ctx = { setup: null, row: null, model: { reportDate: '2026-09-08', dataAsOf: new Date().toISOString() }, config: cfg, kind: 'education', chart: { path: '/tmp/e.png' } };
+      assert.deepEqual(blocking(validatePost(text, ctx)), [], `${t.id}: ${JSON.stringify(blocking(validatePost(text, ctx)))}`);
+      assert.ok(blocking(validatePost(text + '\nLook at $AAPL', ctx)).some(i => i.code === 'ticker_in_education'));
+      assert.ok(blocking(validatePost(text.replace('👇', '— it will rally 👇'), ctx)).some(i => i.code === 'unsupported_claim'));
+    }
+  });
+
+  it('rotation: never-posted topics first in library order, then the one posted longest ago', () => {
+    assert.equal(nextTopic([]).id, TOPICS[0].id);
+    const posted = (topic, at) => ({ kind: 'education', topic, status: 'published', publication: { at } });
+    const all = TOPICS.map((t, i) => posted(t.id, `2026-08-${String(i + 1).padStart(2, '0')}T12:00:00Z`));
+    assert.equal(nextTopic(all).id, TOPICS[0].id, 'oldest first once every topic has run');
+    const bumped = [...all, posted(TOPICS[0].id, '2026-09-01T12:00:00Z')];
+    assert.equal(nextTopic(bumped).id, TOPICS[1].id);
+    assert.equal(nextTopic(all.slice(0, 3)).id, TOPICS[3].id, 'first never-posted');
+    assert.equal(getTopic('nope'), null);
+  });
+
+  it('queueEducation: one per day on the stocks queue, rendered card carries the footer, crypto config refuses', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'edu-'));
+    const cfg = load(STOCK_CFG, { charts: { ...load(STOCK_CFG).charts, enabled: false, requireForPublish: false } });
+    cfg.posting = { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, enabled: true, via: 'browser' } };
+    const wf = new SocialWorkflow({ config: cfg, audit: new AuditStore(join(dir, 'a.jsonl')), insights: null, now: () => new Date('2026-09-08T12:00:00Z') });
+    const s = await wf.queueEducation({});
+    assert.equal(s.refused, null, s.refused);
+    assert.equal(s.topic, TOPICS[0].id);
+    const [rec] = wf.ready({ queue: 'stocks' });
+    assert.equal(rec.kind, 'education');
+    assert.equal(rec.topic, TOPICS[0].id);
+    assert.equal(rec.symbol, 'EDU');
+    assert.match(rec.originalText, /^📚 Chart Basics: Support & Resistance\n/);
+    const dup = await wf.queueEducation({});
+    assert.match(dup.refused, /already ready_to_post/);
+    const next = new SocialWorkflow({ config: cfg, audit: wf.audit, insights: null, now: () => new Date('2026-09-11T12:00:00Z') });
+    wf.recordManualPublication(rec.id, null, { xPostId: '77' });
+    const s2 = await next.queueEducation({});
+    assert.equal(s2.topic, TOPICS[1].id, 'rotation advances after publication');
+    const unknown = await next.queueEducation({ topic: 'nope' });
+    assert.match(unknown.refused, /unknown topic/);
+    const crypto = new SocialWorkflow({ config: load(CRYPTO_CFG), audit: new AuditStore(join(dir, 'c.jsonl')), insights: null });
+    assert.match((await crypto.queueEducation({})).refused, /disabled/);
+    const spec = buildEducationSpec(TOPICS[2], cfg, '/tmp/e.png');
+    assert.equal(spec.style, 'explainer');
+    assert.equal(spec.footer, 'Educational only. Not financial advice.');
+    assert.equal(spec.width, 1080);
+    assert.equal(spec.height, 1350);
+    assert.deepEqual(spec.examples.map(e => e.takeawayWord), ['Bullish', 'Bearish', 'Neutral']);
+    assert.match(educationAltText(TOPICS[2], cfg), /Educational only\. Not financial advice\.$/);
+  });
+
+  it('renders every topic\'s explainer card', { skip: !HAVE_PIL }, () => {
+    const cfg = load(STOCK_CFG);
+    const dir = mkdtempSync(join(tmpdir(), 'edu-png-'));
+    for (const t of TOPICS) {
+      const out = join(dir, `${t.id}.png`);
+      renderChartSpec(buildEducationSpec(t, cfg, out));
+      assert.ok(existsSync(out), t.id);
+    }
+  });
+
+  it('metrics report buckets education posts by topic', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'edu-met-'));
+    const metrics = new MetricsStore(join(dir, 'm.jsonl'));
+    const auditRecords = [];
+    let i = 0;
+    for (const topic of ['rsi', 'rsi', 'rsi', 'cmf', 'cmf', 'cmf']) {
+      i++;
+      auditRecords.push({ id: `e${i}`, status: 'published', kind: 'education', topic, queue: 'stocks', symbol: 'EDU', setup: { setup: 'x' }, publication: { xPostId: `q${i}`, url: 'u', at: `2026-09-0${i}T12:00:00Z` } });
+      metrics.append({ kind: 'post', xPostId: `q${i}`, impressions: 1000, likes: topic === 'rsi' ? 80 : 20, replies: 0, reposts: 0, quotes: 0, bookmarks: 0, profileClicks: 0 });
+    }
+    const rep = buildReport({ metrics, auditRecords });
+    assert.equal(rep.byTopic.rsi.engagementRate, 0.08);
+    assert.equal(rep.byTopic.cmf.engagementRate, 0.02);
+    assert.ok(rep.recommendations.some(r => /Educational topic "rsi" engages best/.test(r)), rep.recommendations.join(' | '));
+  });
+});
+
+describe('removed posts: closed unscored, hold no cooldown', () => {
+  it('removePost marks the audit record removed and closes the lifecycle record as REMOVED', async () => {
+    resetConfigCache(); const c0 = loadConfig(join(ROOT, 'config', 'social-compliance-crypto.json')); resetConfigCache();
+    const cfg = { ...c0, charts: { ...c0.charts, enabled: false, requireForPublish: false } };
+    cfg.posting = { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, enabled: true, via: 'browser' } };
+    const dir = mkdtempSync(join(tmpdir(), 'rm-'));
+    const wf = new SocialWorkflow({ config: cfg, audit: new AuditStore(join(dir, 'a.jsonl')), insights: null });
+    const row = ROW({ symbol: 'ETH', price: 2498.20, atr: 95, bbLower: 2300.10, bbBasis: 2448.62, bbUpper: 2578.88, vwap: 2410.55, cloudA: 2380, cloudB: 2350 });
+    const model = MODEL([row], { reportDate: '2026-09-07', cohort: { source: 't', calls: [{ symbol: 'ETH', score: 2.5 }], puts: [], watches: [] } });
+    await wf.autoPublish(model);
+    const [ready] = wf.ready({ queue: 'crypto' });
+    wf.recordManualPublication(ready.id, model, { xPostId: '1' });
+    assert.equal(wf.tracker.active().length, 1);
+    const r = wf.removePost(ready.id, { reason: 'deleted on X' });
+    assert.equal(r.audit.status, 'removed');
+    assert.equal(r.tracked.stage, 'REMOVED');
+    assert.equal(r.tracked.outcome, 'removed');
+    assert.equal(wf.tracker.active().length, 0);
+    const st = scorecardStats(wf.tracker.latest(), weekBounds('2026-09-07'));
+    assert.equal(st.posted, 0, 'a removed post is not a posted setup');
+    assert.equal(st.removed, 1);
+    assert.equal(st.allTime.setups, 0);
+    // no cooldown, no tracker skip: the symbol can be posted again from a fresh report
+    const again = await wf.autoPublish(MODEL([row], { reportDate: '2026-09-07', dataAsOf: new Date().toISOString(), cohort: { source: 't', calls: [{ symbol: 'ETH', score: 2.5 }], puts: [], watches: [] } }));
+    assert.deepEqual(again.published.map(p => p.symbol), ['ETH'], JSON.stringify(again.skipped));
+    assert.throws(() => wf.removePost(ready.id), /Only published/);
   });
 });

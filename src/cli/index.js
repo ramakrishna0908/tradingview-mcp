@@ -26,6 +26,7 @@ import './commands/pane.js';
 import './commands/tab.js';
 import './commands/stream.js';
 import './commands/social.js';
+import './commands/premarket.js';
 
 // Run
 import { run } from './router.js';

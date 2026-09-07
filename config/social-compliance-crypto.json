@@ -1,33 +1,12 @@
 {
-  "$comment": "Compliance configuration for the X (Twitter) post generator. Legal/compliance may edit this file without code changes. Every value here is read at runtime by src/social/config.js.",
+  "$comment": "Compliance configuration for the CRYPTO sweep (config/social-compliance.json is the stock one). Selected with SOCIAL_COMPLIANCE_CONFIG=config/social-compliance-crypto.json. Legal/compliance may edit this file without a code change.",
   "disclosure": "Educational market analysis only. Not investment advice. Trading involves risk.",
   "disclosurePlacement": "bio",
   "$disclosurePlacement": "'post' = the disclosure line is appended to every post and validated; 'bio' = it lives in the account bio only (set it there!) and posts carry the required hashtags (#NFA #DYOR) as the in-post marker. Flip to 'post' to restore per-post disclosures without a code change.",
   "charLimit": 4000,
   "maxReportAgeHours": 24,
-  "marketHolidays": [
-    "2026-01-01",
-    "2026-01-19",
-    "2026-02-16",
-    "2026-04-03",
-    "2026-05-25",
-    "2026-06-19",
-    "2026-07-03",
-    "2026-09-07",
-    "2026-11-26",
-    "2026-12-25",
-    "2027-01-01",
-    "2027-01-18",
-    "2027-02-15",
-    "2027-03-26",
-    "2027-05-31",
-    "2027-06-18",
-    "2027-07-05",
-    "2027-09-06",
-    "2027-11-25",
-    "2027-12-24"
-  ],
-  "$marketHolidays": "NYSE full-day closures. Auto-publish refuses on these dates (a report generated on a holiday only re-shows the prior session).",
+  "marketHolidays": [],
+  "$marketHolidays": "Empty by design: a 24/7 market has no full-day closures. Kept as a field so a venue-wide outage date can be added if one ever needs to be skipped.",
   "requiredIndicators": [
     "Price",
     "RSI",
@@ -120,7 +99,7 @@
       "WATCH"
     ],
     "autoPublish": {
-      "$comment": "Guard-railed unattended publishing (tv social auto). candidateSource 'report-cohort' posts exactly the names the report lists under Calls and Puts (its flow-trend gate is the authority; the classifier only supplies the label and can never upgrade one). Every guard below must hold; nothing here can override the stale-data gate. SOCIAL_AUTO_PUBLISH=0 in the environment is a kill switch.",
+      "$comment": "Guard-railed unattended publishing (tv social auto). candidateSource 'report-cohort' posts exactly the names the report lists under Calls and Puts (its flow-trend gate is the authority; the classifier only supplies the label and can never upgrade one). Every guard below must hold; nothing here can override the stale-data gate. SOCIAL_AUTO_PUBLISH=0 in the environment is a kill switch. Crypto sweep: the weekend/holiday gates do not apply (marketCalendar 24x7); every other guard is identical to the stock policy.",
       "enabled": true,
       "candidateSource": "report-cohort",
       "requireSignal": null,
@@ -130,15 +109,20 @@
       "symbolCooldownHours": 20,
       "skipFlaggedRows": true,
       "skipBiasKeywords": [
-        "earnings",
-        "trial",
         "avoid",
         "no position",
-        "pre-news",
         "stale",
         "removed",
         "demoted",
-        "catalyst"
+        "catalyst",
+        "unlock",
+        "depeg",
+        "exploit",
+        "hack",
+        "delisting",
+        "halving",
+        "fork",
+        "maintenance"
       ],
       "allowWarnings": false,
       "requireDisclosureLast": true,
@@ -157,10 +141,10 @@
     "required": [],
     "engagement": {
       "default": [
-        "#Stocks",
+        "#Crypto",
         "#TechnicalAnalysis",
-        "#StockMarket",
-        "#Trading"
+        "#CryptoTrading",
+        "#Altcoins"
       ],
       "bullish": [
         "#Momentum"
@@ -185,10 +169,18 @@
       "#FinancialAdvice",
       "#InvestmentAdvice",
       "#Pump",
-      "#Signals"
+      "#Signals",
+      "#Shitcoin",
+      "#Airdrop",
+      "#PumpIt",
+      "#Ape",
+      "#Degen",
+      "#GEM",
+      "#1000x",
+      "#NextBitcoin"
     ],
     "symbolTag": true,
-    "assetTag": "#Stocks"
+    "assetTag": "#Crypto"
   },
   "cta": {
     "enabled": true,
@@ -206,6 +198,14 @@
     "height": 1000
   },
   "$charLimit": "X Premium account: long posts allowed. Set 280 for a non-Premium account (the fit ladder trims CTA → extra hashtags → narrative → …).",
+  "marketCalendar": "24x7",
+  "$marketCalendar": "24x7 disables the weekend and exchange-holiday refusals in auto-publish. Crypto never closes, so a Saturday report is a real session, not a re-show of Friday. Set nyse to restore exchange gating.",
+  "queue": "crypto",
+  "$queue": "Tags every draft so `tv social ready --queue crypto` returns only this sweep. The stock poster asks for --queue stocks and can never pick these up.",
+  "assetClass": "crypto",
+  "$assetClass": "Chart candles are fetched as a Yahoo pair (BTC -> BTC-USD) instead of an equity ticker.",
+  "priceGrouping": true,
+  "$priceGrouping": "Thousands separators, so BTC reads $79,610.00. Off for stocks, which keeps their post formatting byte-identical.",
   "postFormat": "sweep",
   "$postFormat": "\"sweep\" = the Daily Setup Sweep layout (headline verb, two levels, RVOL/score line, level-question CTA, 0-2 hashtags). \"classic\" restores the previous multi-line layout without a code change.",
   "priceDisplay": "compact",
@@ -224,7 +224,7 @@
     "$maxEventAgeHours": "Freshness window for follow-ups, replacing maxReportAgeHours for kind=followup. A follow-up is dated by the daily bar that triggered it and the next run after a Friday close is Monday morning (65h; ~90h over a holiday weekend), so 96h. Older events are still audited as skipped, never back-posted."
   },
   "scorecard": {
-    "enabled": true,
+    "enabled": false,
     "weekday": 5,
     "queue": "stocks",
     "hashtags": [
@@ -233,14 +233,8 @@
     ],
     "$comment": "Weekly Setup Scorecard (tv social scorecard): counts from docs/social/setups.jsonl across BOTH queues, queued on the stocks queue every Friday. Only one config should have this enabled or the account posts two scorecards."
   },
-  "premarket": {
-    "enabled": true,
-    "queue": "stocks",
-    "hashtags": ["#Stocks", "#Premarket"],
-    "$comment": "Premarket market-direction post (tv social premarket), weekdays ~8 AM via the premarket-market-direction task, built from docs/reports/premarket/premarket-<date>.json. Hook + bias + confidence, top 3 drivers, SPY levels, sectors, the one flip event, CTA, short disclaimer, 0-2 hashtags. Only one config should have this enabled."
-  },
   "education": {
-    "enabled": true,
+    "enabled": false,
     "queue": "stocks",
     "hashtags": [
       "#TechnicalAnalysis",

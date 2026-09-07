@@ -1,3 +1,4 @@
+import { fmtPrice } from './money.js';
 /**
  * Setup classification for the social summary table.
  *
@@ -234,7 +235,7 @@ export function cohortCandidates(model, table) {
 export const TABLE_COLUMNS = ['Ticker', 'Setup', 'Price', 'RSI', 'CMF', 'Support', 'Resistance', 'Signal', 'Confidence'];
 
 export function fmtMoney(v) {
-  return v == null ? '—' : v.toFixed(2);
+  return fmtPrice(v, { prefix: '' });
 }
 
 export function fmtCmf(v) {
