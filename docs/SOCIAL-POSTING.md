@@ -94,6 +94,17 @@ publishes what the first run missed. Load the fallback once with:
 cp scripts/com.ramakrishna.tvsocialauto.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.ramakrishna.tvsocialauto.plist
 ```
 
+**How it posts — `via`.** With `posting.autoPublish.via = "browser"` (current
+setting) the morning run prepares and policy-approves the posts into status
+`ready_to_post` (text + chart PNG) and sends nothing itself. A scheduled
+Claude task in the desktop app (weekdays 10:00 ET, "Post daily setups to X")
+then reads `tv social ready --json`, posts each one through the Chrome that is
+signed in as @ai_king0206 (text + chart image), and calls
+`tv social record <id> --post-id <id>` so the audit ends in `published`
+(method `browser`). Nothing outside the ready list is ever posted and the text
+is never edited by the poster. Switch `via` to `"api"` to publish directly
+through the X API from the launchd job instead (needs `.env.social`).
+
 **What it posts.** With `candidateSource: "report-cohort"` (the default) the
 candidates are exactly the names the report lists under **Calls** and
 **Puts** in its Cohort Summary, in report order, Calls first. The report's
@@ -144,16 +155,20 @@ Data: daily · Aug 31, 2026 9:49 AM ET
   against the text (`value_mismatch` if edited). No prior report → no note.
 - "Downside/Upside level" is the nearest report level, never a target; the
   invalidation line is the risk context. Both are checked against the row.
-- At the free 280-character limit the CTA, extra hashtags and narrative are
-  trimmed in that order; with X Premium set `charLimit` higher to post the
-  full version.
+- `charLimit` is 4000 for the Premium account, so the full version posts
+  (narrative, CTA, all hashtags). At 280 the CTA, extra hashtags and narrative
+  are trimmed in that order.
+- `Volume: 1.4× 20-day avg (last bar)` comes from the chart's candle data
+  (`charts.volumeLine`) and is integrity-checked against it.
 
 ## Charts
 
 Every post carries an annotated daily chart (`charts.enabled`): the last
-`charts.bars` real candles (Yahoo Finance, cut at the report date), the
-report's support / resistance / 20-day basis / report price, one annotation
-naming the setup, the data timestamp, the price source and the disclosure —
+`charts.bars` real candles (Yahoo Finance, cut at the report date) with the
+Bollinger band shaded, a volume pane (bars coloured by candle direction, dashed
+20-bar average, last-bar ratio), the report's support / resistance / 20-day
+basis / report price, one annotation naming the setup, the data timestamp,
+the price source and the disclosure —
 so the disclosure travels with the image even when it is not in the text.
 Nothing forward-looking is drawn. PNGs land in `docs/social/charts/<date>/`
 (gitignored); `draft` and `auto --dry-run` render them for preview, `publish`

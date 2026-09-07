@@ -29,6 +29,15 @@ UP = (61, 220, 132)
 DOWN = (255, 107, 107)
 ACCENT = (125, 211, 252)
 
+def body_w_vol(slot):
+    return max(3, slot * 0.6)
+
+def fmt_vol(v):
+    if v >= 1e9: return f"{v/1e9:.2f}B"
+    if v >= 1e6: return f"{v/1e6:.1f}M"
+    if v >= 1e3: return f"{v/1e3:.0f}K"
+    return f"{v:.0f}"
+
 def hexc(h, default=TEXT):
     if not h: return default
     h = h.lstrip('#')
@@ -67,9 +76,14 @@ def main():
         d.rounded_rectangle((bx1, by1, W - 36, by1 + 36), radius=8, outline=colour, width=2)
         d.text((bx1 + 14, by1 + 8), badge, font=f_badge, fill=colour)
 
-    # ── plot area ───────────────────────────────────────────────────────────
-    L, T, R, B = 36, 100, W - 236, H - 112
+    # ── plot area: price pane on top, volume pane below ─────────────────────
+    L, T, R, BOT = 36, 100, W - 236, H - 112
+    has_vol = any(c.get('v') for c in candles)
+    VT = BOT - 96 if has_vol else BOT      # volume pane top
+    B = VT - 26 if has_vol else BOT        # price pane bottom (gap holds the volume caption)
     d.rounded_rectangle((L, T, R, B), radius=10, fill=PANEL, outline=GRID)
+    if has_vol:
+        d.rounded_rectangle((L, VT, R, BOT), radius=10, fill=PANEL, outline=GRID)
 
     lo = min(min(c['l'] for c in candles), *[lv['value'] for lv in levels]) if n else 0
     hi = max(max(c['h'] for c in candles), *[lv['value'] for lv in levels]) if n else 1
@@ -87,10 +101,38 @@ def main():
         d.line((L + 1, yy, R - 1, yy), fill=GRID, width=1)
         ticks.append((yy, f"{v:,.2f}"))
 
+    # Bollinger band shading (report values) — context, not a signal
+    band = spec.get('band')
+    if band and band.get('upper') is not None and band.get('lower') is not None:
+        shade = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+        sd = ImageDraw.Draw(shade)
+        sd.rectangle((L + 1, y(band['upper']), R - 1, y(band['lower'])), fill=(125, 211, 252, 18))
+        img.paste(Image.alpha_composite(img.convert('RGBA'), shade).convert('RGB'))
+        d = ImageDraw.Draw(img)
+
     # date axis
     step = max(1, n // 6)
     for i in range(0, n, step):
-        d.text((x(i) - 22, B + 8), candles[i]['t'][5:], font=f_axis, fill=MUTED)
+        d.text((x(i) - 22, BOT + 8), candles[i]['t'][5:], font=f_axis, fill=MUTED)
+
+    # volume pane: bars coloured by candle direction, dashed 20-bar average
+    if has_vol:
+        vols = [c.get('v') or 0 for c in candles]
+        vmax = max(vols) or 1
+        def vy(v): return BOT - 6 - (v / vmax) * (BOT - VT - 14)
+        for i, c in enumerate(candles):
+            col = UP if c['c'] >= c['o'] else DOWN
+            cx = x(i)
+            d.rectangle((cx - body_w_vol(slot) / 2, vy(vols[i]), cx + body_w_vol(slot) / 2, BOT - 6), fill=col)
+        avg = spec.get('volumeAvg')
+        if avg:
+            yy = vy(avg)
+            xx = L + 1
+            while xx < R - 1:
+                d.line((xx, yy, min(xx + 10, R - 1), yy), fill=ACCENT, width=2)
+                xx += 16
+            d.text((R + 12, yy - 8), f"20d avg vol {fmt_vol(avg)}", font=f_axis, fill=ACCENT)
+        d.text((L + 2, VT - 20), f"Volume · last bar {fmt_vol(vols[-1])}" + (f" · {spec['volumeRatio']:.1f}× the 20-day average" if spec.get('volumeRatio') else ''), font=f_axis, fill=MUTED)
 
     # candles
     body_w = max(3, slot * 0.6)

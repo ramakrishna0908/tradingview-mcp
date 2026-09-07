@@ -11,6 +11,7 @@
  *   Support: $76.79 · Resistance: $88.71
  *   Downside level: $76.79 (support test)          ← bearish; "Upside level … (resistance test)" when bullish
  *   Invalidation: reclaim and hold above $88.71    ← always present (risk context)
+ *   Volume: 1.4× 20-day avg (last bar)              ← from the chart candles, dropped with the narrative
  *   <narrative — what happened, what to watch>     ← dropped when it does not fit
  *   <CTA>                                          ← dropped first when it does not fit
  *   Data: daily · Aug 31, 2026 9:49 AM ET
@@ -116,7 +117,13 @@ export function engagementHashtags(setup, config) {
  * post) and the REQUIRED hashtags are never dropped — if it still does not
  * fit, validation reports `char_limit` and a human edits.
  */
-export function generatePost(setup, model, config) {
+/** "Volume: 1.4× 20-day avg (last bar)" — only when chart candle data exists. */
+export function volumeLine(chart, config) {
+  if (!config.charts?.volumeLine || chart?.volumeRatio == null) return null;
+  return `Volume: ${chart.volumeRatio.toFixed(1)}× 20-day avg (last bar)`;
+}
+
+export function generatePost(setup, model, config, { chart = null } = {}) {
   const labels = config.signalLabels;
   const tf = TIMEFRAME_WORD[model.timeframe] ?? model.timeframe ?? null;
   const stamp = formatDataTimestamp(model.dataAsOf);
@@ -133,6 +140,7 @@ export function generatePost(setup, model, config) {
     levelToWatch: levelToWatchLine(setup),
     invalidation: invalidationLine(setup),
     invalidationShort: invalidationShort(setup),
+    volume: volumeLine(chart, config),
     narrative: setup.rationale,
     cta,
     timestamp: tf ? `Data: ${tf} · ${stamp}` : `Data: ${stamp}`,
@@ -150,6 +158,7 @@ export function generatePost(setup, model, config) {
       parts.levels,
       levelToWatch ? parts.levelToWatch : null,
       shortInvalidation ? parts.invalidationShort : parts.invalidation,
+      narrative ? parts.volume : null,
       narrative ? parts.narrative : null,
       withCta ? parts.cta : null,
       tfWord ? parts.timestamp : parts.timestampShort,

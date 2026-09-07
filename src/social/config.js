@@ -29,6 +29,7 @@ export const AUTO_PUBLISH_OFF = Object.freeze({
   skipBiasKeywords: ['earnings', 'trial', 'avoid', 'no position', 'pre-news', 'stale'],
   allowWarnings: false,
   requireDisclosureLast: true,
+  via: 'api',
 });
 
 const FALLBACK = {
@@ -47,7 +48,7 @@ const FALLBACK = {
   riskContextKeywords: ['risk', 'invalidat', 'rejection', 'back under', 'lose'],
   signalLabels: { WATCH: 'Watch', CONFIRMED: 'Confirmed Setup' },
   cta: { enabled: false, text: '' },
-  charts: { enabled: false, bars: 60, requireForPublish: false },
+  charts: { enabled: false, bars: 60, requireForPublish: false, volumeLine: false },
   hashtags: { required: ['#NFA', '#DYOR'], engagement: { default: [], bullish: [], bearish: [] }, maxTotal: 6, prohibited: [] },
   posting: { maxDraftsPerReport: 3, minConfidence: 'Medium', allowedSignals: ['CONFIRMED', 'WATCH'], autoPublish: AUTO_PUBLISH_OFF },
 };

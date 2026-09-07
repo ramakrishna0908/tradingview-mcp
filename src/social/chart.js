@@ -38,7 +38,11 @@ export function buildChartSpec(setup, model, candles, config, outPath) {
 
   const stamp = formatDataTimestamp(model.dataAsOf);
   const trend = setup.cmfTrendLabel ? ` · flow ${setup.cmfTrendLabel}` : '';
+  const vol = volumeStats(candles);
   return {
+    band: row.bbUpper != null && row.bbLower != null ? { upper: row.bbUpper, lower: row.bbLower } : null,
+    volumeAvg: vol?.avg ?? null,
+    volumeRatio: vol?.ratio ?? null,
     out: outPath,
     width: 1200,
     height: 675,
@@ -46,7 +50,7 @@ export function buildChartSpec(setup, model, candles, config, outPath) {
     title: `$${setup.symbol} — ${name}`,
     badge: setup.signal === SIGNAL.CONFIRMED ? 'CONFIRMED SETUP' : 'WATCH',
     direction: setup.direction,
-    candles: candles.map(({ t, o, h, l, c }) => ({ t, o, h, l, c })),
+    candles: candles.map(({ t, o, h, l, c, v }) => ({ t, o, h, l, c, v: v ?? null })),
     levels,
     annotation: { text: setup.setup, color: setup.direction === 'bearish' ? RED : GREEN },
     stats: `RSI ${setup.rsi.toFixed(0)} · CMF ${fmtCmf(setup.cmf)}${cmfDeltaNote(setup)}${trend} · daily`,
@@ -54,6 +58,17 @@ export function buildChartSpec(setup, model, candles, config, outPath) {
     source: 'Price history: Yahoo Finance daily bars',
     disclosure: config.disclosure.trim(),
   };
+}
+
+/** Last bar's volume vs the 20-bar average (excluding the last bar). */
+export function volumeStats(candles, window = 20) {
+  const withVol = candles.filter(c => c.v != null && c.v > 0);
+  if (withVol.length < 6) return null;
+  const last = withVol.at(-1);
+  const prior = withVol.slice(-(window + 1), -1);
+  const avg = prior.reduce((a, c) => a + c.v, 0) / prior.length;
+  if (!avg) return null;
+  return { last: last.v, avg: Math.round(avg), ratio: Number((last.v / avg).toFixed(1)), bars: prior.length };
 }
 
 /** Alt text for accessibility — restates what the chart shows, nothing more. */
@@ -88,7 +103,8 @@ export async function makeChart(setup, model, config, { dir = DEFAULT_CHART_DIR,
     const out = join(dir, model.reportDate, `${setup.symbol}.png`);
     const spec = buildChartSpec(setup, model, data, config, out);
     renderChartSpec(spec, { python });
-    return { path: out, altText: chartAltText(setup, model), bars: data.length, lastBar: data.at(-1).t };
+    const vol = volumeStats(data);
+    return { path: out, altText: chartAltText(setup, model), bars: data.length, lastBar: data.at(-1).t, volumeRatio: vol?.ratio ?? null, volumeAvg: vol?.avg ?? null };
   } catch (err) {
     return { error: err.message };
   }

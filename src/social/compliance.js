@@ -92,6 +92,7 @@ export function allowedNumbers(setup, row) {
  * @param {Array}  [ctx.priorRecords]   audit records to check duplicates against
  * @param {string} [ctx.draftId]        current draft id (excluded from dedupe)
  * @param {boolean}[ctx.staleAcknowledged]
+ * @param {object} [ctx.chart]          chart record ({ volumeRatio }) backing a Volume line
  */
 export function validatePost(text, ctx) {
   const { setup, row, model, config } = ctx;
@@ -206,6 +207,13 @@ export function validatePost(text, ctx) {
       const v = (deltaMatch[1] === '+' ? 1 : deltaMatch[1] === '±' ? 0 : -1) * Number(deltaMatch[2]);
       if (setup.cmfDelta == null) push('value_mismatch', 'block', 'Post cites a prior-day CMF change but no prior report is available');
       else if (Math.abs(v - setup.cmfDelta) > 0.006) push('value_mismatch', 'block', `CMF change ${deltaMatch[1]}${deltaMatch[2]} does not match the report-derived ${setup.cmfDelta}`);
+    }
+
+    const volMatch = t.match(/Volume:\s*(\d+(?:\.\d+)?)× 20-day avg/);
+    if (volMatch) {
+      const v = Number(volMatch[1]);
+      if (ctx.chart?.volumeRatio == null) push('value_mismatch', 'block', 'Post cites a volume ratio but no chart data backs it');
+      else if (Math.abs(v - ctx.chart.volumeRatio) > 0.06) push('value_mismatch', 'block', `Volume ratio ${v}× does not match the chart data ${ctx.chart.volumeRatio}×`);
     }
 
     // 9. signal integrity — never upgrade WATCH to CONFIRMED for engagement

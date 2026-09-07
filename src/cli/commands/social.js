@@ -218,6 +218,19 @@ const subcommands = new Map([
   }],
 ]);
 
+subcommands.set('ready', {
+  description: 'Policy-approved posts waiting for the browser poster (status ready_to_post)',
+  options: { ...jsonOpt },
+  handler: async (values) => {
+    const wf = new SocialWorkflow();
+    const recs = wf.ready().map(r => ({ id: r.id, symbol: r.symbol, reportDate: r.reportDate, text: r.editedText ?? r.originalText, chart: r.chart?.path ?? null, altText: r.chart?.altText ?? null }));
+    if (values.json) return out(recs);
+    for (const r of recs) { console.log(`# ${r.id}\n${r.text}\nchart: ${r.chart ?? 'none'}\n`); }
+    if (!recs.length) console.log('(nothing ready to post)');
+    done();
+  },
+});
+
 subcommands.set('auto', {
   description: 'Policy-gated auto-publish for the latest report (see config posting.autoPublish)',
   options: { ...reportOpt, 'dry-run': { type: 'boolean', description: 'Evaluate the policy and show what would be posted, without posting' }, ...jsonOpt },
@@ -227,11 +240,11 @@ subcommands.set('auto', {
     const { model } = loadReportModel(path);
     const summary = await wf.autoPublish(model, { reportPath: path, dryRun: !!values['dry-run'] });
     if (values.json) return out(summary);
-    console.log(`auto-publish · report ${summary.reportDate}${summary.dryRun ? ' · DRY RUN' : ''}`);
+    console.log(`auto-publish · report ${summary.reportDate}${summary.dryRun ? ' · DRY RUN' : ''}${summary.via ? ' · via ' + summary.via : ''}`);
     if (summary.refused) { console.log(`refused: ${summary.refused}`); done(2); }
     if (summary.cohort) console.log(`report cohort — Calls: ${summary.cohort.calls.join(', ') || '—'} · Puts: ${summary.cohort.puts.join(', ') || '—'}`);
     for (const p of summary.published) {
-      console.log(`\n${p.dryRun ? 'WOULD POST' : 'POSTED'} ${p.symbol}${p.cohort ? ' [' + p.cohort + ']' : ''} (${p.id})${p.url ? ' → ' + p.url : ''}\n${p.text}`);
+      console.log(`\n${p.dryRun ? 'WOULD POST' : p.ready ? 'READY (browser)' : 'POSTED'} ${p.symbol}${p.cohort ? ' [' + p.cohort + ']' : ''} (${p.id})${p.url ? ' → ' + p.url : ''}\n${p.text}`);
       if (p.chart) console.log(`chart: ${p.chart}${p.chartNote ? ' — ' + p.chartNote : ''}`);
       else if (p.chartError) console.log(`chart: none — ${p.chartError}`);
     }

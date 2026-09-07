@@ -58,6 +58,7 @@ export class SocialWorkflow {
       priorRecords: this.audit.latest(),
       draftId: rec.id,
       staleAcknowledged,
+      chart: rec.chart ?? null,
     });
   }
 
@@ -78,7 +79,15 @@ export class SocialWorkflow {
     }
     const created = [];
     for (const setup of candidates) {
-      const { text } = generatePost(setup, model, this.config);
+      // Chart first: its candle data can feed the Volume line of the text.
+      let chartRec = null;
+      if (this.config.charts?.enabled) {
+        const chart = await makeChart(setup, model, this.config, chartOpts);
+        chartRec = chart.error
+          ? { path: null, error: chart.error }
+          : { path: chart.path, altText: chart.altText, bars: chart.bars, lastBar: chart.lastBar, volumeRatio: chart.volumeRatio, volumeAvg: chart.volumeAvg };
+      }
+      const { text } = generatePost(setup, model, this.config, { chart: chartRec });
       const id = this.audit.newId(setup.symbol, model.reportDate);
       const base = {
         id,
@@ -98,11 +107,8 @@ export class SocialWorkflow {
         error: null,
         createdAt: this.now().toISOString(),
       };
+      base.chart = chartRec;
       base.issues = this.validateRecord(base, model);
-      if (this.config.charts?.enabled) {
-        const chart = await makeChart(setup, model, this.config, chartOpts);
-        base.chart = chart.error ? { path: null, error: chart.error } : { path: chart.path, altText: chart.altText, bars: chart.bars, lastBar: chart.lastBar };
-      }
       created.push(this.audit.append(base));
     }
     return created;
@@ -217,15 +223,20 @@ export class SocialWorkflow {
    */
   recordManualPublication(id, model, { xPostId, url }) {
     const rec = this.mustGet(id);
-    if (rec.status !== 'approved') throw new Error(`Only approved drafts can be recorded as published (status: ${rec.status})`);
+    if (!['approved', 'ready_to_post'].includes(rec.status)) throw new Error(`Only approved drafts can be recorded as published (status: ${rec.status})`);
     if (!xPostId) throw new Error('xPostId is required');
     const issues = this.validateRecord(rec, model);
     return this.audit.append({
       ...rec,
       issues,
       status: 'published',
-      publication: { at: this.now().toISOString(), xPostId, url: url ?? `https://x.com/i/web/status/${xPostId}`, method: 'manual' },
+      publication: { at: this.now().toISOString(), xPostId, url: url ?? `https://x.com/i/web/status/${xPostId}`, method: rec.status === 'ready_to_post' ? 'browser' : 'manual' },
     });
+  }
+
+  /** Drafts approved by the auto-publish policy that are waiting for the browser poster. */
+  ready() {
+    return this.audit.latest().filter(r => r.status === 'ready_to_post');
   }
 
   // ─── auto-publish (policy-gated, unattended) ───────────────────────────────
@@ -253,7 +264,9 @@ export class SocialWorkflow {
     if (!Number.isFinite(ageH) || ageH > this.config.maxReportAgeHours) {
       return refuse(`report data is ${Number.isFinite(ageH) ? ageH.toFixed(1) + 'h' : 'of unknown age'} (limit ${this.config.maxReportAgeHours}h) — auto mode never overrides freshness`);
     }
-    if (!dryRun && !creds) return refuse('no X API credentials in environment');
+    const via = policy.via ?? 'api';
+    summary.via = via;
+    if (!dryRun && via === 'api' && !creds) return refuse('no X API credentials in environment');
 
     const minRank = CONFIDENCE_RANK[policy.minConfidence] ?? 3;
     const cooldownMs = policy.symbolCooldownHours != null
@@ -323,10 +336,16 @@ export class SocialWorkflow {
       }
 
       // Space posts out so a morning run reads like a feed, not a dump.
-      if (summary.published.length > 0 && (policy.spacingSeconds ?? 0) > 0) await sleep(policy.spacingSeconds * 1000);
+      if (via === 'api' && summary.published.length > 0 && (policy.spacingSeconds ?? 0) > 0) await sleep(policy.spacingSeconds * 1000);
 
       const approver = new SocialWorkflow({ config: this.config, audit: this.audit, now: this.now, actor: 'auto-publish policy' });
       const approved = approver.approve(rec.id, model);
+      if (via === 'browser') {
+        // Policy-approved; the scheduled browser task posts it and calls `record`.
+        const ready = this.audit.append({ ...approved, status: 'ready_to_post' });
+        summary.published.push({ id: ready.id, symbol: setup.symbol, cohort: setup.cohort, text, chart: rec.chart?.path ?? null, ready: true });
+        continue;
+      }
       const pub = await approver.publish(approved.id, model, { creds, fetchImpl });
       if (pub.status === 'published') summary.published.push({ id: pub.id, symbol: setup.symbol, cohort: setup.cohort, text, url: pub.publication.url, xPostId: pub.publication.xPostId, chart: rec.chart?.path ?? null, chartNote: pub.publication.chartNote });
       else skip(`publish failed: ${pub.error}`);

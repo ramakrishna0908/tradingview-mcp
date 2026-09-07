@@ -3,7 +3,7 @@
   "disclosure": "Educational market analysis only. Not investment advice. Trading involves risk.",
   "disclosurePlacement": "bio",
   "$disclosurePlacement": "'post' = the disclosure line is appended to every post and validated; 'bio' = it lives in the account bio only (set it there!) and posts carry the required hashtags (#NFA #DYOR) as the in-post marker. Flip to 'post' to restore per-post disclosures without a code change.",
-  "charLimit": 280,
+  "charLimit": 4000,
   "maxReportAgeHours": 24,
   "requiredIndicators": [
     "Price",
@@ -118,7 +118,9 @@
         "catalyst"
       ],
       "allowWarnings": false,
-      "requireDisclosureLast": true
+      "requireDisclosureLast": true,
+      "via": "browser",
+      "$via": "'api' = publish through the X API from this machine; 'browser' = prepare and approve only (status ready_to_post) and let the scheduled Claude task post them through the logged-in Chrome, then `tv social record` marks them published."
     }
   },
   "hashtags": {
@@ -169,6 +171,9 @@
     "$comment": "Annotated daily chart attached to every post (candles from Yahoo Finance; levels, price and timestamp from the report). If the chart cannot be built the post goes out text-only and the audit records why. requireForPublish=true blocks instead.",
     "enabled": true,
     "bars": 60,
-    "requireForPublish": false
-  }
+    "requireForPublish": false,
+    "volumeLine": true,
+    "$volumeLine": "Adds 'Volume: 1.4× 20-day avg' to the post from the chart's candle data (integrity-checked against the chart)."
+  },
+  "$charLimit": "X Premium account: long posts allowed. Set 280 for a non-Premium account (the fit ladder trims CTA → extra hashtags → narrative → …)."
 }

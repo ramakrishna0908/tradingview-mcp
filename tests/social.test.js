@@ -58,8 +58,16 @@ function freshConfig() {
   resetConfigCache();
   // Tests pin the per-post disclosure so the disclosure checks are exercised;
   // the shipped config may place it in the bio instead.
+  // Tests pin the free-tier limit, the per-post disclosure, charts off and the
+  // API publish path so every check is exercised regardless of the shipped config.
   const cfg = loadConfig();
-  return { ...cfg, disclosurePlacement: 'post', charts: { ...cfg.charts, enabled: false } };
+  return {
+    ...cfg,
+    charLimit: 280,
+    disclosurePlacement: 'post',
+    charts: { ...cfg.charts, enabled: false, volumeLine: false },
+    posting: { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, via: 'api' } },
+  };
 }
 
 // ─── report model ────────────────────────────────────────────────────────────
@@ -648,6 +656,28 @@ describe('auto-publish: policy-gated, audited, never overrides freshness', () =>
     assert.match(cool.reason, /cooldown/);
   });
 
+  it('via "browser": policy-approves into ready_to_post, nothing is sent, record marks it published', async () => {
+    const browserCfg = { ...cfg, posting: { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, via: 'browser' } } };
+    const w = new SocialWorkflow({ config: browserCfg, audit: new AuditStore(join(mkdtempSync(join(tmpdir(), 'br-')), 'a.jsonl')) });
+    let called = false;
+    const model = MODEL([ROW({ price: 118 })]);
+    const r = await w.autoPublish(model, { creds: null, fetchImpl: async () => { called = true; } });
+    assert.equal(r.refused, null);              // no API credentials needed in browser mode
+    assert.equal(r.via, 'browser');
+    assert.equal(called, false);
+    assert.equal(r.published[0].ready, true);
+    const ready = w.ready();
+    assert.equal(ready.length, 1);
+    assert.equal(ready[0].status, 'ready_to_post');
+    assert.equal(ready[0].approval.by, 'auto-publish policy');
+    const rec = w.recordManualPublication(ready[0].id, model, { xPostId: '999' });
+    assert.equal(rec.status, 'published');
+    assert.equal(rec.publication.method, 'browser');
+    assert.equal(w.ready().length, 0);
+    const again = await w.autoPublish(model, { creds: null });
+    assert.equal(again.published.length, 0);   // duplicate / cooldown
+  });
+
   it('dry-run records auto_dry_run and calls nothing', async () => {
     let called = false;
     const r = await wf.autoPublish(MODEL([ROW({ price: 118 })]), { dryRun: true, creds: null, fetchImpl: async () => { called = true; } });
@@ -769,6 +799,21 @@ describe('charts: real candles + the report levels, nothing forward-looking', ()
     assert.ok(seen[0].body instanceof FormData);
     assert.match(JSON.parse(seen[1].body).metadata.alt_text.text, /Support \$115\.00/);
     assert.deepEqual(JSON.parse(seen[2].body).media, { media_ids: ['777'] });
+  });
+
+  it('volume line comes from the chart candles and is integrity-checked', () => {
+    const cfg = { ...freshConfig(), charLimit: 4000, charts: { enabled: true, bars: 30, volumeLine: true } };
+    const row = ROW({ price: 118 });
+    const setup = classifySetup(row);
+    const model = MODEL([row]);
+    const chart = { path: '/tmp/x.png', volumeRatio: 1.4, volumeAvg: 1000 };
+    const { text } = generatePost(setup, model, cfg, { chart });
+    assert.match(text, /\nVolume: 1\.4× 20-day avg \(last bar\)\n/);
+    assert.deepEqual(blocking(validatePost(text, { setup, row, model, config: cfg, chart })), []);
+    assert.ok(blocking(validatePost(text.replace('1.4×', '2.5×'), { setup, row, model, config: cfg, chart })).some(i => i.code === 'value_mismatch'));
+    assert.ok(blocking(validatePost(text, { setup, row, model, config: cfg, chart: null })).some(i => i.code === 'value_mismatch'));
+    const noChart = generatePost(setup, model, cfg, { chart: null }).text;
+    assert.ok(!/Volume:/.test(noChart));
   });
 
   it('uploadMedia surfaces API errors', async () => {
