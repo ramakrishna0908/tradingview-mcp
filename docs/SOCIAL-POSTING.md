@@ -347,10 +347,12 @@ text and the chart is `src/social/sweep-labels.js`.
 ```
 📈 $ETH has reclaimed its 20-day base — reclaim confirmed.
 CMF +0.22 shows positive money flow while RSI 64 keeps momentum healthy.
+In plain terms: price is back above its 20-day average and volume is backing it — buyers are in control while it holds.
 🎯 Above $2,579 → potential breakout
 🛑 Below $2,449 → setup invalidated
 Current price: $2,498 · RVOL 0.8× · Setup score +2.5
 Which level gets hit first — $2,579 or $2,449? 👇
+Daily Setup Sweep · tracked to a daily close beyond a level · scored every Friday
 Data: daily · Sep 7, 2026 10:11 AM ET
 #ETH #Crypto
 ```
@@ -367,6 +369,10 @@ What each line is, and what guards it:
   treats as a skip).
 - **Narrative.** Present-tense description of the current CMF and RSI readings
   (`cmfPhrase`, `rsiPhrase`). Both numbers are integrity-checked.
+- **In plain terms.** One beginner-friendly sentence per setup and signal
+  (`plainLine` in `sweep-labels.js`): what the reading means without the
+  acronyms, present tense, no forecast, and never the word *confirmed* for a
+  WATCH. `"plainLanguage": false` drops it.
 - **🎯 / 🛑 levels.** The nearest report level in the setup's direction and the
   one that negates it (`sweepLevels`). Bearish setups flip the roles: "Below $X
   → breakdown continues" / "Above $Y → setup invalidated". The 🛑 line is the
@@ -377,6 +383,10 @@ What each line is, and what guards it:
   setup score. All three are integrity-checked (`value_mismatch`).
 - **CTA.** `cta.text` is a template: `{level1}` is the 🎯 level, `{level2}` the
   🛑 level. With a single level the generator asks "Does $X hold? 👇" instead.
+- **Series line.** `brand.seriesLine` — names the recurring format and the
+  accountability loop ("tracked to a daily close beyond a level · scored every
+  Friday") so a first-time reader knows the post is one of a series and that
+  the outcome will be published. `null` drops it.
 - **Data line.** Unchanged — it is the freshness marker.
 - **Hashtags.** `hashtags.symbolTag` adds the cashtag as a hashtag and
   `hashtags.assetTag` adds one class tag (`#Stocks` / `#Crypto`); `maxTotal` is
@@ -523,6 +533,32 @@ what the first did not):
 bash scripts/crypto-report.sh              # sweep + queue tonight's posts
 bash scripts/crypto-social-auto.sh         # queue only, if a report already exists
 ```
+
+## Content checklist (what every post must carry)
+
+`tests/content-checklist.test.js` pins each post kind to the bar below and
+fails naming the kind and the missing element. Run it with `npm run test:unit`.
+
+| Element | Setup (sweep) | Follow-up | Scorecard | Explainer | Premarket |
+|---|---|---|---|---|---|
+| Hook (iconed first line) | `📈 $ETH has reclaimed…` | `✅ $ETH — BREAKOUT UPDATE.` | `📊 Weekly Setup Scorecard · …` | `📚 Chart Basics: …` | `🟢 Premarket read for … — BULLISH (confidence 74/100)` |
+| Bias / status | reclaim confirmed · watch | lifecycle stage | counts + hit rate | bullish / bearish / neutral takeaways | bias + confidence |
+| Concise reasoning | CMF/RSI line | result vs the setup price | hit rate = breakouts ÷ resolved | two definition lines | top 3 drivers |
+| Plain-English context | `In plain terms: …` | `The lesson: …` on an invalidation | `How to read it: …` | the whole post | hook sentence |
+| Key levels | 🎯 / 🛑 | level cleared / lost / tested, next level | — | — | SPY resistance / support |
+| What changes the read | 🛑 … setup invalidated | 🛑 … negates the breakout | — | — | `Flip event: 8:30 AM ET Core CPI …` |
+| Reply-driving CTA | `Which level gets hit first — … ? 👇` | level question | `Which setup did you follow this week? 👇` | topic question | `Bullish or bearish today? 👇` |
+| Recurring format marker | series line | stage labels | weekly, Fridays | series name | daily, weekdays |
+| Accountability | tracked to resolution | the outcome post itself | expiries shown, not hidden | — | — |
+| Mobile-first | ≤ 14 lines, ≤ 150 chars per line, one thought per line | same | same | same | same |
+| Hashtags | ≤ 2 (`#SYM #Stocks`) | ≤ 2 | ≤ 2 | ≤ 2 | ≤ 2 |
+| Compliance | `validatePost` (kind-specific integrity checks), disclaimer on the card | same | same | same, no ticker | same + in-text disclaimer |
+
+Cadence guards (also asserted): one setup per run per queue, Medium+ confidence
+only, 20-hour symbol cooldown, no re-post while a setup is open in the tracker,
+catalyst-flagged rows skipped, non-terminal follow-ups capped at
+`followUps.maxUpdatesPerRun` (2) per run — BREAKOUT and INVALIDATED updates
+always post because they are the accountability record.
 
 ## Premarket market-direction post
 

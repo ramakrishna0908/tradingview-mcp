@@ -106,8 +106,13 @@ function tags(rec, config) {
  *   🎯 Next level: $2,700 (upper band)
  *   🛑 A close back under $2,579 negates the breakout
  *   Setup posted Sep 7 as RECLAIM CONFIRMED.
+ *   $2,700 or back under $2,579 first? 👇
  *   Data: daily · Sep 9, 2026
  *   #ETH #Crypto
+ *
+ * Every event closes on a level question (the same reply-driving shape as the
+ * setup post) and an INVALIDATED update carries the one-line lesson — the
+ * level did its job — so a miss reads as accountability, not as a loss.
  */
 export function generateFollowUp(rec, event, config) {
   const mo = { grouping: !!config.priceGrouping, compact: config.priceDisplay === 'compact' };
@@ -123,6 +128,7 @@ export function generateFollowUp(rec, event, config) {
   const tagLine = tags(rec, config).join(' ') || null;
   const disclosure = config.disclosurePlacement === 'bio' ? null : config.disclosure.trim();
   let lines;
+  let cta = null;
 
   switch (event.type) {
     case EVENT.CONFIRMED: {
@@ -134,6 +140,7 @@ export function generateFollowUp(rec, event, config) {
         rec.stop ? `🛑 ${Below} ${$(rec.stop.value)} → setup invalidated` : null,
         `First posted ${shortDate(rec.reportDate)} as DEVELOPING.`,
       ];
+      cta = rec.target && rec.stop ? `Which level gets hit first — ${$(rec.target.value)} or ${$(rec.stop.value)}? 👇` : null;
       break;
     }
     case EVENT.BREAKOUT: {
@@ -145,6 +152,7 @@ export function generateFollowUp(rec, event, config) {
         `🛑 A close ${backUnder} ${$(event.level)} negates the ${bull ? 'breakout' : 'breakdown'}`,
         `${origin}.`,
       ];
+      cta = rec.nextTarget ? `${$(rec.nextTarget.value)} or ${backUnder} ${$(event.level)} first? 👇` : `Does ${$(event.level)} hold as the new ${bull ? 'floor' : 'ceiling'}? 👇`;
       break;
     }
     case EVENT.LEVEL_TEST: {
@@ -155,6 +163,7 @@ export function generateFollowUp(rec, event, config) {
         rec.stop ? `🛑 ${Below} ${$(rec.stop.value)} → setup invalidated` : null,
         `${origin}.`,
       ];
+      cta = rec.stop ? `Close ${above} ${$(event.level)} or ${bull ? 'lose' : 'reclaim'} ${$(rec.stop.value)} first? 👇` : `Does ${$(event.level)} give way on a close? 👇`;
       break;
     }
     case EVENT.INVALIDATED: {
@@ -162,17 +171,23 @@ export function generateFollowUp(rec, event, config) {
         `🛑 $${rec.symbol} — INVALIDATED. ${$(event.level)} lost on the daily close.`,
         priceLine,
         `${origin} · logged as an invalidation in the weekly scorecard.`,
+        'The lesson: the level did its job — it said exactly when the read stopped being right, before the outcome was known.',
       ];
+      cta = `Would you have drawn the line at ${$(event.level)} too? 👇`;
       break;
     }
     default:
       throw new Error(`No follow-up for event ${event.type}`);
   }
 
-  const assemble = (withTags = true) => [...lines, stamp, disclosure, withTags ? tagLine : null].filter(Boolean).join('\n');
+  if (config.cta?.enabled === false) cta = null;
+  const assemble = ({ withCta = true, withTags = true } = {}) => [...lines, withCta ? cta : null, stamp, disclosure, withTags ? tagLine : null].filter(Boolean).join('\n');
   let text = assemble();
-  if (xWeightedLength(text) > config.charLimit) text = assemble(false);
-  return { text, length: xWeightedLength(text), parts: { lines, stamp, tagLine } };
+  for (const step of [{ withCta: false }, { withCta: false, withTags: false }]) {
+    if (xWeightedLength(text) <= config.charLimit) break;
+    text = assemble(step);
+  }
+  return { text, length: xWeightedLength(text), parts: { lines, cta, stamp, tagLine } };
 }
 
 /** Chart overrides so the card shows the lifecycle stage rather than the original verdict. */
@@ -234,8 +249,13 @@ export function followUpChartOverrides(rec, event, config) {
  *   All-time: 12 setups · 58% hit rate (7 of 12 resolved)
  *   Best this week: $ETH +4.5% · Worst: $SOL −2.7%
  *   Every setup, its levels and its outcome are logged before posting.
+ *   How to read it: hit rate = breakouts ÷ resolved setups. Invalidations count as misses; expiries are shown, not scored.
+ *   Which setup did you follow this week? 👇
  *   Data: daily · Sep 5, 2026
  *   #Stocks #Crypto
+ *
+ * "⏳ Expired (no resolution): N" is added after "Still active" whenever N > 0,
+ * so nothing that was posted disappears from the count.
  *
  * Wording note: the word "targets" never appears — it is a blocked
  * forward-looking term in the compliance config, and here it would only
@@ -258,10 +278,13 @@ export function generateScorecard(stats, config) {
     `✅ Breakouts / levels reached: ${stats.breakouts}`,
     `🛑 Invalidated: ${stats.invalidated}`,
     `👀 Still active: ${stats.active}`,
+    stats.expired > 0 ? `⏳ Expired (no resolution): ${stats.expired}` : null,
     week,
     all,
     bw,
     'Every setup, its levels and its outcome are logged before posting.',
+    'How to read it: hit rate = breakouts ÷ resolved setups. Invalidations count as misses; expiries are shown, not scored.',
+    config.cta?.enabled === false ? null : 'Which setup did you follow this week? 👇',
     `Data: daily · ${longDate(stats.to)}`,
     config.disclosurePlacement === 'bio' ? null : config.disclosure.trim(),
     tagLine,

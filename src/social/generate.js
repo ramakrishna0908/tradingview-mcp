@@ -21,7 +21,7 @@
 import { SIGNAL, fmtCmf } from './setup.js';
 import { xWeightedLength } from './compliance.js';
 import { fmtPrice } from './money.js';
-import { sweepLabels, sweepLevels, cmfPhrase, rsiPhrase } from './sweep-labels.js';
+import { sweepLabels, sweepLevels, cmfPhrase, rsiPhrase, plainLine } from './sweep-labels.js';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -140,12 +140,19 @@ export function generatePost(setup, model, config, opts = {}) {
  *
  *   📈 $ETH has reclaimed its 20-day base — reclaim confirmed.
  *   CMF +0.22 shows positive money flow while RSI 64 keeps momentum healthy.
+ *   In plain terms: price is back above its 20-day average and volume is backing it — buyers are in control while it holds.
  *   🎯 Above $2,579 → potential breakout
  *   🛑 Below $2,449 → setup invalidated
  *   Current price: $2,498 · RVOL 0.8× · Setup score +2.5
  *   Which level gets hit first — $2,579 or $2,449? 👇
+ *   Daily Setup Sweep · tracked to a daily close beyond a level · scored every Friday
  *   Data: daily · Sep 7, 2026 10:11 AM ET
  *   #ETH #Crypto
+ *
+ * The "In plain terms" line (config `plainLanguage`, default on) is the
+ * beginner's reading of the setup from sweep-labels.js; the series line
+ * (config `brand.seriesLine`, null to drop) names the recurring format and
+ * the accountability loop so a first-time reader knows what comes next.
  *
  * Same rules as the classic layout: every number is the report's, the word
  * "confirmed" appears only for a CONFIRMED signal (sweep-labels.js), the
@@ -154,8 +161,9 @@ export function generatePost(setup, model, config, opts = {}) {
  * 🎯 level and {level2} the 🛑 level. When the report has only one level on
  * the relevant side the CTA becomes a single-level question instead.
  *
- * Fit ladder: drop the CTA, then the narrative, then the score, then every
- * hashtag that is not required.
+ * Fit ladder: drop the series line, then the plain-English line, then the
+ * CTA, then the narrative, then the score, then every hashtag that is not
+ * required.
  */
 export function generateSweepPost(setup, model, config, { chart = null } = {}) {
   const mo = { grouping: !!config.priceGrouping, compact: config.priceDisplay === 'compact' };
@@ -190,6 +198,8 @@ export function generateSweepPost(setup, model, config, { chart = null } = {}) {
   const parts = {
     headline: `${words.icon} $${setup.symbol} ${words.headline}`,
     narrative: `CMF ${fmtCmf(setup.cmf)} ${cmfPhrase(setup.cmf)} while ${rsiPhrase(setup.rsi, setup.direction)}.`,
+    plain: config.plainLanguage === false ? null : plainLine(setup),
+    series: (config.brand?.seriesLine ?? '').trim() || null,
     target: target ? `🎯 ${target.side} ${$(target.value)} → ${target.outcome}` : null,
     stop: stop ? `🛑 ${stop.side} ${$(stop.value)} → ${stop.outcome}` : null,
     stats: [price, rvol, score].filter(Boolean).join(' · '),
@@ -202,23 +212,26 @@ export function generateSweepPost(setup, model, config, { chart = null } = {}) {
     labels: words,
   };
 
-  const assemble = ({ withCta = true, narrative = true, withScore = true, extraCount = optional.length } = {}) => {
+  const assemble = ({ withSeries = true, withPlain = true, withCta = true, narrative = true, withScore = true, extraCount = optional.length } = {}) => {
     const tags = [...required, ...optional.slice(0, extraCount)];
     return [
       parts.headline,
       narrative ? parts.narrative : null,
+      withPlain ? parts.plain : null,
       parts.target,
       parts.stop,
       withScore ? parts.stats : parts.statsNoScore,
       withCta ? parts.cta : null,
+      withSeries ? parts.series : null,
       parts.timestamp,
       parts.disclosure,
       tags.length ? tags.join(' ') : null,
     ].filter(Boolean).join('\n');
   };
 
-  const ladder = [{}, { withCta: false }, { withCta: false, narrative: false }, { withCta: false, narrative: false, withScore: false }];
-  for (let n = optional.length - 1; n >= 0; n--) ladder.push({ withCta: false, narrative: false, withScore: false, extraCount: n });
+  const trimmed = { withSeries: false, withPlain: false };
+  const ladder = [{}, { withSeries: false }, trimmed, { ...trimmed, withCta: false }, { ...trimmed, withCta: false, narrative: false }, { ...trimmed, withCta: false, narrative: false, withScore: false }];
+  for (let n = optional.length - 1; n >= 0; n--) ladder.push({ ...trimmed, withCta: false, narrative: false, withScore: false, extraCount: n });
 
   let text = assemble();
   for (const step of ladder) {

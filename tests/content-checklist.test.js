@@ -1,0 +1,216 @@
+/**
+ * Content checklist — every post kind the account publishes, validated
+ * against the growth/engagement/compliance bar in one place:
+ *
+ *   hook · clear bias or setup status · concise reasoning · key levels ·
+ *   what changes the read (invalidation / flip event) · plain-English
+ *   context · reply-driving CTA · recognisable recurring format ·
+ *   accountability (follow-ups, scorecard) · mobile-friendly line count ·
+ *   ≤ 2 hashtags · no jargon-only reasoning · compliant educational wording
+ *
+ * Fixtures only — no network. If a generator drifts away from the bar, the
+ * failing assertion names the kind and the missing element.
+ *
+ * Run: node --test tests/content-checklist.test.js
+ */
+import { describe, it } from 'node:test';
+import assert from 'node:assert/strict';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import { classifySetup } from '../src/social/setup.js';
+import { generatePost } from '../src/social/generate.js';
+import { validatePost, blocking } from '../src/social/compliance.js';
+import { loadConfig, resetConfigCache } from '../src/social/config.js';
+import { openFromSetup, EVENT } from '../src/social/tracker.js';
+import { generateFollowUp, followUpModel, followUpSetup, followUpRow, generateScorecard } from '../src/social/followup.js';
+import { generateEducationPost, TOPICS } from '../src/social/education.js';
+import { generatePremarketPost, PREMARKET_DISCLAIMER } from '../src/social/premarket-post.js';
+import { plainLine } from '../src/social/sweep-labels.js';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const STOCK_CFG = join(ROOT, 'config', 'social-compliance.json');
+const CRYPTO_CFG = join(ROOT, 'config', 'social-compliance-crypto.json');
+const load = p => { resetConfigCache(); const c = loadConfig(p); resetConfigCache(); return c; };
+
+const ROW = (over = {}) => ({
+  symbol: 'ETH', group: 'main', flags: '', price: 2498.20, rsi: 64, rsiMa: 60, cmf: 0.22, cmfTrend: null, atr: 95,
+  bbLower: 2300.10, bbBasis: 2448.62, bbUpper: 2578.88, vwap: 2410.55, cloudA: 2380.00, cloudB: 2350.00,
+  position: 'above_cloud', structure: 'HH-up', score: 2.5, biasNext: 'Calls', ...over,
+});
+const MODEL = (rows, over = {}) => ({ modelVersion: 1, reportDate: '2026-09-08', title: 't', sourcePath: null, dataAsOf: new Date().toISOString(), dataAsOfSource: 'test', timeframe: 'D', marketTheme: null, footer: null, rows, ...over });
+const chart = { path: '/tmp/eth.png', volumeRatio: 0.8 };
+
+const MAX_LINES = 14;            // phone-height: the whole post is readable without "Show more" fatigue
+const MAX_LINE_CHARS = 150;      // one thought per line; wraps to ≤ 3 lines on a phone
+const hashtags = t => [...t.matchAll(/(?<![\w&$])#[A-Za-z0-9_]+/g)].length;
+const hasCta = t => /\? 👇$/m.test(t);
+const JARGON_ONLY = /\b(CMF|RSI|RVOL|VWAP|ATR|SMA|EMA|BB)\b/;
+
+/** Shared shape rules for any kind. */
+function common(kind, text) {
+  const lines = text.split('\n');
+  assert.ok(lines.length <= MAX_LINES, `${kind}: ${lines.length} lines (max ${MAX_LINES})\n${text}`);
+  for (const l of lines) assert.ok(l.length <= MAX_LINE_CHARS, `${kind}: line too long for a phone (${l.length}): ${l}`);
+  assert.ok(hashtags(text) <= 2, `${kind}: more than 2 hashtags`);
+  assert.ok(hasCta(text), `${kind}: no reply-driving question line ending in "? 👇"\n${text}`);
+  assert.ok(!/\b(will|guaranteed|target|forecast|projected|to the moon|buy now|sell now)\b/i.test(text), `${kind}: forward-looking or promotional wording\n${text}`);
+  assert.ok(!/🚀|💎|🙌/u.test(text), `${kind}: promotional emoji`);
+  const first = lines[0];
+  assert.ok(/^[\p{Extended_Pictographic}]/u.test(first), `${kind}: first line is not an iconed hook: ${first}`);
+}
+
+describe('content checklist: setup post (Daily Setup Sweep)', () => {
+  for (const [label, path] of [['stocks', STOCK_CFG], ['crypto', CRYPTO_CFG]]) {
+    it(`${label}: hook, status, reasoning + plain English, two levels, labelled invalidation, CTA, series line, ≤2 tags, compliant`, () => {
+      const cfg = load(path);
+      const row = ROW();
+      const setup = classifySetup(row);
+      const model = MODEL([row]);
+      const { text } = generatePost(setup, model, cfg, { chart });
+      common('setup', text);
+      const lines = text.split('\n');
+      assert.match(lines[0], /^📈 \$ETH .+ — reclaim confirmed\.$/, 'hook names the ticker and the verdict');
+      assert.match(lines[1], /^CMF .+ while RSI .+\.$/, 'one-line reasoning from the indicators');
+      assert.match(lines[2], /^In plain terms: /, 'plain-English context follows the indicator line');
+      assert.ok(!JARGON_ONLY.test(lines[2]), 'the plain-English line carries no indicator acronyms');
+      assert.match(text, /\n🎯 Above \$[\d,.]+ → potential breakout\n🛑 Below \$[\d,.]+ → setup invalidated\n/, 'both levels, invalidation labelled');
+      assert.match(text, /\nWhich level gets hit first — \$[\d,.]+ or \$[\d,.]+\? 👇\n/, 'level-question CTA');
+      assert.match(text, /\nDaily Setup Sweep · tracked to a daily close beyond a level · scored every Friday\n/, 'recurring format + accountability loop named');
+      assert.match(text, /\nData: daily · \w{3} \d{1,2}, 20\d\d/, 'timestamped');
+      assert.deepEqual(blocking(validatePost(text, { setup, row, model, config: cfg, chart })), []);
+    });
+  }
+
+  it('a WATCH never reads as confirmed, and its plain-English line says so', () => {
+    const cfg = load(CRYPTO_CFG);
+    const row = ROW({ position: 'in_cloud' });
+    const setup = classifySetup(row);
+    const { text } = generatePost(setup, MODEL([row]), cfg, { chart });
+    assert.ok(!/confirmed/i.test(text.split('\n')[0]));
+    assert.match(text, /\nIn plain terms: .*a watch, not a call\.\n/);
+    assert.ok(/\bwatch\b/i.test(text));
+  });
+
+  it('every setup the classifier can name has a plain-English reading with no forward-looking wording', () => {
+    const names = ['Basis reclaim', 'Trend continuation', 'Breakout watch', 'Extended momentum — exhaustion watch', 'Breakdown', 'Seller exhaustion watch', 'Bearish exhaustion watch', 'Bullish divergence watch', 'Bearish divergence watch', 'Something new'];
+    for (const setup of names) {
+      for (const signal of ['CONFIRMED', 'WATCH']) {
+        const line = plainLine({ setup, signal });
+        assert.match(line, /^In plain terms: .+[.]$/, `${setup}/${signal}`);
+        assert.ok(!JARGON_ONLY.test(line), `${setup}/${signal}: jargon in the plain line`);
+        assert.ok(!/\b(will|target|forecast|expect|should)\b/i.test(line), `${setup}/${signal}: forward-looking wording`);
+        if (signal === 'WATCH') assert.ok(!/\bconfirmed\b/i.test(line), `${setup}/WATCH may not say confirmed`);
+      }
+    }
+  });
+});
+
+describe('content checklist: follow-ups (accountability)', () => {
+  const cfg = () => { const c = load(CRYPTO_CFG); return { ...c, charts: { ...c.charts, enabled: false, requireForPublish: false } }; };
+  const audit = { id: '2026-09-07-ETH-abc123', queue: 'crypto', reportDate: '2026-09-07', reportPath: '/r.html', publication: { xPostId: '1', url: 'u', at: '2026-09-07T16:00:00Z' } };
+  const rec = openFromSetup(audit, classifySetup(ROW()), { queue: 'crypto', assetClass: 'crypto', now: new Date('2026-09-07T16:00:00Z') });
+  const events = {
+    BREAKOUT: { type: EVENT.BREAKOUT, bar: '2026-09-09', price: 2610.40, level: 2578.88, pct: 4.49 },
+    LEVEL_TEST: { type: EVENT.LEVEL_TEST, bar: '2026-09-08', price: 2560.20, level: 2578.88, extreme: 2585.10, pct: 2.48 },
+    INVALIDATED: { type: EVENT.INVALIDATED, bar: '2026-09-10', price: 2430.00, level: 2448.62, pct: -2.73 },
+  };
+
+  for (const [name, ev] of Object.entries(events)) {
+    it(`${name}: lifecycle label in the hook, result vs the original post, what changes it next, CTA, compliant`, () => {
+      const c = cfg();
+      const { text } = generateFollowUp(rec, ev, c);
+      common(`followup/${name}`, text);
+      assert.match(text.split('\n')[0], new RegExp(`^\\S+ \\$ETH — ${name.replace('_', ' ')}( UPDATE)?\\.`), 'stage label leads');
+      assert.match(text, /\nPrice: \$[\d,.]+ \(daily close\) · [+−][\d.]+% from \$[\d,.]+ at the setup\n/, 'result measured against the setup price');
+      assert.match(text, /Setup posted Sep 7 as RECLAIM CONFIRMED/, 'points back at the original call');
+      if (name !== 'INVALIDATED') assert.match(text, /\n🛑 /, 'names what negates it next');
+      else assert.match(text, /\nThe lesson: the level did its job/, 'a miss carries the lesson');
+      const setup = followUpSetup(rec, ev);
+      const issues = validatePost(text, { setup, row: followUpRow(rec, ev), model: followUpModel(rec, ev), config: c, kind: 'followup', stage: setup.stage, now: new Date(`${ev.bar}T23:00:00Z`) });
+      assert.deepEqual(blocking(issues), [], JSON.stringify(blocking(issues)));
+    });
+  }
+});
+
+describe('content checklist: weekly scorecard', () => {
+  it('counts, hit rate, expiries shown, how-to-read line, CTA, compliant', () => {
+    const c = load(STOCK_CFG);
+    const stats = { from: '2026-09-07', to: '2026-09-11', posted: 4, breakouts: 2, invalidated: 1, expired: 1, active: 1, resolved: 3, hitRate: 67, allTime: { setups: 6, breakouts: 2, invalidated: 2, resolved: 4, hitRate: 50 }, best: { symbol: 'ETH', pct: 4.5 }, worst: { symbol: 'SOL', pct: -2.7 }, symbols: { posted: [], breakouts: ['ETH', 'ADA'], invalidated: ['SOL'], active: ['BTC'] } };
+    const { text } = generateScorecard(stats, c);
+    common('scorecard', text);
+    assert.match(text, /^📊 Weekly Setup Scorecard · /, 'recurring format named in the hook');
+    for (const must of ['Setups posted: 4', '✅ Breakouts / levels reached: 2', '🛑 Invalidated: 1', '👀 Still active: 1', '⏳ Expired (no resolution): 1', 'Hit rate this week: 67% (2 of 3 resolved)', 'All-time: 6 setups', 'Every setup, its levels and its outcome are logged before posting.', 'How to read it: hit rate = breakouts ÷ resolved setups.', 'Which setup did you follow this week? 👇']) {
+      assert.ok(text.includes(must), `scorecard missing "${must}"\n${text}`);
+    }
+    const ctx = { setup: null, row: null, model: { reportDate: '2026-09-11', dataAsOf: new Date().toISOString() }, config: c, kind: 'scorecard', scorecard: stats, chart: { path: '/tmp/s.png' } };
+    assert.deepEqual(blocking(validatePost(text, ctx)), []);
+  });
+});
+
+describe('content checklist: educational explainer', () => {
+  it('every topic: series hook, two plain-language lines, bullish/bearish/neutral takeaways, CTA, no ticker, ≤2 tags', () => {
+    const c = load(STOCK_CFG);
+    for (const topic of TOPICS) {
+      const { text } = generateEducationPost(topic, c);
+      common(`education/${topic.id}`, text);
+      assert.match(text.split('\n')[0], /^📚 (Chart Basics|Indicators|Price Action): /);
+      assert.match(text, /\n✅ Bullish — /); assert.match(text, /\n🛑 Bearish — /); assert.match(text, /\n⚖️ Neutral — /);
+      assert.ok(!/\$[A-Z]{1,6}\b/.test(text), `${topic.id}: names a ticker`);
+      const ctx = { setup: null, row: null, model: { reportDate: '2026-09-08', dataAsOf: new Date().toISOString() }, config: c, kind: 'education', chart: { path: '/tmp/e.png' } };
+      assert.deepEqual(blocking(validatePost(text, ctx)), [], topic.id);
+    }
+  });
+});
+
+describe('content checklist: premarket market direction', () => {
+  const report = () => ({
+    reportVersion: 1, kind: 'premarket', date: '2026-09-08', sessionDate: '2026-09-08', holiday: null,
+    generatedAt: '2026-09-08T12:00:00Z', dataAsOf: new Date().toISOString(),
+    bias: 'Bullish', confidence: 74, composite: 0.31, agreement: 0.78,
+    drivers: [
+      { key: 'futures', direction: 'supportive', text: 'S&P futures +0.62% overnight' },
+      { key: 'trend', direction: 'supportive', text: 'SPY closed 770.19, above both its 20- and 50-day averages (uptrend intact)' },
+      { key: 'vix', direction: 'supportive', text: 'VIX 13.8 (-4.10%) — calm' },
+    ],
+    components: [{ key: 'trend', score: 1 }],
+    snapshot: { es: { symbol: 'ES=F', name: 'S&P 500 futures', unit: 'price', price: 7770.25, change: 48, changePct: 0.62 }, vix: { symbol: '^VIX', name: 'VIX', unit: 'price', price: 13.8, change: -0.59, changePct: -4.1 } },
+    sectors: { strength: [{ name: 'Semiconductors' }, { name: 'Technology' }], weakness: [{ name: 'Consumer Discretionary' }, { name: 'Real Estate' }], ranked: [] },
+    levels: { spy: { name: 'S&P 500 (SPY)', price: 770.19, resistance: [{ label: 'Prior-day high', value: 772.87 }], support: [{ label: 'Prior close', value: 770.19 }] } },
+    events: [{ type: 'economic', kind: 'inflation', title: 'Core CPI m/m', at: '2026-09-08T12:30:00Z', date: '2026-09-08', time: '8:30 AM ET', impact: 'High', flipShort: 'hotter than expected → yields up, stocks pressured; cooler → relief' }],
+    laterWeek: [], earnings: [], watch: [], missing: {}, sources: {},
+  });
+
+  it('hook, bias + confidence, three drivers, SPY levels with the negation, sectors, flip event with time, CTA, disclaimer, ≤2 tags', () => {
+    const c = load(STOCK_CFG);
+    const r = report();
+    const { text, levels } = generatePremarketPost(r, c);
+    common('premarket', text);
+    const lines = text.split('\n');
+    assert.match(lines[0], /^🟢 Premarket read for \w{3} \w{3} \d{1,2} — BULLISH \(confidence 74\/100\)$/);
+    assert.equal(lines.filter(l => /^[▲▼•] /.test(l)).length, 3);
+    assert.match(text, /\nSPY levels: [\d.]+ above \(.+\) · [\d.]+ below \(.+\)\. Losing [\d.]+ negates the bullish read\.\n/);
+    assert.match(text, /\nSectors: strongest .+ · weakest .+\n/);
+    assert.match(text, /\nFlip event: 8:30 AM ET Core CPI m\/m — .+\.\n/, 'the event that can change the bias, with its time');
+    assert.ok(text.includes(PREMARKET_DISCLAIMER));
+    const ctx = { config: c, now: new Date(), setup: null, row: null, model: { reportDate: r.date, dataAsOf: r.dataAsOf }, kind: 'premarket', premarket: { sessionDate: r.sessionDate, bias: r.bias, confidence: r.confidence, levels }, chart: { path: '/tmp/p.png' } };
+    assert.deepEqual(blocking(validatePost(text, ctx)), []);
+  });
+});
+
+describe('content checklist: posting cadence guards (no low-quality overposting)', () => {
+  for (const [label, path] of [['stocks', STOCK_CFG], ['crypto', CRYPTO_CFG]]) {
+    it(`${label}: one setup per run, Medium+ confidence, cooldown, open setups not re-posted, follow-up updates capped, hashtags ≤ 2`, () => {
+      const c = load(path);
+      const ap = c.posting.autoPublish;
+      assert.equal(ap.maxPostsPerRun, 1);
+      assert.ok(['Medium', 'High'].includes(ap.minConfidence), 'a Low-confidence read is never the day\'s post');
+      assert.ok(ap.symbolCooldownHours >= 12);
+      assert.notEqual(ap.skipTracked, false);
+      assert.ok(ap.skipFlaggedRows, 'catalyst-flagged rows (earnings, news) are not posted as setups');
+      assert.ok(Number.isFinite(c.followUps.maxUpdatesPerRun) && c.followUps.maxUpdatesPerRun <= 3);
+      assert.equal(c.hashtags.maxTotal, 2);
+      assert.ok(c.charts.requireForPublish, 'the card carries the disclaimer, so it is mandatory');
+    });
+  }
+});

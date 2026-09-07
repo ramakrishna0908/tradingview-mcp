@@ -207,12 +207,16 @@
   "priceGrouping": true,
   "$priceGrouping": "Thousands separators, so BTC reads $79,610.00. Off for stocks, which keeps their post formatting byte-identical.",
   "postFormat": "sweep",
+  "plainLanguage": true,
+  "$plainLanguage": "Adds the one-sentence \"In plain terms:\" reading of the setup (src/social/sweep-labels.js) under the indicator line, so a reader who does not know CMF or RSI still gets the point.",
   "$postFormat": "\"sweep\" = the Daily Setup Sweep layout (headline verb, two levels, RVOL/score line, level-question CTA, 0-2 hashtags). \"classic\" restores the previous multi-line layout without a code change.",
   "priceDisplay": "compact",
   "$priceDisplay": "\"compact\" shows whole dollars once a price is in the thousands ($2,579). Compliance accepts any value a report level rounds to at the precision shown. \"exact\" keeps full precision.",
   "brand": {
     "name": "Daily Setup Sweep",
-    "tagline": "Charts. Setups. Discipline."
+    "tagline": "Charts. Setups. Discipline.",
+    "seriesLine": "Daily Setup Sweep · tracked to a daily close beyond a level · scored every Friday",
+    "$seriesLine": "Recurring-format footer on every setup post (before the Data line). Set to null to drop it."
   },
   "$cta": "Engagement line before the Data line; dropped first when the post does not fit. {level1} = the 🎯 level, {level2} = the 🛑 level. With only one level the generator asks a single-level question instead.",
   "followUps": {
@@ -221,6 +225,8 @@
     "postLevelTests": true,
     "$comment": "Event-driven follow-ups (tv social track), detected on DAILY CLOSES only: a close beyond the 🎯 level = BREAKOUT UPDATE, beyond the 🛑 level = INVALIDATED, an intraday touch of 🎯 without a close beyond = LEVEL TEST (postLevelTests), a later report confirming a DEVELOPING setup = CONFIRMED update. After maxAgeSessions bars without resolution the setup EXPIRES quietly (no post, not scored).",
     "maxEventAgeHours": 96,
+    "maxUpdatesPerRun": 2,
+    "$maxUpdatesPerRun": "Cap on non-terminal follow-ups (LEVEL TEST, CONFIRMED update) per run so a busy morning does not flood the feed. BREAKOUT and INVALIDATED updates always post — they are the accountability record.",
     "$maxEventAgeHours": "Freshness window for follow-ups, replacing maxReportAgeHours for kind=followup. A follow-up is dated by the daily bar that triggered it and the next run after a Friday close is Monday morning (65h; ~90h over a holiday weekend), so 96h. Older events are still audited as skipped, never back-posted."
   },
   "scorecard": {

@@ -56,7 +56,7 @@ const FALLBACK = {
   // 'classic' = the original multi-line layout; 'sweep' = the Daily Setup Sweep
   // format (headline verb, two levels, RVOL/score line, level-question CTA).
   // Lifecycle follow-ups (tv social track): detected on daily closes.
-  followUps: { enabled: true, maxAgeSessions: 15, postLevelTests: true, maxEventAgeHours: 96 },
+  followUps: { enabled: true, maxAgeSessions: 15, postLevelTests: true, maxEventAgeHours: 96, maxUpdatesPerRun: 2 },
   // Weekly scorecard (tv social scorecard): counts from the tracker, posted on `weekday` (1=Mon … 5=Fri).
   scorecard: { enabled: true, weekday: 5, queue: 'stocks', hashtags: ['#Stocks', '#Crypto'] },
   // Educational explainers (tv social educate): one topic per post, rotated.
@@ -67,7 +67,9 @@ const FALLBACK = {
   // 'exact' keeps every price at its full precision; 'compact' shows whole
   // dollars once a price is in the thousands (the sweep format's look).
   priceDisplay: 'exact',
-  brand: { name: '', tagline: '' },
+  brand: { name: '', tagline: '', seriesLine: null },
+  // The sweep post's "In plain terms:" line — one beginner-friendly sentence per setup.
+  plainLanguage: true,
   posting: { maxDraftsPerReport: 3, minConfidence: 'Medium', allowedSignals: ['CONFIRMED', 'WATCH'], autoPublish: AUTO_PUBLISH_OFF },
 };
 

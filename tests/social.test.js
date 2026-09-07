@@ -1117,13 +1117,19 @@ describe('sweep format: verdict gated on the signal, compact prices, level CTA, 
     const lines = text.split('\n');
     assert.equal(lines[0], '📈 $ETH has reclaimed its 20-day base — reclaim confirmed.');
     assert.equal(lines[1], 'CMF +0.22 shows positive money flow while RSI 64 keeps momentum healthy.');
-    assert.equal(lines[2], '🎯 Above $2,579 → potential breakout');
-    assert.equal(lines[3], '🛑 Below $2,449 → setup invalidated');
-    assert.equal(lines[4], 'Current price: $2,498 · RVOL 0.8× · Setup score +2.5');
-    assert.equal(lines[5], 'Which level gets hit first — $2,579 or $2,449? 👇');
-    assert.match(lines[6], /^Data: daily · \w{3} \d{1,2}, 20\d\d/);
-    assert.equal(lines[7], '#ETH #Crypto');
-    assert.equal(lines.length, 8);
+    assert.equal(lines[2], 'In plain terms: price is back above its 20-day average and volume is backing it — buyers are in control while it holds.');
+    assert.equal(lines[3], '🎯 Above $2,579 → potential breakout');
+    assert.equal(lines[4], '🛑 Below $2,449 → setup invalidated');
+    assert.equal(lines[5], 'Current price: $2,498 · RVOL 0.8× · Setup score +2.5');
+    assert.equal(lines[6], 'Which level gets hit first — $2,579 or $2,449? 👇');
+    assert.equal(lines[7], 'Daily Setup Sweep · tracked to a daily close beyond a level · scored every Friday');
+    assert.match(lines[8], /^Data: daily · \w{3} \d{1,2}, 20\d\d/);
+    assert.equal(lines[9], '#ETH #Crypto');
+    assert.equal(lines.length, 10);
+    // both additions are config-driven and drop cleanly
+    const bare = generatePost(setup, model, { ...cfg, plainLanguage: false, brand: { ...cfg.brand, seriesLine: null } }, { chart }).text.split('\n');
+    assert.equal(bare.length, 8);
+    assert.ok(!bare.some(l => /^In plain terms|^Daily Setup Sweep/.test(l)));
     assert.deepEqual(blocking(validatePost(text, { setup, row, model, config: cfg, chart })), []);
   });
 
@@ -1195,9 +1201,10 @@ describe('sweep format: verdict gated on the signal, compact prices, level CTA, 
     const lines = text.split('\n');
     assert.equal(lines[0], '📉 $ETH has broken below its 20-day base — breakdown confirmed.');
     assert.equal(lines[1], 'CMF -0.24 shows money leaving while RSI 38 stays weak.');
-    assert.equal(lines[2], '🎯 Below $2,210 → breakdown continues');
-    assert.equal(lines[3], '🛑 Above $2,350 → setup invalidated');
-    assert.equal(lines[5], 'Which level gets hit first — $2,210 or $2,350? 👇');
+    assert.equal(lines[2], 'In plain terms: price has lost its 20-day average and money is leaving — sellers are in control while it stays below.');
+    assert.equal(lines[3], '🎯 Below $2,210 → breakdown continues');
+    assert.equal(lines[4], '🛑 Above $2,350 → setup invalidated');
+    assert.equal(lines[6], 'Which level gets hit first — $2,210 or $2,350? 👇');
     assert.deepEqual(blocking(validatePost(text, { setup, row, model, config: cfg, chart })), []);
   });
 
@@ -1389,9 +1396,9 @@ describe('lifecycle tracker: DEVELOPING → CONFIRMED → BREAKOUT / INVALIDATED
     const c = cfg();
     const rec = open();
     const cases = [
-      [{ type: EVENT.BREAKOUT, bar: '2026-09-09', price: 2610.40, level: 2578.88, pct: 4.49 }, /^✅ \$ETH — BREAKOUT UPDATE\. \$2,579 cleared on the daily close\.$/, ['Price: $2,610 (daily close) · +4.5% from $2,498 at the setup', '🛑 A close back under $2,579 negates the breakout']],
-      [{ type: EVENT.LEVEL_TEST, bar: '2026-09-08', price: 2560.20, level: 2578.88, extreme: 2585.10, pct: 2.48 }, /^👀 \$ETH — LEVEL TEST\. Tagged \$2,579 intraday \(high \$2,585\) but did not close above it\.$/, ['🎯 A daily close above $2,579 → breakout', '🛑 Below $2,449 → setup invalidated']],
-      [{ type: EVENT.INVALIDATED, bar: '2026-09-10', price: 2430.00, level: 2448.62, pct: -2.73 }, /^🛑 \$ETH — INVALIDATED\. \$2,449 lost on the daily close\.$/, ['Price: $2,430 (daily close) · −2.7% from $2,498 at the setup']],
+      [{ type: EVENT.BREAKOUT, bar: '2026-09-09', price: 2610.40, level: 2578.88, pct: 4.49 }, /^✅ \$ETH — BREAKOUT UPDATE\. \$2,579 cleared on the daily close\.$/, ['Price: $2,610 (daily close) · +4.5% from $2,498 at the setup', '🛑 A close back under $2,579 negates the breakout', 'Does $2,579 hold as the new floor? 👇']],
+      [{ type: EVENT.LEVEL_TEST, bar: '2026-09-08', price: 2560.20, level: 2578.88, extreme: 2585.10, pct: 2.48 }, /^👀 \$ETH — LEVEL TEST\. Tagged \$2,579 intraday \(high \$2,585\) but did not close above it\.$/, ['🎯 A daily close above $2,579 → breakout', '🛑 Below $2,449 → setup invalidated', 'Close above $2,579 or lose $2,449 first? 👇']],
+      [{ type: EVENT.INVALIDATED, bar: '2026-09-10', price: 2430.00, level: 2448.62, pct: -2.73 }, /^🛑 \$ETH — INVALIDATED\. \$2,449 lost on the daily close\.$/, ['Price: $2,430 (daily close) · −2.7% from $2,498 at the setup', 'The lesson: the level did its job', 'Would you have drawn the line at $2,449 too? 👇']],
     ];
     for (const [ev, head, mustHave] of cases) {
       const { text } = generateFollowUp(rec, ev, c);
@@ -1414,6 +1421,7 @@ describe('lifecycle tracker: DEVELOPING → CONFIRMED → BREAKOUT / INVALIDATED
     const g = generateFollowUp(dev, gEv, c);
     assert.match(g.text.split('\n')[0], /^📈 \$ETH — RECLAIM CONFIRMED \(update\)\./);
     assert.match(g.text, /First posted Sep 7 as DEVELOPING\./);
+    assert.match(g.text, /\nWhich level gets hit first — \$2,579 or \$2,449\? 👇\nData: daily/);
     const gs = followUpSetup(dev, gEv);
     assert.deepEqual(blocking(validatePost(g.text, { setup: gs, row: followUpRow(dev, gEv), model: followUpModel(dev, gEv), config: c, kind: 'followup', stage: gs.stage, now: new Date('2026-09-09T23:00:00Z') })), []);
     const lt = { type: EVENT.LEVEL_TEST, bar: '2026-09-08', price: 2560.20, level: 2578.88, extreme: 2585.10, pct: 2.48 };
@@ -1434,10 +1442,15 @@ describe('lifecycle tracker: DEVELOPING → CONFIRMED → BREAKOUT / INVALIDATED
     assert.equal(lines[2], '✅ Breakouts / levels reached: 2');
     assert.equal(lines[3], '🛑 Invalidated: 1');
     assert.equal(lines[4], '👀 Still active: 1');
-    assert.equal(lines[5], 'Hit rate this week: 67% (2 of 3 resolved)');
-    assert.equal(lines[6], 'All-time: 6 setups · 50% hit rate (2 of 4 resolved)');
-    assert.equal(lines[7], 'Best this week: $ETH +4.5% · Worst: $SOL −2.7%');
+    assert.equal(lines[5], '⏳ Expired (no resolution): 1');
+    assert.equal(lines[6], 'Hit rate this week: 67% (2 of 3 resolved)');
+    assert.equal(lines[7], 'All-time: 6 setups · 50% hit rate (2 of 4 resolved)');
+    assert.equal(lines[8], 'Best this week: $ETH +4.5% · Worst: $SOL −2.7%');
+    assert.equal(lines[9], 'Every setup, its levels and its outcome are logged before posting.');
+    assert.match(lines[10], /^How to read it: hit rate = breakouts ÷ resolved/);
+    assert.equal(lines[11], 'Which setup did you follow this week? 👇');
     assert.match(text, /\nData: daily · Sep 11, 2026\n#Stocks #Crypto$/);
+    assert.ok(!generateScorecard({ ...stats, expired: 0 }, c).text.includes('Expired'));
     assert.ok(!/target/i.test(text));
     const ctx = { setup: null, row: null, model: { reportDate: '2026-09-11', dataAsOf: new Date().toISOString() }, config: c, kind: 'scorecard', scorecard: stats };
     assert.deepEqual(blocking(validatePost(text, ctx)), []);
@@ -1554,6 +1567,11 @@ describe('publishing policy: one highest-quality setup per run, tracked, followe
     assert.equal(d.queued.length, 2, JSON.stringify(d.skipped));
     assert.equal(wf.tracker.active().length, 1, 'dry run leaves the tracker alone');
     assert.equal(wf.ready({ queue: 'crypto' }).length, 0);
+    // Non-terminal updates are capped per run; terminal events always go out.
+    const capped = new SocialWorkflow({ config: { ...wf.config, followUps: { ...wf.config.followUps, maxUpdatesPerRun: 0 } }, audit: wf.audit, tracker: wf.tracker, now: frozen, insights: null });
+    const cap = await capped.trackEvents({ dryRun: true, fetchImplForCandles: yahoo });
+    assert.deepEqual(cap.queued.map(q => q.type), ['BREAKOUT']);
+    assert.ok(cap.skipped.some(x => x.type === 'LEVEL_TEST' && /follow-up cap/.test(x.reason)), JSON.stringify(cap.skipped));
     const old = new SocialWorkflow({ config: wf.config, audit: wf.audit, tracker: wf.tracker, now: () => new Date('2026-09-20T05:00:00Z'), insights: null });
     const o = await old.trackEvents({ dryRun: true, fetchImplForCandles: yahoo });
     assert.equal(o.queued.length, 0);

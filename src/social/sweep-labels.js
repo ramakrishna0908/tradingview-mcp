@@ -119,6 +119,43 @@ export function sweepLabels(setup) {
   };
 }
 
+/**
+ * One plain-English sentence per setup — the "why it matters" a reader who
+ * has never heard of CMF or a 20-day basis can follow. Descriptive of the
+ * present state only; the two levels in the post carry the what-happens-next.
+ */
+const PLAIN = {
+  'Basis reclaim': {
+    confirmed: 'In plain terms: price is back above its 20-day average and volume is backing it — buyers are in control while it holds.',
+    watch: 'In plain terms: price is back above its 20-day average, but not every signal agrees yet — a watch, not a call.',
+  },
+  'Trend continuation': {
+    confirmed: 'In plain terms: the uptrend is intact and money is still flowing in — the levels below say where that changes.',
+    watch: 'In plain terms: the trend is intact, but flow or structure has not caught up yet.',
+  },
+  'Breakout watch': { watch: 'In plain terms: price is pressing the top of its recent range; a close above it is what a breakout looks like — a wick through it is not.' },
+  'Extended momentum — exhaustion watch': { watch: 'In plain terms: price is stretched far above its normal range — this is late in the move, not early.' },
+  'Breakdown': {
+    confirmed: 'In plain terms: price has lost its 20-day average and money is leaving — sellers are in control while it stays below.',
+    watch: 'In plain terms: price slipped under its 20-day average, but not every signal agrees yet.',
+  },
+  'Seller exhaustion watch': { watch: 'In plain terms: the trend is down, but selling pressure is fading — a reclaim of the base is what a turn looks like.' },
+  'Bearish exhaustion watch': { watch: 'In plain terms: price is pinned at the bottom of its range after the drop — late in the move, not early.' },
+  'Bullish divergence watch': { watch: 'In plain terms: price is weak but money is quietly flowing in — a base reclaim would turn this from a watch into a setup.' },
+  'Bearish divergence watch': { watch: 'In plain terms: price looks fine but money is quietly leaving — the support below is the tell.' },
+};
+const PLAIN_GENERIC = {
+  confirmed: 'In plain terms: the two levels below define the read — one confirms it, the other cancels it.',
+  watch: 'In plain terms: the readings are mixed — the two levels below decide it, nothing else.',
+};
+
+/** The plain-English line for a classified setup (always one sentence). */
+export function plainLine(setup) {
+  const entry = PLAIN[setup.setup] ?? PLAIN_GENERIC;
+  const confirmed = setup.signal === CONFIRMED && entry.confirmed;
+  return confirmed ? entry.confirmed : (entry.watch ?? PLAIN_GENERIC.watch);
+}
+
 /** "shows positive money flow" — present tense, descriptive, no forecast. */
 export function cmfPhrase(cmf) {
   if (cmf > 0.1) return 'shows positive money flow';

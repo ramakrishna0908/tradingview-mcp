@@ -527,6 +527,11 @@ export class SocialWorkflow {
     const via = policy.via ?? 'api';
     const now = this.now();
     const summary = { dryRun, queue: this.queue, checked: 0, events: [], queued: [], skipped: [], expired: [], refused: null };
+    // Non-terminal updates (LEVEL TEST, CONFIRMED) are capped per run so a busy
+    // morning reads like a feed, not a dump; terminal events (BREAKOUT,
+    // INVALIDATED) are the accountability record and always go out.
+    const maxUpdates = fu.maxUpdatesPerRun ?? Infinity;
+    let updates = 0;
     if (fu.enabled === false) { summary.refused = 'follow-ups are disabled in config (followUps.enabled)'; return summary; }
     if (policy.disabledBy) { summary.refused = `auto-publish disabled by ${policy.disabledBy}`; return summary; }
 
@@ -560,6 +565,9 @@ export class SocialWorkflow {
         summary.events.push({ id: rec.id, symbol: rec.symbol, type: ev.type, bar: ev.bar, price: ev.price, pct: ev.pct });
         if (ev.type === EVENT.EXPIRED) { summary.expired.push({ id: rec.id, symbol: rec.symbol, bar: ev.bar }); continue; }
         if (ev.type === EVENT.LEVEL_TEST && fu.postLevelTests === false) continue;
+        const nonTerminal = ev.type === EVENT.LEVEL_TEST || ev.type === EVENT.CONFIRMED;
+        if (nonTerminal && updates >= maxUpdates) { summary.skipped.push({ id: rec.id, symbol: rec.symbol, type: ev.type, reason: `follow-up cap: ${maxUpdates} non-terminal update(s) per run (followUps.maxUpdatesPerRun)` }); continue; }
+        if (nonTerminal) updates++;
         const basis = ev.type === EVENT.LEVEL_TEST || ev.type === EVENT.CONFIRMED ? pre : next;
         const d = await this.draftFollowUp(basis, ev, { chartOpts: { fetchImpl: fetchImplForCharts, candles } });
         const blockers = blocking(d.issues);
