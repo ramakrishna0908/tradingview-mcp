@@ -37,6 +37,7 @@ const FALLBACK = {
   disclosurePlacement: 'post', // 'post' | 'bio'
   charLimit: 280,
   maxReportAgeHours: 24,
+  marketHolidays: [],
   requiredIndicators: ['Price', 'RSI', 'CMF'],
   requireSupportOrResistance: true,
   requireRiskContext: true,

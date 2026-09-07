@@ -260,6 +260,9 @@ export class SocialWorkflow {
     const refuse = reason => { summary.refused = reason; return summary; };
 
     if (!policy.enabled) return refuse(policy.disabledBy ? `auto-publish disabled by ${policy.disabledBy}` : 'auto-publish is disabled in config (posting.autoPublish.enabled)');
+    if ((this.config.marketHolidays ?? []).includes(model.reportDate)) return refuse(`${model.reportDate} is a market holiday — the report only re-shows the prior session`);
+    const dow = new Date(model.reportDate + 'T12:00:00Z').getUTCDay();
+    if (dow === 0 || dow === 6) return refuse(`${model.reportDate} is a weekend`);
     const ageH = (now - new Date(model.dataAsOf)) / 3600_000;
     if (!Number.isFinite(ageH) || ageH > this.config.maxReportAgeHours) {
       return refuse(`report data is ${Number.isFinite(ageH) ? ageH.toFixed(1) + 'h' : 'of unknown age'} (limit ${this.config.maxReportAgeHours}h) — auto mode never overrides freshness`);

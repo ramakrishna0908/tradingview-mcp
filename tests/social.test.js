@@ -37,7 +37,7 @@ const ROW = (over = {}) => ({
 });
 
 const MODEL = (rows, over = {}) => ({
-  modelVersion: 1, reportDate: '2026-09-06', title: 't', sourcePath: null,
+  modelVersion: 1, reportDate: '2026-09-08', title: 't', sourcePath: null,
   dataAsOf: new Date().toISOString(), dataAsOfSource: 'test', timeframe: 'D', marketTheme: null, footer: null,
   rows, ...over,
 });
@@ -606,6 +606,14 @@ describe('auto-publish: policy-gated, audited, never overrides freshness', () =>
     const r = await wf.autoPublish(stale, { creds, fetchImpl: okFetch() });
     assert.match(r.refused, /never overrides freshness/);
     assert.equal(wf.audit.latest().length, 0);
+  });
+
+  it('refuses on market holidays and weekends', async () => {
+    const hol = new SocialWorkflow({ config: { ...cfg, marketHolidays: ['2026-09-07'] }, audit: new AuditStore(auditPath) });
+    const r = await hol.autoPublish(MODEL([ROW({ price: 118 })], { reportDate: '2026-09-07' }), { creds, fetchImpl: okFetch() });
+    assert.match(r.refused, /market holiday/);
+    const w = await hol.autoPublish(MODEL([ROW({ price: 118 })], { reportDate: '2026-09-06' }), { creds, fetchImpl: okFetch() });
+    assert.match(w.refused, /weekend/);
   });
 
   it('refuses without API credentials (no manual/browser path)', async () => {
