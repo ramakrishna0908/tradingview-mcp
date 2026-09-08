@@ -225,7 +225,9 @@ subcommands.set('ready', {
   options: { ...jsonOpt, queue: { type: 'string', description: "Only this sweep's queue: stocks | crypto" } },
   handler: async (values) => {
     const wf = new SocialWorkflow();
-    const recs = wf.ready({ queue: values.queue ?? null }).map(r => ({ id: r.id, queue: r.queue ?? 'stocks', kind: r.kind ?? 'setup', stage: r.stage ?? null, topic: r.topic ?? null, symbol: r.symbol, reportDate: r.reportDate, text: r.editedText ?? r.originalText, chart: r.chart?.path ?? null, altText: r.chart?.altText ?? null }));
+    const expired = wf.expireStaleReady({ queue: values.queue ?? null });
+    if (expired.length && !values.json) for (const e of expired) console.error(`expired ${e.id} — ${e.expiredReason}`);
+    const recs = wf.ready({ queue: values.queue ?? null }).map(r => ({ id: r.id, queue: r.queue ?? 'stocks', kind: r.kind ?? 'setup', stage: r.stage ?? null, topic: r.topic ?? null, symbol: r.symbol, reportDate: r.reportDate, text: r.editedText ?? r.originalText, chart: r.chart?.path ?? null, altText: r.chart?.altText ?? null, replyTo: r.replyToPost ?? null }));
     if (values.json) return out(recs);
     for (const r of recs) { console.log(`# ${r.id}\n${r.text}\nchart: ${r.chart ?? 'none'}\n`); }
     if (!recs.length) console.log('(nothing ready to post)');
@@ -247,6 +249,22 @@ subcommands.set('rehearse', {
   },
 });
 
+subcommands.set('close-update', {
+  description: 'CLOSE CHECK reply under today\'s setup post: last price vs the setup price and the 🎯/🛑 status so far (run ~3:50 PM ET)',
+  options: { 'dry-run': { type: 'boolean', description: 'Draft and show, queue nothing' }, ...jsonOpt },
+  handler: async (values) => {
+    const wf = new SocialWorkflow();
+    const summary = await wf.closeUpdate({ dryRun: !!values['dry-run'] });
+    if (values.json) return out(summary);
+    console.log(`close-update · queue ${summary.queue}${summary.dryRun ? ' · DRY RUN' : ''} · ${summary.checked} setup(s) posted today`);
+    if (summary.refused) { console.log(`refused: ${summary.refused}`); done(2); }
+    for (const q of summary.queued) console.log(`\n${q.dryRun ? 'WOULD QUEUE' : q.ready ? 'READY (browser reply)' : 'POSTED'} ${q.symbol} (${q.id})${q.replyToUrl ? ' ↩ ' + q.replyToUrl : ''}${q.url ? ' → ' + q.url : ''}\n${q.text}`);
+    for (const s of summary.skipped) console.log(`skip ${s.symbol.padEnd(6)} — ${s.reason}`);
+    if (!summary.queued.length) console.log('\nnothing queued');
+    done(0);
+  },
+});
+
 subcommands.set('auto', {
   description: 'Policy-gated auto-publish for the latest report (see config posting.autoPublish)',
   options: { ...reportOpt, 'dry-run': { type: 'boolean', description: 'Evaluate the policy and show what would be posted, without posting' }, ...jsonOpt },
@@ -265,6 +283,11 @@ subcommands.set('auto', {
       else if (p.chartError) console.log(`chart: none — ${p.chartError}`);
     }
     for (const s of summary.skipped) console.log(`skip ${s.symbol.padEnd(6)} ${s.signal}/${s.confidence.padEnd(6)} ${s.setup} — ${s.reason}`);
+    if (summary.pending?.length) console.log(`already queued for this report: ${summary.pending.join(', ')}`);
+    for (const t of summary.thread ?? []) {
+      if (t.skipped) console.log(`thread skip ${t.symbol} — ${t.skipped}`);
+      else console.log(`\n${t.dryRun ? 'WOULD THREAD' : t.ready ? 'READY (thread reply)' : 'THREADED'} ${t.symbol} (${t.id})${t.url ? ' → ' + t.url : ''}\n${t.text}`);
+    }
     if (summary.capped) console.log(`(stopped at maxPostsPerRun = ${summary.policy.maxPostsPerRun})`);
     if (!summary.published.length) console.log('\nnothing published');
     done(0);

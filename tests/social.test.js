@@ -17,7 +17,8 @@ import { loadConfig, resetConfigCache, DEFAULT_DISCLOSURE } from '../src/social/
 import { AuditStore } from '../src/social/audit.js';
 import { SocialWorkflow } from '../src/social/index.js';
 import { oauth1Signature, oauth1Header, percentEncode, postTweet, uploadMedia, getCredentialsFromEnv } from '../src/social/x-client.js';
-import { parseYahooChart, toYahooSymbol } from '../src/social/chart-data.js';
+import { parseYahooChart, toYahooSymbol, parseIntradayQuote } from '../src/social/chart-data.js';
+import { generateThreadReply, generateCloseUpdate, levelStatus } from '../src/social/thread.js';
 import { buildChartSpec, chartAltText, makeChart, renderChartSpec, buildSweepChartSpec, sweepChartAltText } from '../src/social/chart.js';
 import { spawnSync } from 'node:child_process';
 
@@ -671,11 +672,13 @@ describe('auto-publish: policy-gated, audited, never overrides freshness', () =>
     assert.equal(aaa.publication.method, 'x-api');
     assert.match(aaa.originalText, /#NFA #DYOR/);
 
-    // second run the same day: AAA/FFF are inside the cooldown, so GGG gets its turn
+    // second run off the SAME report: the two published setups already fill the
+    // cap, so nothing else is queued — the day's heroes are the day's heroes.
     const again = await wf.autoPublish(model, { creds, fetchImpl: okFetch('9002') });
-    assert.deepEqual(again.published.map(p => p.symbol), ['GGG']);
-    const cool = again.skipped.find(s => s.symbol === 'AAA');
-    assert.match(cool.reason, /cooldown/);
+    assert.deepEqual(again.published, []);
+    assert.deepEqual([...again.pending].sort(), ['AAA', 'FFF']);
+    assert.equal(again.capped, true);
+    assert.ok(!again.skipped.some(s => s.symbol === 'GGG' && /cooldown/.test(s.reason)));
   });
 
   it('via "browser": policy-approves into ready_to_post, nothing is sent, record marks it published', async () => {
@@ -1471,6 +1474,139 @@ describe('lifecycle tracker: DEVELOPING → CONFIRMED → BREAKOUT / INVALIDATED
   });
 });
 
+describe('one hero per day: pending-aware cap, surplus as thread replies, close check', () => {
+  const STOCK_CFG = join(ROOT, 'config', 'social-compliance.json');
+  const load = () => { resetConfigCache(); const c = loadConfig(STOCK_CFG); resetConfigCache(); return { ...c, charts: { ...c.charts, enabled: false, requireForPublish: false } }; };
+  const ROWX = (sym, over = {}) => ROW({ symbol: sym, price: 118, cmf: 0.19, ...over });
+  const cohort = syms => ({ source: 't', calls: syms.map(s => ({ symbol: s, score: 2.5 })), puts: [], watches: [] });
+  const fresh = (over = {}) => {
+    const dir = mkdtempSync(join(tmpdir(), 'hero-'));
+    const cfg = load();
+    cfg.posting = { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, enabled: true, via: 'browser', spacingSeconds: 0, ...over } };
+    return { cfg, wf: new SocialWorkflow({ config: cfg, audit: new AuditStore(join(dir, 'audit.jsonl')), insights: null }) };
+  };
+  const rows = () => [ROWX('AAA'), ROWX('BBB'), ROWX('CCC'), ROWX('DDD'), ROWX('EEE')];
+
+  it('a re-run with a setup already waiting on the poster queues NO second hero', async () => {
+    const { wf } = fresh();
+    const model = MODEL(rows(), { cohort: cohort(['AAA', 'BBB', 'CCC', 'DDD', 'EEE']) });
+    const first = await wf.autoPublish(model);
+    assert.deepEqual(first.published.map(p => p.symbol), ['AAA']);
+    const again = await wf.autoPublish(model);
+    assert.deepEqual(again.published, []);
+    assert.deepEqual(again.pending, ['AAA']);
+    assert.equal(again.capped, true);
+    assert.equal(again.noSetup, undefined);
+    const setups = wf.ready({ queue: 'stocks' }).filter(r => (r.kind ?? 'setup') === 'setup');
+    assert.equal(setups.length, 1, 'still exactly one hero queued');
+  });
+
+  it('the surplus becomes at most maxReplies thread replies under the hero, validated, not tracked', async () => {
+    const { wf } = fresh();
+    const model = MODEL(rows(), { cohort: cohort(['AAA', 'BBB', 'CCC', 'DDD', 'EEE']) });
+    const r = await wf.autoPublish(model);
+    assert.deepEqual(r.published.map(p => p.symbol), ['AAA']);
+    const queued = r.thread.filter(t => t.ready);
+    assert.deepEqual(queued.map(t => t.symbol), ['BBB', 'CCC', 'DDD']);
+    assert.ok(r.thread.some(t => t.symbol === 'EEE' && /thread cap/.test(t.skipped)));
+    const ready = wf.ready({ queue: 'stocks' });
+    const replies = ready.filter(x => x.kind === 'thread');
+    assert.equal(replies.length, 3);
+    for (const rep of replies) {
+      assert.equal(rep.replyTo, r.published[0].id);
+      assert.equal(rep.replyToPost.status, 'ready_to_post');       // parent not posted yet → no xPostId
+      assert.match(rep.originalText, /^(Also on today's sweep:|And:) \$[A-Z]+ /);
+      assert.match(rep.originalText, /Not tracked/);
+      assert.match(rep.originalText, /🎯 Above \$123\.50 → potential breakout · 🛑 Below \$115\.00 → setup invalidated/);
+      assert.deepEqual(blocking(rep.issues), []);
+    }
+    // a second run adds nothing to the thread
+    const again = await wf.autoPublish(model);
+    assert.equal(again.thread.filter(t => t.ready).length, 0);
+    assert.equal(wf.ready({ queue: 'stocks' }).filter(x => x.kind === 'thread').length, 3);
+    // once the hero is recorded the replies resolve its post id, and recording a reply opens nothing in the tracker
+    wf.recordManualPublication(r.published[0].id, model, { xPostId: '100' });
+    const resolved = wf.ready({ queue: 'stocks' }).find(x => x.kind === 'thread');
+    assert.equal(resolved.replyToPost.xPostId, '100');
+    wf.recordManualPublication(resolved.id, model, { xPostId: '101' });
+    assert.equal(wf.tracker.active().length, 1, 'only the hero is tracked');
+  });
+
+  it('thread reply text never upgrades a WATCH and carries the ticker, price and both levels', () => {
+    const cfg = load();
+    const row = ROWX('ZZZ', { price: 122 });         // breakout WATCH
+    const setup = classifySetup(row);
+    const model = MODEL([row]);
+    const { text } = generateThreadReply(setup, model, cfg, { index: 2 });
+    assert.match(text, /^And: \$ZZZ /);
+    assert.ok(!/confirmed/i.test(text.split('\n')[0]));
+    assert.deepEqual(blocking(validatePost(text, { setup, row, model, config: cfg, kind: 'thread' })), []);
+    const upgraded = text.replace(text.split('\n')[0], 'And: $ZZZ breakout confirmed.');
+    assert.ok(blocking(validatePost(upgraded, { setup, row, model, config: cfg, kind: 'thread' })).some(i => i.code === 'signal_upgraded'));
+  });
+
+  it('close check: last price vs setup price, level status from the session range, reply under the hero, once per day', async () => {
+    const { wf } = fresh();
+    const model = MODEL([ROWX('AAA')], { cohort: cohort(['AAA']) });
+    const r = await wf.autoPublish(model);
+    const heroId = r.published[0].id;
+    const now = new Date();
+    wf.now = () => now;
+    const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+    wf.recordManualPublication(heroId, model, { xPostId: '500', url: 'https://x.com/ai_king0206/status/500' });
+    const ts = Math.floor(now.getTime() / 1000);
+    const yahoo = { chart: { result: [{ meta: {}, timestamp: [ts - 600, ts - 300, ts], indicators: { quote: [{ open: [118, 119, 120], high: [119, 121, 124], low: [117, 118.5, 119], close: [119, 120.5, 121.4], volume: [1, 1, 1] }] } }], error: null } };
+    const fetchImplForQuotes = async () => ({ ok: true, json: async () => yahoo });
+    const q = parseIntradayQuote(yahoo);
+    assert.equal(q.last, 121.4);
+    assert.equal(q.high, 124);
+    const s = await wf.closeUpdate({ fetchImplForQuotes, today: day });
+    assert.equal(s.checked, 1);
+    assert.equal(s.queued.length, 1);
+    const rec = wf.ready({ queue: 'stocks' }).find(x => x.kind === 'closeupdate');
+    assert.ok(rec);
+    assert.equal(rec.replyTo, heroId);
+    assert.equal(rec.replyToPost.xPostId, '500');
+    assert.match(rec.originalText, /^⏱ \$AAA — CLOSE CHECK\. Price: \$121\.40 at \d{1,2}:\d\d [AP]M ET \(\+2\.9% from \$118\.00 at the setup\)\./);
+    assert.match(rec.originalText, /🎯 \$123\.50: tagged intraday · 🛑 \$115\.00: intact/);
+    assert.match(rec.originalText, /Levels only count on the daily close/);
+    assert.deepEqual(blocking(rec.issues), []);
+    // idempotent per day
+    const s2 = await wf.closeUpdate({ fetchImplForQuotes, today: day });
+    assert.equal(s2.queued.length, 0);
+    assert.match(s2.skipped[0].reason, /already queued today/);
+    // recording it attaches to the hero's tracker record without opening a new one
+    wf.recordManualPublication(rec.id, null, { xPostId: '501' });
+    const tr = wf.tracker.active()[0];
+    assert.equal(wf.tracker.active().length, 1);
+    assert.ok(tr.posts.some(p => p.auditId === rec.id && p.stage === 'CLOSE_CHECK'));
+    // level status helper
+    assert.deepEqual(levelStatus({ direction: 'bullish', target: { value: 123.5 }, stop: { value: 115 } }, { last: 124.5, high: 125, low: 119 }), { target: 'trading through', stop: 'intact' });
+    assert.deepEqual(levelStatus({ direction: 'bearish', target: { value: 110 }, stop: { value: 125 } }, { last: 126, high: 127, low: 118 }), { target: 'not reached', stop: 'trading through' });
+  });
+
+  it('a queued setup that missed its window expires instead of posting stale', async () => {
+    const { wf } = fresh();
+    const model = MODEL([ROWX('AAA'), ROWX('BBB')], { cohort: cohort(['AAA', 'BBB']) });
+    await wf.autoPublish(model);
+    assert.equal(wf.ready({ queue: 'stocks' }).length, 2); // hero + 1 thread reply
+    wf.now = () => new Date(Date.now() + 30 * 3600_000);
+    const expired = wf.expireStaleReady({ queue: 'stocks' });
+    assert.deepEqual(expired.map(e => e.status), ['expired', 'expired']);
+    assert.equal(wf.ready({ queue: 'stocks' }).length, 0);
+  });
+
+  it('close check runs only for setups posted today', async () => {
+    const { wf } = fresh();
+    const model = MODEL([ROWX('AAA')], { cohort: cohort(['AAA']) });
+    const r = await wf.autoPublish(model);
+    wf.recordManualPublication(r.published[0].id, model, { xPostId: '600' });
+    const s = await wf.closeUpdate({ fetchImplForQuotes: async () => { throw new Error('should not be called'); }, today: '2020-01-01' });
+    assert.equal(s.checked, 0);
+    assert.equal(s.queued.length, 0);
+  });
+});
+
 describe('publishing policy: one highest-quality setup per run, tracked, followed up, scored weekly', () => {
   const CRYPTO_CFG = join(ROOT, 'config', 'social-compliance-crypto.json');
   const STOCK_CFG = join(ROOT, 'config', 'social-compliance.json');
@@ -1541,7 +1677,7 @@ describe('publishing policy: one highest-quality setup per run, tracked, followe
     // next morning: the 20h cooldown has passed, so it is the tracker that holds the symbol back
     const tomorrow = new Date(Date.now() + 26 * 3600_000);
     const later = new SocialWorkflow({ config: wf.config, audit: wf.audit, tracker: wf.tracker, now: () => tomorrow, insights: null });
-    const again = await later.autoPublish(MODEL([ETH()], { reportDate: '2026-09-08', dataAsOf: tomorrow.toISOString(), cohort: cohort(['ETH']) }));
+    const again = await later.autoPublish(MODEL([ETH()], { reportDate: '2026-09-09', dataAsOf: tomorrow.toISOString(), cohort: cohort(['ETH']) }));
     assert.deepEqual(again.published, []);
     assert.ok(again.skipped.some(s => s.symbol === 'ETH' && /already tracked as RECLAIM CONFIRMED/.test(s.reason)), JSON.stringify(again.skipped));
   });

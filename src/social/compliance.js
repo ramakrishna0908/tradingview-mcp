@@ -124,7 +124,7 @@ export function allowedNumbers(setup, row) {
  */
 export function validatePost(text, ctx) {
   const { setup, row, model, config } = ctx;
-  const kind = ctx.kind ?? 'setup'; // 'setup' | 'followup' | 'scorecard' | 'education' | 'video' | 'premarket'
+  const kind = ctx.kind ?? 'setup'; // 'setup' | 'thread' | 'closeupdate' | 'followup' | 'scorecard' | 'education' | 'video' | 'premarket'
   const educational = kind === 'education' || kind === 'video'; // concept posts: no ticker, no levels, no data line
   const now = ctx.now ?? new Date();
   const issues = [];
@@ -176,7 +176,7 @@ export function validatePost(text, ctx) {
     // A follow-up is dated by the bar that triggered it, and the next run after
     // a Friday close is Monday morning — so follow-ups carry their own window
     // (followUps.maxEventAgeHours, default long enough for a holiday weekend).
-    const limit = kind === 'followup' ? (config.followUps?.maxEventAgeHours ?? config.maxReportAgeHours) : config.maxReportAgeHours;
+    const limit = kind === 'followup' ? (config.followUps?.maxEventAgeHours ?? config.maxReportAgeHours) : kind === 'closeupdate' ? 2 : config.maxReportAgeHours;
     if (ageH > limit) {
       const msg = `Report data is ${ageH.toFixed(1)}h old (limit ${limit}h)`;
       if (ctx.staleAcknowledged) push('stale_data_acknowledged', 'warn', `${msg} — publishing with explicit acknowledgement`);
@@ -195,14 +195,16 @@ export function validatePost(text, ctx) {
     if (rec.id === ctx.draftId) continue;
     const live = ['approved', 'published', 'publishing'].includes(rec.status);
     if (rec.textHash === hash && live) push('duplicate_post', 'block', `Identical text already ${rec.status} (${rec.id})`);
-    else if (live && rec.symbol === setup?.symbol && rec.reportDate === model?.reportDate) {
+    else if (live && rec.symbol === setup?.symbol && rec.reportDate === model?.reportDate && kind !== 'closeupdate' && (rec.kind ?? 'setup') !== 'closeupdate') {
+      // A close check deliberately shares the hero's symbol and day; its own
+      // once-per-day guard lives in the workflow.
       push('duplicate_post', 'block', `${setup.symbol} already ${rec.status} for report ${model.reportDate} (${rec.id})`);
     }
   }
 
   // 7. required indicators — a follow-up or scorecard has no fresh RSI/CMF
   // reading to cite, so only the price is required there.
-  const requiredIndicators = kind === 'setup' ? (config.requiredIndicators ?? []) : kind === 'followup' ? ['Price'] : [];
+  const requiredIndicators = kind === 'setup' || kind === 'thread' ? (config.requiredIndicators ?? []) : kind === 'followup' || kind === 'closeupdate' ? ['Price'] : [];
   // An educational explainer teaches a concept; it must not read as a call on
   // a specific name, so no cashtags at all.
   if (educational && /\$[A-Z]{1,6}\b/.test(t)) push('ticker_in_education', 'block', 'Educational posts must not name a ticker');
@@ -215,6 +217,7 @@ export function validatePost(text, ctx) {
   const namesLevel = kind === 'scorecard' || educational ? true
     : kind === 'premarket' ? /\b\d[\d,]*(?:\.\d+)? above \(.+?\) · \d[\d,]*(?:\.\d+)? below \(/.test(t)
     : kind === 'followup' ? /\$[\d,]+(?:\.\d+)? (cleared|lost|intraday)|\b(Above|Below|above|below) \$[\d,]+(?:\.\d+)?/.test(t)
+    : kind === 'closeupdate' ? /[🎯🛑] \$[\d,]+(?:\.\d+)?: (not reached|tagged intraday|trading through|intact)/u.test(t)
     : config.postFormat === 'sweep'
       ? /\b(Above|Below) \$[\d,]+(?:\.\d+)? →/.test(t)
       : /\b(support|resistance)\b/i.test(t);
@@ -276,7 +279,11 @@ export function validatePost(text, ctx) {
     // any phrasing ("Confirmed Setup", "reclaim confirmed", "RECLAIM CONFIRMED").
     const headline = t.split('\n')[0] ?? '';
     const claimsConfirmed = /\bconfirmed\b/i.test(headline);
-    if (kind === 'followup') {
+    if (kind === 'closeupdate') {
+      if (!/\bCLOSE CHECK\b/.test(headline)) push('signal_label', 'block', 'Close check headline must carry "CLOSE CHECK"');
+      const stage = setup.stage ?? ctx.stage ?? null;
+      if (claimsConfirmed && !['CONFIRMED', 'BREAKOUT'].includes(stage)) push('signal_upgraded', 'block', `Close check at stage ${stage} may not say "confirmed"`);
+    } else if (kind === 'followup') {
       // A follow-up is labelled by its lifecycle stage; "confirmed" may appear
       // only once the setup has actually reached CONFIRMED or BREAKOUT.
       const stage = setup.stage ?? ctx.stage ?? null;
@@ -341,7 +348,8 @@ export function validatePost(text, ctx) {
   // be approvable, queueable for the browser poster, or recordable. This is
   // checked here, not only in publish(), so the browser path (via: 'browser')
   // is covered too.
-  if (config.charts?.enabled && config.charts?.requireForPublish && !ctx.chart?.path) {
+  if (kind === 'thread' && !/\bNot tracked\b/.test(t)) push('signal_label', 'block', 'Thread replies must state they are not tracked');
+  if (config.charts?.enabled && config.charts?.requireForPublish && !ctx.chart?.path && !['thread', 'closeupdate'].includes(kind)) {
     push('missing_chart', 'block', `Chart is required for publishing but none was rendered${ctx.chart?.error ? ` (${ctx.chart.error})` : ''}`);
   }
 

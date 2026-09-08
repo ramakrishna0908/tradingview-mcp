@@ -25,7 +25,8 @@ import { validatePost, blocking, textHash, isHashtagLine } from './compliance.js
 import { AuditStore } from './audit.js';
 import { postTweet, uploadMedia, getCredentialsFromEnv } from './x-client.js';
 import { makeChart, renderChartSpec, DEFAULT_CHART_DIR } from './chart.js';
-import { fetchDailyCandles } from './chart-data.js';
+import { fetchDailyCandles, fetchIntradayQuote } from './chart-data.js';
+import { generateThreadReply, generateCloseUpdate, closeUpdateModel, closeUpdateSetup, closeUpdateRow } from './thread.js';
 
 export * from './setup.js';
 export * from './compliance.js';
@@ -92,6 +93,18 @@ export class SocialWorkflow {
     }
     if (rec.kind === 'premarket') {
       return validatePost(this.currentText(rec), { ...common, setup: null, row: null, model: { reportDate: rec.reportDate, dataAsOf: rec.dataAsOf }, kind: 'premarket', premarket: rec.premarket });
+    }
+    if (rec.kind === 'closeupdate') {
+      const tr = this.tracker.get(rec.closeUpdateOf);
+      if (!tr) return [{ code: 'missing_tracker', severity: 'block', message: `No tracked setup ${rec.closeUpdateOf} for this close check` }];
+      const q = rec.quote;
+      const setup = closeUpdateSetup(tr, q);
+      return validatePost(this.currentText(rec), { ...common, setup, row: closeUpdateRow(tr, q), model: closeUpdateModel(tr, q), kind: 'closeupdate', stage: tr.stage });
+    }
+    if (rec.kind === 'thread') {
+      const row = findRow(model, rec.symbol);
+      const setup = row ? classifySetup(row) : null;
+      return validatePost(this.currentText(rec), { ...common, setup, row, model, kind: 'thread' });
     }
     const row = findRow(model, rec.symbol);
     const setup = row ? classifySetup(row) : null;
@@ -241,8 +254,16 @@ export class SocialWorkflow {
       return this.audit.append({ ...rec, issues, status: 'failed', error: chartNote, publication: null });
     }
 
+    // Replies (thread items, close checks) go under their parent's X post.
+    let replyToId = null;
+    if (rec.replyTo) {
+      const parent = this.audit.get(rec.replyTo);
+      replyToId = parent?.publication?.xPostId ?? null;
+      if (!replyToId) return this.audit.append({ ...rec, issues, status: 'failed', error: `parent ${rec.replyTo} is not published yet`, publication: null });
+    }
+
     this.audit.append({ ...rec, issues, status: 'publishing' });
-    const result = await postTweet(text, { creds, fetchImpl, mediaIds });
+    const result = await postTweet(text, { creds, fetchImpl, mediaIds, replyToId });
     if (!result.ok) {
       return this.audit.append({ ...rec, issues, status: 'failed', error: result.error, publication: null });
     }
@@ -251,7 +272,7 @@ export class SocialWorkflow {
       issues,
       status: 'published',
       error: null,
-      publication: { at: this.now().toISOString(), xPostId: result.id, url: result.url, method: 'x-api', mediaIds, chartNote },
+      publication: { at: this.now().toISOString(), xPostId: result.id, url: result.url, method: 'x-api', mediaIds, chartNote, replyToId },
     });
     this.afterPublished(pub, model);
     return pub;
@@ -269,7 +290,12 @@ export class SocialWorkflow {
       if (tr && !tr.posts.some(p => p.auditId === pub.id)) this.tracker.append({ ...tr, posts: [...tr.posts, post] });
       return;
     }
-    if (['scorecard', 'education', 'video', 'premarket'].includes(pub.kind)) return;
+    if (['scorecard', 'education', 'video', 'premarket', 'thread'].includes(pub.kind)) return;
+    if (pub.kind === 'closeupdate') {
+      const tr = this.tracker.get(pub.closeUpdateOf);
+      if (tr && !tr.posts.some(p => p.auditId === pub.id)) this.tracker.append({ ...tr, posts: [...tr.posts, { ...post, stage: 'CLOSE_CHECK' }] });
+      return;
+    }
     const existing = this.tracker.get(pub.id);
     if (existing) {
       this.tracker.append({ ...existing, posts: existing.posts.map(p => (p.auditId === pub.id ? { ...p, ...post } : p)) });
@@ -310,10 +336,41 @@ export class SocialWorkflow {
    * poster. `queue` scopes the result to one sweep ('stocks' | 'crypto'); records
    * written before queues existed are treated as 'stocks'.
    */
+  /**
+   * A queued post that missed its posting window must never go out later with
+   * yesterday's numbers: setup / thread / close-check records older than the
+   * freshness limit are marked `expired` (audited, never posted). Follow-ups
+   * carry their own window. Returns the expired records.
+   */
+  expireStaleReady({ queue = null } = {}) {
+    const now = this.now();
+    const out = [];
+    for (const r of this.audit.latest()) {
+      if (r.status !== 'ready_to_post') continue;
+      if (queue != null && (r.queue ?? 'stocks') !== queue) continue;
+      const kind = r.kind ?? 'setup';
+      const limit = kind === 'followup' ? (this.config.followUps?.maxEventAgeHours ?? this.config.maxReportAgeHours)
+        : kind === 'closeupdate' ? 2
+        : ['setup', 'thread'].includes(kind) ? this.config.maxReportAgeHours
+        : null;
+      if (limit == null || !r.dataAsOf) continue;
+      const ageH = (now - new Date(r.dataAsOf)) / 3600_000;
+      if (ageH > limit) out.push(this.audit.append({ ...r, status: 'expired', expiredReason: `missed the posting window: data ${ageH.toFixed(1)}h old (limit ${limit}h)` }));
+    }
+    return out;
+  }
+
   ready({ queue = null } = {}) {
-    return this.audit.latest()
+    const latest = this.audit.latest();
+    const byId = new Map(latest.map(r => [r.id, r]));
+    return latest
       .filter(r => r.status === 'ready_to_post')
-      .filter(r => queue == null || (r.queue ?? 'stocks') === queue);
+      .filter(r => queue == null || (r.queue ?? 'stocks') === queue)
+      .map(r => {
+        if (!r.replyTo) return r;
+        const parent = byId.get(r.replyTo);
+        return { ...r, replyToPost: parent ? { id: parent.id, status: parent.status, xPostId: parent.publication?.xPostId ?? null, url: parent.publication?.url ?? null } : { id: r.replyTo, status: 'missing', xPostId: null, url: null } };
+      });
   }
 
   // ─── auto-publish (policy-gated, unattended) ───────────────────────────────
@@ -361,6 +418,21 @@ export class SocialWorkflow {
     const recent = this.audit.latest().filter(r => r.status === 'published' && r.publication?.at && now - new Date(r.publication.at) < cooldownMs);
     const keywords = (policy.skipBiasKeywords ?? []).map(k => k.toLowerCase());
 
+    // Claimed but not yet live. The cooldown above reads publication.at and the
+    // tracker guard below opens on `record`, so between them they only see a
+    // post that actually reached X. A browser-queued post has neither: it sits
+    // at 'ready_to_post' until the scheduled poster picks it up. Without this,
+    // the second run of the day (daily-report.sh queues one, then the launchd
+    // fallback runs again) re-drafts the same symbol off the same report and
+    // queues a duplicate under a new id — the poster then posts it twice.
+    // …and a setup already PUBLISHED from this report is the day's hero too:
+    // a later run must neither re-queue it nor add a second one beside it.
+    const pending = this.audit.latest().filter(r =>
+      (r.kind ?? 'setup') === 'setup'
+      && (r.queue ?? 'stocks') === this.queue
+      && r.reportDate === model.reportDate
+      && ['approved', 'ready_to_post', 'publishing', 'published'].includes(r.status));
+
     const table = this.summaryTable(model);
     const source = policy.candidateSource ?? 'table';
     let candidates;
@@ -394,10 +466,38 @@ export class SocialWorkflow {
       summary.candidateOrder = candidates.map(c => `${c.symbol}:${c.signal}/${c.confidence}`);
     }
 
+    // A setup already queued for this report (waiting on the poster) counts
+    // toward the cap: a re-run must never add a second hero for the same day.
+    const alreadyQueued = pending.length;
+    summary.pending = pending.map(r => r.symbol);
+    const cap = policy.maxPostsPerRun ?? 1;
+    const heroIds = pending.map(r => r.id);
+    const threadable = [];
+    const guard = (setup, row) => {
+      if (policy.requireSignal && setup.signal !== policy.requireSignal) return `signal ${setup.signal} (policy requires ${policy.requireSignal})`;
+      if ((CONFIDENCE_RANK[setup.confidence] ?? 0) < minRank) return `confidence ${setup.confidence} below ${policy.minConfidence}`;
+      if (policy.skipFlaggedRows && row?.flags) return `row carries a catalyst flag (${row.flags})`;
+      const bias = (row?.biasNext ?? '').toLowerCase();
+      const kw = keywords.find(k => bias.includes(k));
+      if (kw) return `report note mentions "${kw}": ${row.biasNext}`;
+      const cool = recent.find(r => r.symbol === setup.symbol);
+      if (cool) return `posted ${cool.publication.at.slice(0, 16)}Z — within ${cooldownLabel} cooldown (${cool.id})`;
+      if (policy.skipTracked !== false && this.tracker.active().some(r => r.symbol === setup.symbol && (r.queue ?? 'stocks') === this.queue)) return 'setup still open in the tracker — follow-ups cover it';
+      return null;
+    };
+
     for (const setup of candidates) {
-      if (summary.published.length >= (policy.maxPostsPerRun ?? 1)) { summary.capped = true; break; }
       const row = findRow(model, setup.symbol);
       const skip = reason => summary.skipped.push({ symbol: setup.symbol, setup: setup.setup, signal: setup.signal, confidence: setup.confidence, reason });
+      if (summary.published.length + alreadyQueued >= cap) {
+        // Past the cap: anything that would have qualified becomes a thread reply.
+        summary.capped = true;
+        if (pending.some(r => r.symbol === setup.symbol)) continue;
+        const why = guard(setup, row);
+        if (why) { skip(why); continue; }
+        threadable.push(setup);
+        continue;
+      }
 
       if (policy.requireSignal && setup.signal !== policy.requireSignal) { skip(`signal ${setup.signal} (policy requires ${policy.requireSignal})`); continue; }
       if ((CONFIDENCE_RANK[setup.confidence] ?? 0) < minRank) { skip(`confidence ${setup.confidence} below ${policy.minConfidence}`); continue; }
@@ -405,6 +505,8 @@ export class SocialWorkflow {
       const bias = (row?.biasNext ?? '').toLowerCase();
       const kw = keywords.find(k => bias.includes(k));
       if (kw) { skip(`report note mentions "${kw}": ${row.biasNext}`); continue; }
+      const claimed = pending.find(r => r.symbol === setup.symbol);
+      if (claimed) { skip(`already ${claimed.status} for report ${model.reportDate} (${claimed.id})${claimed.status === 'published' ? '' : ' — waiting on the poster'}`); continue; }
       const cool = recent.find(r => r.symbol === setup.symbol);
       if (cool) { skip(`posted ${cool.publication.at.slice(0, 16)}Z — within ${cooldownLabel} cooldown (${cool.id})`); continue; }
       if (policy.skipTracked !== false) {
@@ -435,6 +537,7 @@ export class SocialWorkflow {
 
       if (dryRun) {
         this.audit.append({ ...rec, status: 'auto_dry_run' });
+        heroIds.push(rec.id);
         summary.published.push({ id: rec.id, symbol: setup.symbol, cohort: setup.cohort, text, chart: rec.chart?.path ?? null, chartError: rec.chart?.error ?? null, dryRun: true });
         continue;
       }
@@ -447,14 +550,152 @@ export class SocialWorkflow {
       if (via === 'browser') {
         // Policy-approved; the scheduled browser task posts it and calls `record`.
         const ready = this.audit.append({ ...approved, status: 'ready_to_post' });
+        heroIds.push(ready.id);
         summary.published.push({ id: ready.id, symbol: setup.symbol, cohort: setup.cohort, text, chart: rec.chart?.path ?? null, ready: true });
         continue;
       }
       const pub = await approver.publish(approved.id, model, { creds, fetchImpl });
-      if (pub.status === 'published') summary.published.push({ id: pub.id, symbol: setup.symbol, cohort: setup.cohort, text, url: pub.publication.url, xPostId: pub.publication.xPostId, chart: rec.chart?.path ?? null, chartNote: pub.publication.chartNote });
+      if (pub.status === 'published') { heroIds.push(pub.id); summary.published.push({ id: pub.id, symbol: setup.symbol, cohort: setup.cohort, text, url: pub.publication.url, xPostId: pub.publication.xPostId, chart: rec.chart?.path ?? null, chartNote: pub.publication.chartNote }); }
       else skip(`publish failed: ${pub.error}`);
     }
-    if (!summary.published.length && !summary.refused) summary.noSetup = 'no setup met the quality bar — nothing posted (by design)';
+    if (!summary.published.length && !alreadyQueued && !summary.refused) summary.noSetup = 'no setup met the quality bar — nothing posted (by design)';
+
+    // ── thread replies for the surplus ─────────────────────────────────────
+    summary.thread = [];
+    const th = this.config.thread ?? {};
+    const heroId = heroIds[0] ?? null;
+    if (th.enabled && heroId && threadable.length) {
+      const existing = this.audit.latest().filter(r => r.kind === 'thread' && (r.queue ?? 'stocks') === this.queue && r.reportDate === model.reportDate && ['approved', 'ready_to_post', 'publishing', 'published'].includes(r.status));
+      let n = existing.length;
+      for (const setup of threadable) {
+        if (n >= (th.maxReplies ?? 3)) { summary.thread.push({ symbol: setup.symbol, skipped: `thread cap ${th.maxReplies}` }); continue; }
+        if (existing.some(r => r.symbol === setup.symbol)) { summary.thread.push({ symbol: setup.symbol, skipped: 'already in today\'s thread' }); continue; }
+        const rec = this.draftThreadReply(setup, model, { heroId, reportPath, index: n + 1 });
+        const blockers = blocking(rec.issues);
+        const warns = rec.issues.filter(i => i.severity === 'warn');
+        if (blockers.length || (warns.length && !policy.allowWarnings)) {
+          const reason = [...blockers, ...warns].map(i => `${i.code}: ${i.message}`).join('; ');
+          this.audit.append({ ...rec, status: 'auto_skipped', autoSkipReason: reason });
+          summary.thread.push({ symbol: setup.symbol, skipped: reason });
+          continue;
+        }
+        n++;
+        const text = this.currentText(rec);
+        if (dryRun) { this.audit.append({ ...rec, status: 'auto_dry_run' }); summary.thread.push({ id: rec.id, symbol: setup.symbol, text, dryRun: true }); continue; }
+        const approver = new SocialWorkflow({ config: this.config, audit: this.audit, tracker: this.tracker, metrics: this.metrics, now: this.now, actor: 'auto-publish policy', insights: this.insights });
+        const approved = approver.approve(rec.id, model);
+        if (via === 'browser') {
+          const ready = this.audit.append({ ...approved, status: 'ready_to_post' });
+          summary.thread.push({ id: ready.id, symbol: setup.symbol, text, ready: true, replyTo: heroId });
+        } else {
+          const pub = await approver.publish(approved.id, model, { creds, fetchImpl });
+          if (pub.status === 'published') summary.thread.push({ id: pub.id, symbol: setup.symbol, text, url: pub.publication.url, replyTo: heroId });
+          else summary.thread.push({ symbol: setup.symbol, skipped: `publish failed: ${pub.error}` });
+        }
+      }
+    }
+    return summary;
+  }
+
+  /** A compressed setup card queued as a reply under the day's hero post. Not tracked. */
+  draftThreadReply(setup, model, { heroId, reportPath = model.sourcePath, index = 1 } = {}) {
+    const { text } = generateThreadReply(setup, model, this.config, { index });
+    const base = {
+      id: this.audit.newId(`${setup.symbol}-thread`, model.reportDate),
+      kind: 'thread',
+      replyTo: heroId,
+      queue: this.queue,
+      symbol: setup.symbol,
+      reportDate: model.reportDate,
+      reportPath,
+      dataAsOf: model.dataAsOf,
+      setup: { setup: setup.setup, signal: setup.signal, confidence: setup.confidence, direction: setup.direction, score: setup.score },
+      originalText: text,
+      editedText: null,
+      textHash: textHash(text),
+      status: 'draft',
+      issues: [],
+      staleAcknowledged: null,
+      approval: null,
+      publication: null,
+      error: null,
+      createdAt: this.now().toISOString(),
+      chart: null,
+    };
+    base.issues = this.validateRecord(base, model);
+    return this.audit.append(base);
+  }
+
+  /**
+   * CLOSE CHECK: for every setup in this queue whose hero post went out today,
+   * queue one reply with the last price and the 🎯/🛑 status so far. Idempotent
+   * per setup per day. Level outcomes are never settled here — only on closes.
+   */
+  async closeUpdate({ dryRun = false, fetchImplForQuotes, creds = getCredentialsFromEnv(), fetchImpl, today = null } = {}) {
+    const policy = this.config.posting.autoPublish ?? {};
+    const via = policy.via ?? 'api';
+    const summary = { dryRun, queue: this.queue, checked: 0, queued: [], skipped: [], refused: null };
+    if (this.config.closeUpdate?.enabled === false) { summary.refused = 'close updates are disabled in config (closeUpdate.enabled)'; return summary; }
+    if (policy.disabledBy) { summary.refused = `auto-publish disabled by ${policy.disabledBy}`; return summary; }
+    const day = today ?? new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' }).format(this.now());
+    const latest = this.audit.latest();
+    for (const tr of this.tracker.active().filter(r => (r.queue ?? 'stocks') === this.queue)) {
+      const hero = tr.posts?.[0];
+      if (!hero?.xPostId || !hero.at || !hero.at.startsWith(day)) continue; // only setups posted today
+      summary.checked++;
+      if (latest.some(r => r.kind === 'closeupdate' && r.closeUpdateOf === tr.id && r.reportDate === day && ['approved', 'ready_to_post', 'publishing', 'published'].includes(r.status))) {
+        summary.skipped.push({ id: tr.id, symbol: tr.symbol, reason: 'close check already queued today' }); continue;
+      }
+      let quote;
+      try { quote = await fetchIntradayQuote(tr.symbol, { fetchImpl: fetchImplForQuotes, assetClass: tr.assetClass ?? 'equity' }); }
+      catch (err) { summary.skipped.push({ id: tr.id, symbol: tr.symbol, reason: `no quote: ${err.message}` }); continue; }
+      if (quote.date !== day) { summary.skipped.push({ id: tr.id, symbol: tr.symbol, reason: `last bar is ${quote.date}, not ${day}` }); continue; }
+      const { text } = generateCloseUpdate(tr, quote, this.config);
+      const base = {
+        id: this.audit.newId(`${tr.symbol}-close`, day),
+        kind: 'closeupdate',
+        closeUpdateOf: tr.id,
+        replyTo: hero.auditId,
+        queue: tr.queue ?? this.queue,
+        symbol: tr.symbol,
+        reportDate: day,
+        reportPath: tr.reportPath ?? null,
+        dataAsOf: quote.asOf,
+        quote,
+        setup: { setup: tr.setupName, signal: tr.signal, confidence: tr.confidence, direction: tr.direction, score: tr.score },
+        originalText: text,
+        editedText: null,
+        textHash: textHash(text),
+        status: 'draft',
+        issues: [],
+        staleAcknowledged: null,
+        approval: null,
+        publication: null,
+        error: null,
+        createdAt: this.now().toISOString(),
+        chart: null,
+      };
+      base.issues = this.validateRecord(base, null);
+      const rec = this.audit.append(base);
+      const blockers = blocking(rec.issues);
+      const warns = rec.issues.filter(i => i.severity === 'warn');
+      if (blockers.length || (warns.length && !policy.allowWarnings)) {
+        const reason = [...blockers, ...warns].map(i => `${i.code}: ${i.message}`).join('; ');
+        this.audit.append({ ...rec, status: 'auto_skipped', autoSkipReason: reason });
+        summary.skipped.push({ id: rec.id, symbol: tr.symbol, reason }); continue;
+      }
+      if (dryRun) { this.audit.append({ ...rec, status: 'auto_dry_run' }); summary.queued.push({ id: rec.id, symbol: tr.symbol, text, dryRun: true }); continue; }
+      const approver = new SocialWorkflow({ config: this.config, audit: this.audit, tracker: this.tracker, metrics: this.metrics, now: this.now, actor: 'close-check policy', insights: this.insights });
+      const approved = approver.approve(rec.id, null);
+      if (via === 'browser') {
+        const ready = this.audit.append({ ...approved, status: 'ready_to_post' });
+        summary.queued.push({ id: ready.id, symbol: tr.symbol, text, ready: true, replyTo: hero.auditId, replyToUrl: hero.url });
+      } else {
+        const pub = await approver.publish(approved.id, null, { creds, fetchImpl });
+        if (pub.status === 'published') summary.queued.push({ id: pub.id, symbol: tr.symbol, text, url: pub.publication.url });
+        else summary.skipped.push({ id: pub.id, symbol: tr.symbol, reason: `publish failed: ${pub.error}` });
+      }
+    }
     return summary;
   }
 

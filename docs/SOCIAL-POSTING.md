@@ -236,8 +236,30 @@ symbol whose setup is still open in the tracker is skipped — its follow-ups
 cover it.
 
 The stock job (weekdays: report 9:35 ET, prepare + post together at ~11:00 ET)
-lands in the 11:00–11:30 window. The crypto job runs daily at 1:00 AM for the
-24/7 market. The explainer posts daily at 4:00 AM.
+lands in the 11:00–11:30 window; the close check replies at ~3:50 PM ET. The
+crypto job runs daily at 1:00 AM for the 24/7 market. The explainer posts daily
+at 7:00 PM ET from a 15-topic rotation.
+
+### One hero, a thread for the rest, a close check before the bell
+
+- **Pending-aware cap.** A setup already queued for today's report (waiting on
+  the browser poster) counts toward `maxPostsPerRun`, so a re-run of the
+  prepare step never adds a second hero. Anything queued that misses its
+  posting window is marked `expired` by `tv social ready` instead of going
+  out later with stale numbers.
+- **Thread replies (`thread.maxReplies`, kind `thread`).** The surplus setups
+  that clear every guard are queued as replies under the hero post — one
+  compressed card each (headline, 🎯/🛑, price · RSI · CMF, `#SYM`), starting
+  "Also on today's sweep:". They pass the setup validator (kind `thread`,
+  signal never upgraded), must say "Not tracked", and are neither tracked nor
+  scored. The poster posts the hero first, records it, re-reads the queue so
+  the replies resolve `replyTo.xPostId`, then posts them under it.
+- **Close check (`tv social close-update`, kind `closeupdate`).** Weekdays at
+  3:50 PM ET the "Close check reply to X" task queues one reply under today's
+  hero post: last price vs the setup price, session range, and each level's
+  status so far (`not reached` / `tagged intraday` / `trading through` /
+  `intact`). It never settles a level — the tracker does that on the close —
+  and the text says so. Once per setup per day; only for setups posted today.
 
 ### Lifecycle labels
 

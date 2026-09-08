@@ -125,11 +125,12 @@ export async function uploadMedia(filePath, { altText = null, creds = getCredent
  * Post a tweet. Returns { ok, id, url, response } or { ok, error, status, retryable }.
  * `fetchImpl` is injectable for tests. `mediaIds` attaches uploaded media.
  */
-export async function postTweet(text, { creds = getCredentialsFromEnv(), fetchImpl = fetch, mediaIds = [] } = {}) {
+export async function postTweet(text, { creds = getCredentialsFromEnv(), fetchImpl = fetch, mediaIds = [], replyToId = null } = {}) {
   if (!creds) return NO_CREDS;
   const headers = { 'Content-Type': 'application/json', Authorization: authHeader(creds, 'POST', X_TWEETS_URL) };
   const payload = { text };
   if (mediaIds?.length) payload.media = { media_ids: mediaIds.map(String) };
+  if (replyToId) payload.reply = { in_reply_to_tweet_id: String(replyToId) };
 
   let res;
   try {

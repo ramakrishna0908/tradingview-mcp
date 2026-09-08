@@ -51,6 +51,8 @@ const FALLBACK = {
   riskContextKeywords: ['risk', 'invalidat', 'rejection', 'back under', 'lose'],
   signalLabels: { WATCH: 'Watch', CONFIRMED: 'Confirmed Setup' },
   cta: { enabled: false, text: '' },
+  thread: { enabled: false, maxReplies: 3 },
+  closeUpdate: { enabled: false },
   charts: { enabled: false, bars: 60, requireForPublish: false, volumeLine: false, style: 'classic', width: 1200, height: 675 },
   hashtags: { required: ['#NFA', '#DYOR'], engagement: { default: [], bullish: [], bearish: [] }, maxTotal: 6, prohibited: [], symbolTag: false, assetTag: null },
   // 'classic' = the original multi-line layout; 'sweep' = the Daily Setup Sweep
@@ -90,6 +92,8 @@ export function loadConfig(path = process.env.SOCIAL_COMPLIANCE_CONFIG || DEFAUL
     ...parsed,
     posting: { ...FALLBACK.posting, ...(parsed.posting || {}) },
     cta: { ...FALLBACK.cta, ...(parsed.cta || {}) },
+    thread: { ...FALLBACK.thread, ...(parsed.thread || {}) },
+    closeUpdate: { ...FALLBACK.closeUpdate, ...(parsed.closeUpdate || {}) },
     charts: { ...FALLBACK.charts, ...(parsed.charts || {}) },
     hashtags: { ...FALLBACK.hashtags, ...(parsed.hashtags || {}), engagement: { ...FALLBACK.hashtags.engagement, ...(parsed.hashtags?.engagement || {}) } },
     signalLabels: { ...FALLBACK.signalLabels, ...(parsed.signalLabels || {}) },
