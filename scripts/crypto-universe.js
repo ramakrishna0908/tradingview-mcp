@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Resolve the "top 20 crypto" universe for the nightly sweep.
+ * Resolve the "top 10 crypto" universe for the nightly sweep.
  *
  * Ranking comes from CoinGecko's public markets endpoint (no key) rather than
- * a list baked into the repo: the top 20 by market cap reshuffles constantly,
+ * a list baked into the repo: the top 10 by market cap reshuffles constantly,
  * and a frozen list quietly sweeps the wrong coins. The result is cached to
  * config/crypto-universe.json and REUSED when the API is unreachable, so the
  * 1 AM job still has a universe if CoinGecko is down.
@@ -28,7 +28,7 @@ export const CACHE_PATH = join(ROOT, 'config', 'crypto-universe.json');
 const API = 'https://api.coingecko.com/api/v3/coins/markets';
 
 /** Size of the swept universe. */
-export const UNIVERSE_SIZE = 20;
+export const UNIVERSE_SIZE = 10;
 
 /** Coins that are a peg, a wrapper or otherwise untradeable as a spot setup. */
 const DENY_IDS = new Set([

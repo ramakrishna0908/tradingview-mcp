@@ -110,10 +110,9 @@ if [ -f "$REPORT" ]; then
   echo "$(date): report ready -> $REPORT" >> "$LOG"
   /usr/bin/open "$REPORT"
 
-  # Social auto-publish as soon as the report exists (policy-gated; see
-  # scripts/social-auto.sh and docs/SOCIAL-POSTING.md). Runs in the background
-  # because it spaces posts ~2 minutes apart.
-  /bin/bash "$REPO/scripts/social-auto.sh" "$DATE" &
+  # Social prepare step is NOT chained here any more: it runs at 10:30 ET via
+  # the com.ramakrishna.tvsocialauto launchd job (scripts/social-auto.sh), and
+  # the desktop poster task re-runs it (idempotently) at ~11:00 before posting.
 else
   echo "$(date): FAILED — no report generated. Opening log." >> "$LOG"
   /usr/bin/open "$LOG"

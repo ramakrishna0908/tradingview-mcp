@@ -83,12 +83,12 @@ trailing hashtag-only line but nothing else after the disclosure.
 ## Auto-publish (`tv social auto`)
 
 **When it runs.** The launchd report job starts at 9:35 AM ET on weekdays and
-the report is usually written by ~9:50. `scripts/daily-report.sh` launches
-`scripts/social-auto.sh` in the background the moment the file exists, and a
-second launchd job (`scripts/com.ramakrishna.tvsocialauto.plist`, 10:10 AM ET)
-re-runs the same script as a fallback. Both runs are idempotent — a ticker
-already posted for that report is a `duplicate_post` — so a re-run only
-publishes what the first run missed. Load the fallback once with:
+the report is usually written by ~9:50. The prepare step is deliberately NOT
+chained to it: the `com.ramakrishna.tvsocialauto` launchd job runs
+`scripts/social-auto.sh` at **10:30 AM ET** on weekdays, and the desktop poster
+task re-runs it (idempotently — a ticker already queued or posted for that
+report is a `duplicate_post`) at ~11:00 before posting. Install the 10:30 job
+once with:
 
 ```bash
 cp scripts/com.ramakrishna.tvsocialauto.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.ramakrishna.tvsocialauto.plist
@@ -233,8 +233,9 @@ publishes nothing and the summary says `noSetup`; a post is never forced. A
 symbol whose setup is still open in the tracker is skipped — its follow-ups
 cover it.
 
-The stock job (weekdays, report 9:35 ET, poster ~10:03 ET) lands in the
-9:45–10:30 window. The crypto job runs daily at 1:00 AM for the 24/7 market.
+The stock job (weekdays: report 9:35 ET, prepare 10:30 ET, poster ~11:00 ET)
+lands in the 11:00–11:30 window. The crypto job runs daily at 1:00 AM for the
+24/7 market. The explainer posts daily at 4:00 AM.
 
 ### Lifecycle labels
 
@@ -431,7 +432,7 @@ To preview the format against any report without touching the audit log, use
 
 ## The crypto sweep (second, independent queue)
 
-A second nightly pipeline sweeps the **top 20 crypto by market cap** and posts to
+A second nightly pipeline sweeps the **top 10 crypto by market cap** and posts to
 the same X account. It reuses every stage above — the same classifier, the same
 compliance validator, the same audit log — and differs only where a 24/7 market
 genuinely differs from an exchange-listed one.
@@ -481,7 +482,7 @@ node scripts/crypto-universe.js --symbols  # bare symbol list
 node scripts/crypto-universe.js --offline  # use the cache, never call the API
 ```
 
-The list is deliberately **not** committed as a static universe: the top 20 by market
+The list is deliberately **not** committed as a static universe: the top 10 by market
 cap reshuffles constantly, and a frozen list sweeps the wrong coins within weeks.
 
 ### Price precision

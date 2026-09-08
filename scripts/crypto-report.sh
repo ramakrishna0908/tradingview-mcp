@@ -1,5 +1,5 @@
 #!/bin/bash
-# Nightly TradingView crypto-summary report (top 20 by market cap).
+# Nightly TradingView crypto-summary report (top 10 by market cap).
 #
 # Invoked by launchd EVERY day at 1:00 AM local time — crypto trades 24/7, so
 # there is no weekend or exchange-holiday guard here (that is the whole reason
@@ -28,7 +28,7 @@ cd "$REPO" || exit 1
 
 echo "=== $(date) starting crypto report ===" >> "$LOG"
 
-# Universe is resolved live (CoinGecko, cached fallback) because the top 20 by
+# Universe is resolved live (CoinGecko, cached fallback) because the top 10 by
 # market cap reshuffles constantly — a list frozen in the repo sweeps the wrong
 # coins within weeks.
 UNIVERSE="$(/usr/local/bin/node "$REPO/scripts/crypto-universe.js" --json 2>>"$LOG")"
@@ -57,11 +57,11 @@ Follow CLAUDE.md and the memory files. Keep any chat text to an absolute minimum
    short HTML error page to $REPORT saying "TradingView not reachable" and stop.
 2) Collapse to a single chart (pane_set_layout s) and set timeframe D.
 3) Sweep these coins SEQUENTIALLY (chart_set_symbol -> quote_get + data_get_study_values).
-   This is the TOP 20 BY MARKET CAP, resolved today from CoinGecko. For each coin try
+   This is the TOP 10 BY MARKET CAP, resolved today from CoinGecko. For each coin try
    the TradingView symbols in the order given and use the first that loads a chart:
 $SYMBOL_LINES
    If NONE of a coin's symbols resolve, skip it, pull the next RESERVE coin in rank
-   order to keep the table at 20 names, and list every substitution in the footer.
+   order to keep the table at 10 names, and list every substitution in the footer.
    Score each: RSI(>60 +1/>50 +0.5/<50 -0.5/<40 -1) + BB-basis(above +1/below -1)
    + CMF(>0.1 +0.5/<-0.1 -0.5). Infer HH/LL structure (HH-up / LL-down / Rng / diverge).
    PRICE PRECISION MATTERS HERE: this universe spans about \$79,000 (BTC) down to
