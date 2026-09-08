@@ -83,12 +83,14 @@ trailing hashtag-only line but nothing else after the disclosure.
 ## Auto-publish (`tv social auto`)
 
 **When it runs.** The launchd report job starts at 9:35 AM ET on weekdays and
-the report is usually written by ~9:50. The prepare step is deliberately NOT
-chained to it: the `com.ramakrishna.tvsocialauto` launchd job runs
-`scripts/social-auto.sh` at **10:30 AM ET** on weekdays, and the desktop poster
-task re-runs it (idempotently — a ticker already queued or posted for that
-report is a `duplicate_post`) at ~11:00 before posting. Install the 10:30 job
-once with:
+the report is usually written by ~9:50. In browser mode the prepare step is
+NOT chained to it and has no launchd job of its own: the desktop poster task
+runs `scripts/social-auto.sh` itself at ~11:00 ET and posts in the same
+session, so prepare and post happen together once a day. (A ticker already
+queued or posted for that report is a `duplicate_post`, so a retry is safe.)
+`scripts/com.ramakrishna.tvsocialauto.plist` is kept for API mode only — if
+`via` is switched to `api`, install it so the machine publishes without the
+app:
 
 ```bash
 cp scripts/com.ramakrishna.tvsocialauto.plist ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.ramakrishna.tvsocialauto.plist
@@ -233,7 +235,7 @@ publishes nothing and the summary says `noSetup`; a post is never forced. A
 symbol whose setup is still open in the tracker is skipped — its follow-ups
 cover it.
 
-The stock job (weekdays: report 9:35 ET, prepare 10:30 ET, poster ~11:00 ET)
+The stock job (weekdays: report 9:35 ET, prepare + post together at ~11:00 ET)
 lands in the 11:00–11:30 window. The crypto job runs daily at 1:00 AM for the
 24/7 market. The explainer posts daily at 4:00 AM.
 

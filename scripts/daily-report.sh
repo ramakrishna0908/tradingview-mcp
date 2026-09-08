@@ -110,9 +110,8 @@ if [ -f "$REPORT" ]; then
   echo "$(date): report ready -> $REPORT" >> "$LOG"
   /usr/bin/open "$REPORT"
 
-  # Social prepare step is NOT chained here any more: it runs at 10:30 ET via
-  # the com.ramakrishna.tvsocialauto launchd job (scripts/social-auto.sh), and
-  # the desktop poster task re-runs it (idempotently) at ~11:00 before posting.
+  # Social prepare step is NOT chained here: the desktop poster task runs
+  # scripts/social-auto.sh itself at ~11:00 ET and posts in the same session.
 else
   echo "$(date): FAILED — no report generated. Opening log." >> "$LOG"
   /usr/bin/open "$LOG"
