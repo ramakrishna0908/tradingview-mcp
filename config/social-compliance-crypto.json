@@ -239,6 +239,16 @@
     ],
     "$comment": "Weekly Setup Scorecard (tv social scorecard): counts from docs/social/setups.jsonl across BOTH queues, queued on the stocks queue every Friday. Only one config should have this enabled or the account posts two scorecards."
   },
+  "video": {
+    "enabled": false,
+    "queue": "stocks",
+    "hashtags": ["#TechnicalAnalysis", "#ChartEducation"],
+    "footer": "Educational only. Not financial advice.",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "$comment": "Daily Technical Analysis Education Video (tv social video), every day via the post-daily-chart-video task. One non-repeating topic per day from src/social/video.js: 1-2 s hook, animated chart with levels/arrows/captions, What it means / How traders use it, end card 'Save this • Follow for daily chart education', footer on every frame. Text carries no ticker (compliance kind video). Only one config should have this enabled."
+  },
   "education": {
     "enabled": false,
     "queue": "stocks",

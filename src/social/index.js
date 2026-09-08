@@ -16,6 +16,7 @@ import { MetricsStore, readInsights, insightsBoost } from './metrics.js';
 import { TOPICS, getTopic, nextTopic, generateEducationPost, buildEducationSpec, educationAltText } from './education.js';
 import { initialStage } from './sweep-labels.js';
 import { generatePremarketPost, buildPremarketSpec, premarketAltText } from './premarket-post.js';
+import { VIDEO_TOPICS, getVideoTopic, nextVideoTopic, generateVideoPost, buildVideoSpec, videoAltText, renderVideoSpec, DEFAULT_VIDEO_DIR } from './video.js';
 import { loadReport as loadPremarketReport, DEFAULT_OUT_DIR as PREMARKET_DIR } from '../premarket/index.js';
 import { etDate } from '../premarket/data.js';
 import { join, dirname } from 'node:path';
@@ -86,8 +87,8 @@ export class SocialWorkflow {
     if (rec.kind === 'scorecard') {
       return validatePost(this.currentText(rec), { ...common, setup: null, row: null, model: { reportDate: rec.reportDate, dataAsOf: rec.dataAsOf }, kind: 'scorecard', scorecard: rec.scorecard });
     }
-    if (rec.kind === 'education') {
-      return validatePost(this.currentText(rec), { ...common, setup: null, row: null, model: { reportDate: rec.reportDate, dataAsOf: rec.dataAsOf }, kind: 'education' });
+    if (rec.kind === 'education' || rec.kind === 'video') {
+      return validatePost(this.currentText(rec), { ...common, setup: null, row: null, model: { reportDate: rec.reportDate, dataAsOf: rec.dataAsOf }, kind: rec.kind });
     }
     if (rec.kind === 'premarket') {
       return validatePost(this.currentText(rec), { ...common, setup: null, row: null, model: { reportDate: rec.reportDate, dataAsOf: rec.dataAsOf }, kind: 'premarket', premarket: rec.premarket });
@@ -268,7 +269,7 @@ export class SocialWorkflow {
       if (tr && !tr.posts.some(p => p.auditId === pub.id)) this.tracker.append({ ...tr, posts: [...tr.posts, post] });
       return;
     }
-    if (pub.kind === 'scorecard' || pub.kind === 'education' || pub.kind === 'premarket') return;
+    if (['scorecard', 'education', 'video', 'premarket'].includes(pub.kind)) return;
     const existing = this.tracker.get(pub.id);
     if (existing) {
       this.tracker.append({ ...existing, posts: existing.posts.map(p => (p.auditId === pub.id ? { ...p, ...post } : p)) });
@@ -770,6 +771,93 @@ export class SocialWorkflow {
     } else {
       const pub = await approver.publish(approved.id, null, { creds, fetchImpl });
       summary.record = pub.status === 'published' ? { id: pub.id, topic: t.id, text, url: pub.publication.url, chart: chartRec?.path ?? null } : null;
+      if (pub.status !== 'published') summary.refused = `publish failed: ${pub.error}`;
+    }
+    return summary;
+  }
+
+  // ─── daily chart-education video ───────────────────────────────────────────
+
+  /**
+   * Pick the next unfilmed topic, render the 9:16 MP4, generate the caption
+   * text, validate it (kind 'video': no ticker, prohibited wording, hashtag
+   * rules) and queue one record per day (kind 'video', symbol 'EDU'). The
+   * record's `chart` is the video file — the browser poster uploads it
+   * through the same media input, and it carries the on-frame footer.
+   */
+  async queueVideo({ topic = null, dryRun = false, chartOpts = {}, creds = getCredentialsFromEnv(), fetchImpl } = {}) {
+    const v = this.config.video ?? {};
+    const policy = this.config.posting.autoPublish ?? {};
+    const via = policy.via ?? 'api';
+    const today = this.now().toISOString().slice(0, 10);
+    const summary = { dryRun, topic: null, refused: null, record: null, topics: VIDEO_TOPICS.map(t => t.id) };
+    if (v.enabled === false) { summary.refused = 'chart-education videos are disabled in config (video.enabled)'; return summary; }
+    if (policy.disabledBy) { summary.refused = `auto-publish disabled by ${policy.disabledBy}`; return summary; }
+    // Never film the concept the explainer card already covered today.
+    const live = ['approved', 'ready_to_post', 'published', 'publishing'];
+    const todaysExplainer = this.audit.latest().filter(r => r.kind === 'education' && r.reportDate === today && live.includes(r.status)).map(r => r.topic);
+    const t = topic ? getVideoTopic(topic) : nextVideoTopic(this.audit.latest(), { exclude: todaysExplainer });
+    if (!t) { summary.refused = topic ? `unknown topic "${topic}" (known: ${VIDEO_TOPICS.map(x => x.id).join(', ')})` : 'no topic available'; return summary; }
+    summary.topic = t.id;
+    const dup = this.audit.latest().find(r => r.kind === 'video' && r.reportDate === today && live.includes(r.status));
+    if (dup) { summary.refused = `a chart-education video for ${today} is already ${dup.status} (${dup.id}, topic ${dup.topic})`; return summary; }
+
+    const { text } = generateVideoPost(t, this.config);
+    // Day number for the on-screen series chip: one more than the videos already published.
+    const day = this.audit.latest().filter(r => r.kind === 'video' && r.status === 'published').length + 1;
+    let chartRec = null;
+    try {
+      const out = join(chartOpts.dir ?? DEFAULT_VIDEO_DIR, today, `EDU-${t.id}.mp4`);
+      const spec = buildVideoSpec(t, this.config, out, { day });
+      if (chartOpts.timing) spec.timing = { ...spec.timing, ...chartOpts.timing };
+      const r = renderVideoSpec(spec, { python: chartOpts.python });
+      chartRec = { path: r.path, altText: videoAltText(t, this.config), video: true, seconds: r.meta?.seconds ?? null, frames: r.meta?.frames ?? null };
+    } catch (err) {
+      chartRec = { path: null, error: err.message };
+    }
+    const base = {
+      id: this.audit.newId(`VID-${t.id}`, today),
+      kind: 'video',
+      topic: t.id,
+      day,
+      stage: null,
+      queue: v.queue ?? 'stocks',
+      symbol: 'EDU',
+      reportDate: today,
+      reportPath: null,
+      dataAsOf: this.now().toISOString(),
+      setup: { setup: `Chart Education: ${t.title}`, signal: 'EDUCATION', confidence: '-', direction: 'neutral', score: null },
+      originalText: text,
+      editedText: null,
+      textHash: textHash(text),
+      status: 'draft',
+      issues: [],
+      staleAcknowledged: null,
+      approval: null,
+      publication: null,
+      error: null,
+      createdAt: this.now().toISOString(),
+      chart: chartRec,
+    };
+    base.issues = this.validateRecord(base, null);
+    const rec = this.audit.append(base);
+    const blockers = blocking(rec.issues);
+    const warns = rec.issues.filter(i => i.severity === 'warn');
+    if (blockers.length || (warns.length && !policy.allowWarnings)) {
+      const reason = [...blockers, ...warns].map(i => `${i.code}: ${i.message}`).join('; ');
+      this.audit.append({ ...rec, status: 'auto_skipped', autoSkipReason: reason });
+      summary.refused = reason;
+      return summary;
+    }
+    if (dryRun) { this.audit.append({ ...rec, status: 'auto_dry_run' }); summary.record = { id: rec.id, topic: t.id, day, text, video: chartRec?.path ?? null, seconds: chartRec?.seconds ?? null, dryRun: true }; return summary; }
+    const approver = new SocialWorkflow({ config: this.config, audit: this.audit, tracker: this.tracker, metrics: this.metrics, now: this.now, actor: 'video policy', insights: this.insights });
+    const approved = approver.approve(rec.id, null);
+    if (via === 'browser') {
+      const ready = this.audit.append({ ...approved, status: 'ready_to_post' });
+      summary.record = { id: ready.id, topic: t.id, day, text, video: chartRec?.path ?? null, seconds: chartRec?.seconds ?? null, ready: true };
+    } else {
+      const pub = await approver.publish(approved.id, null, { creds, fetchImpl });
+      summary.record = pub.status === 'published' ? { id: pub.id, topic: t.id, day, text, url: pub.publication.url, video: chartRec?.path ?? null } : null;
       if (pub.status !== 'published') summary.refused = `publish failed: ${pub.error}`;
     }
     return summary;

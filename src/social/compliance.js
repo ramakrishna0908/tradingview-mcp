@@ -124,7 +124,8 @@ export function allowedNumbers(setup, row) {
  */
 export function validatePost(text, ctx) {
   const { setup, row, model, config } = ctx;
-  const kind = ctx.kind ?? 'setup'; // 'setup' | 'followup' | 'scorecard' | 'education' | 'premarket'
+  const kind = ctx.kind ?? 'setup'; // 'setup' | 'followup' | 'scorecard' | 'education' | 'video' | 'premarket'
+  const educational = kind === 'education' || kind === 'video'; // concept posts: no ticker, no levels, no data line
   const now = ctx.now ?? new Date();
   const issues = [];
   const push = (code, severity, message) => issues.push({ code, severity, message });
@@ -204,14 +205,14 @@ export function validatePost(text, ctx) {
   const requiredIndicators = kind === 'setup' ? (config.requiredIndicators ?? []) : kind === 'followup' ? ['Price'] : [];
   // An educational explainer teaches a concept; it must not read as a call on
   // a specific name, so no cashtags at all.
-  if (kind === 'education' && /\$[A-Z]{1,6}\b/.test(t)) push('ticker_in_education', 'block', 'Educational posts must not name a ticker');
+  if (educational && /\$[A-Z]{1,6}\b/.test(t)) push('ticker_in_education', 'block', 'Educational posts must not name a ticker');
   for (const ind of requiredIndicators) {
     if (!new RegExp(`\\b${escapeRe(ind)}\\b`, 'i').test(t)) push('missing_indicator', 'block', `Missing indicator: ${ind}`);
   }
   // The post must name a price level with its role. Classic: the words
   // support/resistance. Sweep: the "Above/Below $X →" level lines. Each format
   // keeps its own structural test so neither is loosened for the other.
-  const namesLevel = kind === 'scorecard' || kind === 'education' ? true
+  const namesLevel = kind === 'scorecard' || educational ? true
     : kind === 'premarket' ? /\b\d[\d,]*(?:\.\d+)? above \(.+?\) · \d[\d,]*(?:\.\d+)? below \(/.test(t)
     : kind === 'followup' ? /\$[\d,]+(?:\.\d+)? (cleared|lost|intraday)|\b(Above|Below|above|below) \$[\d,]+(?:\.\d+)?/.test(t)
     : config.postFormat === 'sweep'
@@ -345,14 +346,14 @@ export function validatePost(text, ctx) {
   }
 
   // 10. balanced presentation: risk context + timestamp
-  if (config.requireRiskContext && kind !== 'education') {
+  if (config.requireRiskContext && !educational) {
     const kws = config.riskContextKeywords ?? [];
     const body = t.replace(disclosure, '').toLowerCase(); // the disclosure's "risk" does not count
     if (!kws.some(k => body.includes(k.toLowerCase()))) {
       push('missing_risk_context', 'block', 'No downside/invalidation context in the post');
     }
   }
-  if (config.requireDataTimestamp && kind !== 'education' && !/\bData:\s*(?:[\w]+ · )?\w{3} \d{1,2}, 20\d\d/i.test(t)) {
+  if (config.requireDataTimestamp && !educational && !/\bData:\s*(?:[\w]+ · )?\w{3} \d{1,2}, 20\d\d/i.test(t)) {
     push('missing_timestamp', 'block', 'Missing "Data: <date>" line');
   }
 

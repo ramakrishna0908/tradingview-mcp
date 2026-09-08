@@ -233,7 +233,7 @@ export function buildReport({ metrics, auditRecords, trackerRecords = [], minN =
   const byHour = bucket(posts, p => `${String(p.hourET).padStart(2, '0')}:00 ET`);
   const byWeekday = bucket(posts, p => p.weekdayET);
   const byQueueSetup = bucket(setups, p => `${p.queue}/${p.setupType}`);
-  const byTopic = bucket(posts.filter(p => p.kind === 'education'), p => p.topic);
+  const byTopic = bucket(posts.filter(p => p.kind === 'education' || p.kind === 'video'), p => p.topic);
 
   const acct = metrics.account();
   const followers = acct.length ? { latest: acct.at(-1).followers, first: acct[0].followers, delta: acct.at(-1).followers - acct[0].followers, snapshots: acct.length } : null;

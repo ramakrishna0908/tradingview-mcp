@@ -63,6 +63,8 @@ const FALLBACK = {
   education: { enabled: false, queue: 'stocks', hashtags: ['#TechnicalAnalysis', '#Trading'], footer: 'Educational only. Not financial advice.', width: 1080, height: 1350 },
   // Premarket market-direction post (tv social premarket): built from docs/reports/premarket/<date>.json, once per session.
   premarket: { enabled: false, queue: 'stocks', hashtags: ['#Stocks', '#Premarket'] },
+  // Daily chart-education video (tv social video): one topic per day from src/social/video.js, 9:16 MP4.
+  video: { enabled: false, queue: 'stocks', hashtags: ['#TechnicalAnalysis', '#ChartEducation'], footer: 'Educational only. Not financial advice.', width: 1080, height: 1920, fps: 30 },
   postFormat: 'classic',
   // 'exact' keeps every price at its full precision; 'compact' shows whole
   // dollars once a price is in the thousands (the sweep format's look).
@@ -96,6 +98,7 @@ export function loadConfig(path = process.env.SOCIAL_COMPLIANCE_CONFIG || DEFAUL
     scorecard: { ...FALLBACK.scorecard, ...(parsed.scorecard || {}) },
     education: { ...FALLBACK.education, ...(parsed.education || {}) },
     premarket: { ...FALLBACK.premarket, ...(parsed.premarket || {}) },
+    video: { ...FALLBACK.video, ...(parsed.video || {}) },
   };
   // autoPublish: a bare boolean is not enough — it must be the full policy object,
   // and the kill switch SOCIAL_AUTO_PUBLISH=0 always wins.

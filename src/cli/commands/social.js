@@ -362,6 +362,29 @@ subcommands.set('educate', {
   },
 });
 
+subcommands.set('video', {
+  description: 'Render, validate and queue the daily chart-education video (next topic in rotation, or --topic <id>)',
+  options: { topic: { type: 'string', description: 'Topic id (see --list)' }, list: { type: 'boolean', description: 'List topics and when each was last posted' }, 'dry-run': { type: 'boolean', description: 'Render and show the post without queueing it' }, open: { type: 'boolean', description: 'Open the rendered video' }, ...jsonOpt },
+  handler: async (values) => {
+    const wf = new SocialWorkflow();
+    if (values.list) {
+      const { VIDEO_TOPICS } = await import('../../social/video.js');
+      const last = new Map();
+      for (const r of wf.audit.latest()) if (r.kind === 'video' && r.status === 'published') { const at = r.publication?.at ?? ''; if (!last.has(r.topic) || at > last.get(r.topic)) last.set(r.topic, at); }
+      if (values.json) return out(VIDEO_TOPICS.map(t => ({ id: t.id, series: t.series, title: t.title, hook: t.hook, lastPosted: last.get(t.id) ?? null })));
+      for (const t of VIDEO_TOPICS) console.log(`${t.id.padEnd(22)} ${t.series.padEnd(16)} ${t.title.padEnd(30)} ${last.get(t.id) ? 'last ' + last.get(t.id).slice(0, 10) : 'never posted'}`);
+      done();
+    }
+    const summary = await wf.queueVideo({ topic: values.topic ?? null, dryRun: !!values['dry-run'], chartOpts: { python: process.env.SOCIAL_PYTHON } });
+    if (values.open && summary.record?.video) { const { spawn } = await import('node:child_process'); spawn('open', [summary.record.video], { detached: true, stdio: 'ignore' }).unref(); }
+    if (values.json) return out(summary);
+    console.log(`video · topic ${summary.topic ?? '—'}${summary.record?.day ? ` · day ${summary.record.day}` : ''}${summary.dryRun ? ' · DRY RUN' : ''}`);
+    if (summary.refused) { console.log(`refused: ${summary.refused}`); done(2); }
+    if (summary.record) console.log(`\n${summary.record.dryRun ? 'WOULD QUEUE' : summary.record.ready ? 'READY (browser)' : 'POSTED'} (${summary.record.id})${summary.record.url ? ' → ' + summary.record.url : ''}\n${summary.record.text}\nvideo: ${summary.record.video ?? 'none'}${summary.record.seconds ? ` (${summary.record.seconds}s)` : ''}`);
+    done(0);
+  },
+});
+
 subcommands.set('premarket', {
   description: 'Build, render, validate and queue the premarket market-direction post from docs/reports/premarket/premarket-<date>.json',
   options: { date: { type: 'string', description: 'Report date YYYY-MM-DD (default today, New York)' }, 'dry-run': { type: 'boolean', description: 'Show the post without queueing it' }, ...jsonOpt },

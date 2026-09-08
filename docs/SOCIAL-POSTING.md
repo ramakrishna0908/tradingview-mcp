@@ -554,11 +554,17 @@ fails naming the kind and the missing element. Run it with `npm run test:unit`.
 | Hashtags | ≤ 2 (`#SYM #Stocks`) | ≤ 2 | ≤ 2 | ≤ 2 | ≤ 2 |
 | Compliance | `validatePost` (kind-specific integrity checks), disclaimer on the card | same | same | same, no ticker | same + in-text disclaimer |
 
+The daily chart-education video (kind `video`) is checked the same way: 🎬 hook line, the 1–2 s hook, What it means / How traders use it, question CTA, the Save-this line, no ticker, ≤ 2 tags, 10–15 s with the footer on every frame.
+
 Cadence guards (also asserted): one setup per run per queue, Medium+ confidence
 only, 20-hour symbol cooldown, no re-post while a setup is open in the tracker,
 catalyst-flagged rows skipped, non-terminal follow-ups capped at
 `followUps.maxUpdatesPerRun` (2) per run — BREAKOUT and INVALIDATED updates
 always post because they are the accountability record.
+
+## Daily chart-education video
+
+Every day 12:30 PM the `post-daily-chart-video` task renders one non-repeating technical-analysis concept as a 10–15 s, 9:16, captioned video (`tv social video`, kind `video`, symbol `EDU`, stocks queue) and posts it with a short caption ending "Save this • Follow for daily chart education". Format, topic library, rotation and tests: [CHART-EDUCATION-VIDEO.md](CHART-EDUCATION-VIDEO.md).
 
 ## Premarket market-direction post
 

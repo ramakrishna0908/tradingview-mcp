@@ -245,6 +245,16 @@
     "hashtags": ["#Stocks", "#Premarket"],
     "$comment": "Premarket market-direction post (tv social premarket), weekdays ~8 AM via the premarket-market-direction task, built from docs/reports/premarket/premarket-<date>.json. Hook + bias + confidence, top 3 drivers, SPY levels, sectors, the one flip event, CTA, short disclaimer, 0-2 hashtags. Only one config should have this enabled."
   },
+  "video": {
+    "enabled": true,
+    "queue": "stocks",
+    "hashtags": ["#TechnicalAnalysis", "#ChartEducation"],
+    "footer": "Educational only. Not financial advice.",
+    "width": 1080,
+    "height": 1920,
+    "fps": 30,
+    "$comment": "Daily Technical Analysis Education Video (tv social video), every day via the post-daily-chart-video task. One non-repeating topic per day from src/social/video.js: 1-2 s hook, animated chart with levels/arrows/captions, What it means / How traders use it, end card 'Save this • Follow for daily chart education', footer on every frame. Text carries no ticker (compliance kind video). Only one config should have this enabled."
+  },
   "education": {
     "enabled": true,
     "queue": "stocks",

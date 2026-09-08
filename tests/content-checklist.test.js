@@ -27,6 +27,7 @@ import { generateFollowUp, followUpModel, followUpSetup, followUpRow, generateSc
 import { generateEducationPost, TOPICS } from '../src/social/education.js';
 import { generatePremarketPost, PREMARKET_DISCLAIMER } from '../src/social/premarket-post.js';
 import { plainLine } from '../src/social/sweep-labels.js';
+import { VIDEO_TOPICS, generateVideoPost, buildVideoSpec, VIDEO_CTA } from '../src/social/video.js';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const STOCK_CFG = join(ROOT, 'config', 'social-compliance.json');
@@ -159,6 +160,27 @@ describe('content checklist: educational explainer', () => {
       assert.ok(!/\$[A-Z]{1,6}\b/.test(text), `${topic.id}: names a ticker`);
       const ctx = { setup: null, row: null, model: { reportDate: '2026-09-08', dataAsOf: new Date().toISOString() }, config: c, kind: 'education', chart: { path: '/tmp/e.png' } };
       assert.deepEqual(blocking(validatePost(text, ctx)), [], topic.id);
+    }
+  });
+});
+
+describe('content checklist: daily chart-education video', () => {
+  it('every topic: 🎬 hook line, the 1–2 s hook, What it means / How traders use it, question CTA, Save-this line, no ticker, ≤2 tags; 10–15 s spec with the footer', () => {
+    const c = load(STOCK_CFG);
+    for (const topic of VIDEO_TOPICS) {
+      const { text, lines } = generateVideoPost(topic, c);
+      common(`video/${topic.id}`, text);
+      assert.match(lines[0], /^🎬 Chart Education: /);
+      assert.match(text, /\nWhat it means: .+\nHow traders use it: .+\n/);
+      assert.ok(text.includes(VIDEO_CTA), `${topic.id}: missing "${VIDEO_CTA}"`);
+      assert.ok(!/\$[A-Z]{1,6}\b/.test(text), `${topic.id}: names a ticker`);
+      const ctx = { setup: null, row: null, model: { reportDate: '2026-09-08', dataAsOf: new Date().toISOString() }, config: c, kind: 'video', chart: { path: '/tmp/v.mp4' } };
+      assert.deepEqual(blocking(validatePost(text, ctx)), [], topic.id);
+      const spec = buildVideoSpec(topic, c, '/tmp/v.mp4');
+      const secs = spec.timing.hook + spec.timing.chart + spec.timing.takeaway + spec.timing.end;
+      assert.ok(secs >= 10 && secs <= 15 && spec.timing.hook <= 2, `${topic.id}: ${secs}s`);
+      assert.equal(spec.footer, 'Educational only. Not financial advice.');
+      assert.equal(spec.width / spec.height, 1080 / 1920, 'mobile-first 9:16');
     }
   });
 });
