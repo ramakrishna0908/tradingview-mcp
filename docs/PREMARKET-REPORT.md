@@ -75,7 +75,7 @@ the overnight futures and the last completed cash session.
 ## The X post
 
 `tv social premarket` turns the day's report into one compliance-approved
-post for @ai_king0206 (kind `premarket`, symbol `MKT`, stocks queue), with a
+post for @DailySetupSweep (kind `premarket`, symbol `MKT`, stocks queue), with a
 1200×1000 card that carries the full disclaimer:
 
 ```

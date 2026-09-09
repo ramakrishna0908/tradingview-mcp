@@ -101,7 +101,7 @@ setting) the morning run prepares and policy-approves the posts into status
 `ready_to_post` (text + chart PNG) and sends nothing itself. A scheduled
 Claude task in the desktop app (weekdays 10:00 ET, "Post daily setups to X")
 then reads `tv social ready --json`, posts each one through the Chrome that is
-signed in as @ai_king0206 (text + chart image), and calls
+signed in as @DailySetupSweep (text + chart image), and calls
 `tv social record <id> --post-id <id>` so the audit ends in `published`
 (method `browser`). Nothing outside the ready list is ever posted and the text
 is never edited by the poster. Switch `via` to `"api"` to publish directly

@@ -1,6 +1,6 @@
 # Daily Technical Analysis Education Video
 
-One short, sound-off, mobile-first video a day for @ai_king0206 ("Daily
+One short, sound-off, mobile-first video a day for @DailySetupSweep ("Daily
 Setup Sweep"): a non-repeating technical-analysis concept, drawn — not
 recorded — from a spec, so every frame is brand-consistent and nothing in it
 is market data. Renderer: `scripts/render-edu-video.py`; library, rotation,

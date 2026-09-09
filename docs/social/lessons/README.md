@@ -7,8 +7,8 @@ reference for what `tv social educate` now produces.
 
 | Lesson | Topic | Published | Live post |
 | --- | --- | --- | --- |
-| #01 | Support & Resistance | 2026-09-07 | https://x.com/ai_king0206/status/2097021180506964459 |
-| #02 | Candlestick Patterns 101 | 2026-09-08 | https://x.com/ai_king0206/status/2097345042511761894 |
+| #01 | Support & Resistance | 2026-09-07 | https://x.com/DailySetupSweep/status/2097021180506964459 |
+| #02 | Candlestick Patterns 101 | 2026-09-08 | https://x.com/DailySetupSweep/status/2097345042511761894 |
 
 ## Lesson #01 — Support & Resistance
 
