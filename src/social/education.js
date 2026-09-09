@@ -1,5 +1,6 @@
 /**
- * Educational explainer posts — one technical-analysis topic at a time.
+ * Educational explainer posts — one technical-analysis topic at a time,
+ * published as a numbered "AI Trade School" lesson.
  *
  * Each topic carries a one-line definition, three labelled examples (each a
  * small drawn illustration, a short definition and a bullish / bearish /
@@ -14,6 +15,11 @@
  * Rotation: `nextTopic` picks the topic posted longest ago (never-posted first,
  * in library order), so the curriculum cycles. Topic-level engagement shows up
  * in `tv social metrics report` (byTopic) once metrics are collected.
+ *
+ * Lesson numbers (`lessonNumbers`) are per topic and permanent: the first topic
+ * published is Lesson #01, the next new one #02, and a topic coming round again
+ * on the rotation keeps the number it was taught under. See `lessonNumbers` for
+ * why they are derived from the audit trail rather than counted at post time.
  */
 
 export const TAKEAWAY = Object.freeze({ BULLISH: 'bullish', BEARISH: 'bearish', NEUTRAL: 'neutral' });
@@ -282,6 +288,9 @@ export function getTopic(id) {
   return TOPICS.find(t => t.id === id) ?? null;
 }
 
+/** Statuses that count as "this topic has been taught" (or is about to be). */
+export const LIVE_STATUSES = Object.freeze(['published', 'ready_to_post', 'approved', 'publishing']);
+
 /**
  * The topic to post next: never-posted topics first (library order), then the
  * one posted longest ago. `auditRecords` are `AuditStore#latest()`.
@@ -290,7 +299,7 @@ export function nextTopic(auditRecords, { exclude = [] } = {}) {
   const lastPosted = new Map();
   for (const r of auditRecords) {
     if (r.kind !== 'education' || !r.topic) continue;
-    if (!['published', 'ready_to_post', 'approved', 'publishing'].includes(r.status)) continue;
+    if (!LIVE_STATUSES.includes(r.status)) continue;
     const at = r.publication?.at ?? r.createdAt ?? '';
     if (!lastPosted.has(r.topic) || at > lastPosted.get(r.topic)) lastPosted.set(r.topic, at);
   }
@@ -300,29 +309,134 @@ export function nextTopic(auditRecords, { exclude = [] } = {}) {
   return [...pool].sort((a, b) => lastPosted.get(a.id).localeCompare(lastPosted.get(b.id)))[0] ?? null;
 }
 
+// ─── lesson numbering ────────────────────────────────────────────────────────
+
+/** The lesson series shown on every explainer post and card. */
+export const LESSON_BRAND = 'AI Trade School';
+
+/** `2` → `Lesson #02`. Two digits until the curriculum passes 99. */
+export function lessonLabel(n) {
+  return `Lesson #${String(n).padStart(2, '0')}`;
+}
+
+/**
+ * Map of topic id → lesson number, numbered by the order topics were first
+ * published.
+ *
+ * Numbers are derived from the audit trail rather than stored in a counter so
+ * that they stay correct without a migration: the two lessons published before
+ * this format existed carry no `lesson` field, and ordering their records by
+ * publication time still makes them #01 and #02. A record that *does* carry a
+ * `lesson` pins that topic to it, so a number, once posted, never moves even if
+ * older records are trimmed out of the audit file.
+ *
+ * A topic coming round again on the rotation keeps its original number — the
+ * lesson is the topic, not the individual post, so "Lesson #02" always means
+ * candlestick patterns.
+ */
+export function lessonNumbers(auditRecords) {
+  const firstAt = new Map();
+  const pinned = new Map();
+  for (const r of auditRecords) {
+    if (r.kind !== 'education' || !r.topic) continue;
+    if (!LIVE_STATUSES.includes(r.status)) continue;
+    const at = r.publication?.at ?? r.createdAt ?? '';
+    if (!firstAt.has(r.topic) || at < firstAt.get(r.topic)) firstAt.set(r.topic, at);
+    if (Number.isInteger(r.lesson) && r.lesson > 0 && !pinned.has(r.topic)) pinned.set(r.topic, r.lesson);
+  }
+  const out = new Map(pinned);
+  const taken = new Set(pinned.values());
+  const unnumbered = [...firstAt.keys()]
+    .filter(t => !out.has(t))
+    .sort((a, b) => firstAt.get(a).localeCompare(firstAt.get(b)) || a.localeCompare(b));
+  let n = 1;
+  for (const topic of unnumbered) {
+    while (taken.has(n)) n++;
+    out.set(topic, n);
+    taken.add(n);
+  }
+  return out;
+}
+
+/** The lesson number `topicId` should post under — its own, or the next free one. */
+export function lessonNumberFor(auditRecords, topicId) {
+  const numbers = lessonNumbers(auditRecords);
+  if (numbers.has(topicId)) return numbers.get(topicId);
+  const taken = new Set(numbers.values());
+  let n = 1;
+  while (taken.has(n)) n++;
+  return n;
+}
+
 // ─── post text ───────────────────────────────────────────────────────────────
+
+/**
+ * The exact tag line every AI Trade School lesson ends with.
+ *
+ * Deliberately short and fixed: the lesson header carries the branding in
+ * plain text, so the post does not also spend a tag on it.
+ */
+export const LESSON_TAGS = Object.freeze(['#TechnicalAnalysis', '#TradingEducation']);
+
+/**
+ * Tags for a lesson post — `education.hashtags`, capped, with no archive tag
+ * appended. Unlike `educationalTags` (still used by the video and intro posts)
+ * this returns the list as configured: a lesson ends on exactly its two tags.
+ */
+export function lessonTags(config) {
+  const ed = config.education ?? {};
+  const list = ed.hashtags?.length ? ed.hashtags : LESSON_TAGS;
+  return list.slice(0, ed.maxTags ?? config.hashtags?.maxTotal ?? list.length);
+}
+
+/**
+ * Tags for an educational post: the given reach tags, trimmed to the cap, with
+ * the archive tag (education.archiveTag, e.g. #AITradeSchool) always last and
+ * always present. The archive tag is the point of the whole scheme — one tap
+ * opens the back catalogue — so it survives the trim rather than being cut by
+ * it, and it is never duplicated if it is already in the list.
+ */
+export function educationalTags(list, config, { max = null } = {}) {
+  const archive = config.education?.archiveTag ?? null;
+  const cap = max ?? config.education?.maxTags ?? config.hashtags?.maxTotal ?? 6;
+  const reach = (list ?? []).filter(t => !archive || t.toLowerCase() !== archive.toLowerCase());
+  const room = archive ? Math.max(0, cap - 1) : cap;
+  return [...reach.slice(0, room), ...(archive ? [archive] : [])];
+}
 
 const ICON = { [TAKEAWAY.BULLISH]: '✅', [TAKEAWAY.BEARISH]: '🛑', [TAKEAWAY.NEUTRAL]: '⚖️' };
 const WORD = { [TAKEAWAY.BULLISH]: 'Bullish', [TAKEAWAY.BEARISH]: 'Bearish', [TAKEAWAY.NEUTRAL]: 'Neutral' };
 
 /**
- *   📚 Chart Basics: Support & Resistance
+ * One lesson, in the house format:
+ *
+ *   🎓 AI Trade School — Lesson #01
+ *   Support & Resistance
+ *   Price levels where buyers or sellers have repeatedly stepped in.
  *   Support = a floor where buyers have shown up before.
  *   Resistance = a ceiling where sellers have shown up before.
  *   ✅ Bullish — Support holds: buyers keep defending the level.
  *   🛑 Bearish — Resistance rejects: sellers keep defending the level.
  *   ⚖️ Neutral — Stuck in the range: wait for a decisive break of either level.
- *   Which do you mark first on a fresh chart — support or resistance? 👇
- *   #TechnicalAnalysis #Trading
+ *   👇 Which do you mark first on a fresh chart — support or resistance?
+ *   #TechnicalAnalysis #TradingEducation
+ *
+ * Header, title, hook (the topic's one-line definition), up to five teaching
+ * points, the reply prompt, the tag line. `lesson` is the number from
+ * `lessonNumberFor`; it defaults to 1 so a bare call still renders a valid post.
  */
-export function generateEducationPost(topic, config) {
-  const ed = config.education ?? {};
-  const tags = (ed.hashtags ?? []).slice(0, config.hashtags?.maxTotal ?? 6);
-  const lines = [
-    `📚 ${topic.series}: ${topic.title}`,
+export function generateEducationPost(topic, config, { lesson = 1 } = {}) {
+  const tags = lessonTags(config);
+  const points = [
     ...topic.lines,
     ...topic.examples.map(e => `${ICON[e.takeaway]} ${WORD[e.takeaway]} — ${e.label}: ${e.note.charAt(0).toLowerCase() + e.note.slice(1)}`),
-    `${topic.question} 👇`,
+  ].slice(0, 5);
+  const lines = [
+    `🎓 ${LESSON_BRAND} — ${lessonLabel(lesson)}`,
+    topic.title,
+    topic.definition,
+    ...points,
+    `👇 ${topic.question}`,
     config.disclosurePlacement === 'bio' ? null : config.disclosure.trim(),
     tags.length ? tags.join(' ') : null,
   ].filter(Boolean);
@@ -331,7 +445,7 @@ export function generateEducationPost(topic, config) {
 }
 
 /** Spec for the explainer card (scripts/render-chart-sweep.py, style "explainer"). */
-export function buildEducationSpec(topic, config, outPath) {
+export function buildEducationSpec(topic, config, outPath, { lesson = 1 } = {}) {
   const ed = config.education ?? {};
   return {
     style: 'explainer',
@@ -340,7 +454,10 @@ export function buildEducationSpec(topic, config, outPath) {
     height: ed.height ?? 1350,
     brand: config.brand?.name || null,
     tagline: config.brand?.tagline || null,
-    series: topic.series.toUpperCase(),
+    // The chip carries the lesson, not the curriculum group: a viewer scrolling
+    // past should read the same "AI Trade School — Lesson #NN" they see in the
+    // post. `topic.series` still groups the library for `tv social educate --list`.
+    series: `${LESSON_BRAND} — ${lessonLabel(lesson)}`.toUpperCase(),
     title: topic.title,
     definition: topic.definition,
     examples: topic.examples.map(e => ({ label: e.label, text: e.text, note: e.note, takeaway: e.takeaway, takeawayWord: WORD[e.takeaway], art: e.art })),
@@ -349,9 +466,9 @@ export function buildEducationSpec(topic, config, outPath) {
   };
 }
 
-export function educationAltText(topic, config) {
+export function educationAltText(topic, config, { lesson = 1 } = {}) {
   const ed = config.education ?? {};
-  const bits = [`${topic.series}: ${topic.title}. ${topic.definition}`];
+  const bits = [`${LESSON_BRAND} ${lessonLabel(lesson)}: ${topic.title}. ${topic.definition}`];
   for (const e of topic.examples) bits.push(`${e.label} (${WORD[e.takeaway]}): ${e.text} ${e.note}`);
   bits.push(ed.footer ?? 'Educational only. Not financial advice.');
   return bits.join(' ').slice(0, 1000);

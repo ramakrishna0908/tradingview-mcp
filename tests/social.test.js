@@ -1842,7 +1842,7 @@ describe('metrics: collection, manual recording, report and insights', () => {
 
 // ─── educational explainers ───────────────────────────────────────────────────
 
-import { TOPICS, getTopic, nextTopic, generateEducationPost, buildEducationSpec, educationAltText, TAKEAWAY } from '../src/social/education.js';
+import { TOPICS, getTopic, nextTopic, generateEducationPost, buildEducationSpec, educationAltText, lessonNumbers, lessonNumberFor, TAKEAWAY } from '../src/social/education.js';
 
 describe('educational explainers: one topic per post, rotated, no tickers, footer on the card', () => {
   const STOCK_CFG = join(ROOT, 'config', 'social-compliance.json');
@@ -1872,14 +1872,18 @@ describe('educational explainers: one topic per post, rotated, no tickers, foote
   it('every topic generates a compliance-clean post under the stock config; a ticker or a claim blocks', () => {
     const cfg = load(STOCK_CFG);
     for (const t of TOPICS) {
-      const { text } = generateEducationPost(t, cfg);
+      const { text } = generateEducationPost(t, cfg, { lesson: 3 });
       const lines = text.split('\n');
-      assert.match(lines[0], /^📚 (Chart Basics|Indicators|Price Action): /);
+      assert.equal(lines[0], '🎓 AI Trade School — Lesson #03');
+      assert.equal(lines[1], t.title);
+      assert.equal(lines[2], t.definition);
       assert.ok(lines.some(l => l.startsWith('✅ Bullish — ')), t.id);
       assert.ok(lines.some(l => l.startsWith('🛑 Bearish — ')), t.id);
       assert.ok(lines.some(l => l.startsWith('⚖️ Neutral — ')), t.id);
-      assert.match(lines.at(-2), /\? 👇$/);
-      assert.equal(lines.at(-1), '#TechnicalAnalysis #Trading');
+      assert.match(lines.at(-2), /^👇 .*\?$/);
+      assert.equal(lines.at(-1), '#TechnicalAnalysis #TradingEducation', 'a lesson ends on exactly these two tags');
+      assert.ok(!text.includes('#AITradeSchool'), 'the header carries the branding, not a tag');
+      assert.ok(lines.length <= 10, `${t.id}: ${lines.length} lines — header, title, hook, ≤5 points, CTA, tags`);
       const ctx = { setup: null, row: null, model: { reportDate: '2026-09-08', dataAsOf: new Date().toISOString() }, config: cfg, kind: 'education', chart: { path: '/tmp/e.png' } };
       assert.deepEqual(blocking(validatePost(text, ctx)), [], `${t.id}: ${JSON.stringify(blocking(validatePost(text, ctx)))}`);
       assert.ok(blocking(validatePost(text + '\nLook at $AAPL', ctx)).some(i => i.code === 'ticker_in_education'));
@@ -1910,24 +1914,52 @@ describe('educational explainers: one topic per post, rotated, no tickers, foote
     assert.equal(rec.kind, 'education');
     assert.equal(rec.topic, TOPICS[0].id);
     assert.equal(rec.symbol, 'EDU');
-    assert.match(rec.originalText, /^📚 Chart Basics: Support & Resistance\n/);
+    assert.match(rec.originalText, /^🎓 AI Trade School — Lesson #01\nSupport & Resistance\n/);
+    assert.equal(rec.lesson, 1, 'the first topic taught is Lesson #01');
+    assert.equal(rec.setup.setup, 'AI Trade School Lesson #01: Support & Resistance');
     const dup = await wf.queueEducation({});
     assert.match(dup.refused, /already ready_to_post/);
     const next = new SocialWorkflow({ config: cfg, audit: wf.audit, insights: null, now: () => new Date('2026-09-11T12:00:00Z') });
     wf.recordManualPublication(rec.id, null, { xPostId: '77' });
     const s2 = await next.queueEducation({});
     assert.equal(s2.topic, TOPICS[1].id, 'rotation advances after publication');
+    assert.equal(s2.lesson, 2, 'the second topic taught is Lesson #02');
     const unknown = await next.queueEducation({ topic: 'nope' });
     assert.match(unknown.refused, /unknown topic/);
     const crypto = new SocialWorkflow({ config: load(CRYPTO_CFG), audit: new AuditStore(join(dir, 'c.jsonl')), insights: null });
     assert.match((await crypto.queueEducation({})).refused, /disabled/);
-    const spec = buildEducationSpec(TOPICS[2], cfg, '/tmp/e.png');
+    const spec = buildEducationSpec(TOPICS[2], cfg, '/tmp/e.png', { lesson: 3 });
     assert.equal(spec.style, 'explainer');
+    assert.equal(spec.series, 'AI TRADE SCHOOL — LESSON #03', 'the card chip carries the lesson, not the curriculum group');
+    assert.equal(spec.title, TOPICS[2].title);
     assert.equal(spec.footer, 'Educational only. Not financial advice.');
     assert.equal(spec.width, 1080);
     assert.equal(spec.height, 1350);
     assert.deepEqual(spec.examples.map(e => e.takeawayWord), ['Bullish', 'Bearish', 'Neutral']);
-    assert.match(educationAltText(TOPICS[2], cfg), /Educational only\. Not financial advice\.$/);
+    const alt = educationAltText(TOPICS[2], cfg, { lesson: 3 });
+    assert.match(alt, /^AI Trade School Lesson #03: /);
+    assert.match(alt, /Educational only\. Not financial advice\.$/);
+  });
+
+  it('lesson numbers: by first publication, permanent, and stable when a topic comes round again', () => {
+    const posted = (topic, at, extra = {}) => ({ kind: 'education', topic, status: 'published', publication: { at }, ...extra });
+    const history = [
+      posted('candlestick-basics', '2026-09-08T15:23:47Z'),
+      posted('support-resistance', '2026-09-07T17:56:48Z'),
+    ];
+    assert.deepEqual([...lessonNumbers(history)], [['support-resistance', 1], ['candlestick-basics', 2]],
+      'numbered by publication order, not the order records appear');
+    assert.equal(lessonNumberFor(history, 'rsi'), 3, 'a new topic takes the next free number');
+    assert.equal(lessonNumberFor(history, 'support-resistance'), 1, 'a repeat keeps its number');
+    assert.equal(lessonNumberFor([], 'rsi'), 1);
+
+    // A stored `lesson` pins the topic even if older records are trimmed away.
+    const trimmed = [posted('rsi', '2026-09-11T12:00:00Z', { lesson: 3 })];
+    assert.equal(lessonNumberFor(trimmed, 'rsi'), 3);
+    assert.equal(lessonNumberFor(trimmed, 'gaps'), 1, 'free numbers are reused below a pinned one');
+
+    // Drafts and dry runs are not lessons yet.
+    assert.equal(lessonNumbers([{ kind: 'education', topic: 'rsi', status: 'auto_dry_run' }]).size, 0);
   });
 
   it('renders every topic\'s explainer card', { skip: !HAVE_PIL }, () => {
@@ -1983,5 +2015,115 @@ describe('removed posts: closed unscored, hold no cooldown', () => {
     const again = await wf.autoPublish(MODEL([row], { reportDate: '2026-09-07', dataAsOf: new Date().toISOString(), cohort: { source: 't', calls: [{ symbol: 'ETH', score: 2.5 }], puts: [], watches: [] } }));
     assert.deepEqual(again.published.map(p => p.symbol), ['ETH'], JSON.stringify(again.skipped));
     assert.throws(() => wf.removePost(ready.id), /Only published/);
+  });
+});
+
+// ─── launch sequence ─────────────────────────────────────────────────────────
+
+import { LAUNCH_SEQUENCE, launchItem, nextLaunchItem, generateIntroPost, buildIntroSpec, introAltText } from '../src/social/launch.js';
+import { educationalTags } from '../src/social/education.js';
+
+describe('launch sequence: the first 14 posts, the pinned intro, and the #AITradeSchool archive tag', () => {
+  const STOCK_CFG = join(ROOT, 'config', 'social-compliance.json');
+  const load = (p, over = {}) => { resetConfigCache(); const c = loadConfig(p); resetConfigCache(); return { ...c, ...over }; };
+
+  it('the plan is well-formed: 14 items, numbered 1..14, unique ids, exactly one pinned', () => {
+    assert.equal(LAUNCH_SEQUENCE.length, 14);
+    assert.deepEqual(LAUNCH_SEQUENCE.map(i => i.n), Array.from({ length: 14 }, (_, i) => i + 1));
+    const ids = LAUNCH_SEQUENCE.map(i => i.id);
+    assert.equal(new Set(ids).size, ids.length);
+    assert.equal(LAUNCH_SEQUENCE.filter(i => i.pin).length, 1);
+    assert.equal(LAUNCH_SEQUENCE[0].id, 'intro');
+    assert.equal(launchItem('1').id, 'intro');
+    assert.equal(launchItem('intro').n, 1);
+    assert.equal(launchItem('nope'), null);
+  });
+
+  it('the archive tag is always present and always last, even when the reach tags fill the cap', () => {
+    const cfg = load(STOCK_CFG);
+    assert.equal(cfg.education.archiveTag, '#AITradeSchool');
+    assert.equal(cfg.education.maxTags, 3);
+    assert.equal(cfg.hashtags.maxTotal, 2, 'setup posts keep the tighter cap');
+    assert.deepEqual(educationalTags(['#A', '#B'], cfg), ['#A', '#B', '#AITradeSchool']);
+    assert.deepEqual(educationalTags(['#A', '#B', '#C', '#D'], cfg), ['#A', '#B', '#AITradeSchool'], 'trim the reach tags, never the archive tag');
+    assert.deepEqual(educationalTags(['#A', '#AITradeSchool'], cfg), ['#A', '#AITradeSchool'], 'no duplicate when already listed');
+    assert.deepEqual(educationalTags(['#A'], { ...cfg, education: { ...cfg.education, archiveTag: null } }), ['#A']);
+  });
+
+  it('the pinned intro is compliance-clean: no ticker, no claim, no prohibited wording, archive tag last', () => {
+    const cfg = load(STOCK_CFG);
+    const { text } = generateIntroPost(cfg);
+    const lines = text.split('\n');
+    assert.equal(lines[0], 'Learning technical analysis does not mean predicting every move.');
+    assert.equal(lines.at(-1), '#AITradeSchool');
+    assert.equal(lines.at(-2), 'Educational only — not financial advice.');
+    assert.equal(lines.filter(l => l.startsWith('• ')).length, 5);
+    const ctx = { setup: null, row: null, model: { reportDate: '2026-09-08', dataAsOf: new Date().toISOString() }, config: cfg, kind: 'intro', chart: { path: '/tmp/i.png' } };
+    assert.deepEqual(blocking(validatePost(text, ctx)), []);
+    // the wording the compliance gate exists to catch
+    assert.ok(blocking(validatePost(text.replace('No promises.', 'No guaranteed returns.'), ctx)).some(i => i.code === 'prohibited_wording'));
+    assert.ok(blocking(validatePost(text + '\nBuy $AAPL', ctx)).some(i => i.code === 'ticker_in_education'));
+  });
+
+  it('queueLaunch: builds item 1, marks it to pin, refuses a second copy and refuses items with no generator', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'launch-'));
+    const base = load(STOCK_CFG);
+    const cfg = { ...base, charts: { ...base.charts, enabled: false, requireForPublish: false } };
+    cfg.posting = { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, enabled: true, via: 'browser' } };
+    const wf = new SocialWorkflow({ config: cfg, audit: new AuditStore(join(dir, 'a.jsonl')), insights: null, now: () => new Date('2026-09-08T12:00:00Z') });
+    const s = await wf.queueLaunch({});
+    assert.equal(s.refused, null, s.refused);
+    assert.equal(s.item, 'intro');
+    assert.equal(s.record.pin, true);
+    const [rec] = wf.ready({ queue: 'stocks' });
+    assert.equal(rec.kind, 'intro');
+    assert.equal(rec.launchItem, 'intro');
+    assert.equal(rec.symbol, 'EDU');
+    assert.equal(rec.pin, true);
+    // re-asking for item 1 by name is refused; asking for "next" has already moved on
+    const dup = await wf.queueLaunch({ item: 'intro' });
+    assert.match(dup.refused, /already ready_to_post/);
+    assert.equal(nextLaunchItem(wf.audit.latest()).id, 'long-wick-rejection', 'the sequence advances once item 1 is queued');
+    assert.match((await wf.queueLaunch({})).refused, /no generator yet/, 'next is item 2, which is not built');
+    const planned = await wf.queueLaunch({ item: 'struggle-poll' });
+    assert.match(planned.refused, /no generator yet/);
+    const delegated = await wf.queueLaunch({ item: 'vwap-reclaim-reject' });
+    assert.match(delegated.refused, /educate --topic vwap/);
+  });
+
+  it('retract: only a published post, keeps the publication, frees the slot for a re-queue', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'retract-'));
+    const base = load(STOCK_CFG);
+    const cfg = { ...base, charts: { ...base.charts, enabled: false, requireForPublish: false } };
+    cfg.posting = { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, enabled: true, via: 'browser' } };
+    const wf = new SocialWorkflow({ config: cfg, audit: new AuditStore(join(dir, 'a.jsonl')), insights: null, now: () => new Date('2026-09-08T12:00:00Z') });
+    const s = await wf.queueLaunch({});
+    const id = s.record.id;
+    assert.throws(() => wf.retract(id, 'too soon'), /Only a published post can be retracted/);
+    wf.recordManualPublication(id, null, { xPostId: '42', url: 'https://x.com/a/status/42' });
+    assert.throws(() => wf.reject(id, 'x'), /Cannot reject a published post/, 'a published post is never rejectable');
+    assert.throws(() => wf.retract(id, '  '), /needs a reason/);
+    const out = wf.retract(id, 'deleted on X, reposted under a renamed tag');
+    assert.equal(out.status, 'retracted');
+    assert.equal(out.publication.xPostId, '42', 'the original publication stays in the trail');
+    assert.equal(out.retraction.url, 'https://x.com/a/status/42');
+    assert.match(out.retraction.reason, /renamed tag/);
+    // the slot is free again, and the retracted post no longer counts as live
+    assert.equal(nextLaunchItem(wf.audit.latest()).id, 'intro');
+    const again = await wf.queueLaunch({ item: 'intro' });
+    assert.equal(again.refused, null, again.refused);
+  });
+
+  it('the intro card spec carries the disclaimer footer and the archive tag', { skip: !HAVE_PIL }, () => {
+    const cfg = load(STOCK_CFG);
+    const out = join(mkdtempSync(join(tmpdir(), 'intro-png-')), 'intro.png');
+    const spec = buildIntroSpec(cfg, out);
+    assert.equal(spec.style, 'intro');
+    assert.equal(spec.footer, 'Educational only. Not financial advice.');
+    assert.equal(spec.archiveTag, '#AITradeSchool');
+    assert.equal(spec.bullets.length, 5);
+    renderChartSpec(spec);
+    assert.ok(existsSync(out));
+    assert.match(introAltText(cfg), /Educational only\. Not financial advice\.$/);
   });
 });

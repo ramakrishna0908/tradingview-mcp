@@ -14,6 +14,7 @@
  * below, and compliance (kind 'video') blocks any cashtag in the text.
  */
 import { spawnSync } from 'node:child_process';
+import { educationalTags } from './education.js';
 import { existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -225,7 +226,7 @@ export function nextVideoTopic(auditRecords, { exclude = [] } = {}) {
  */
 export function generateVideoPost(topic, config) {
   const v = config.video ?? {};
-  const tags = (v.hashtags ?? []).slice(0, Math.min(2, config.hashtags?.maxTotal ?? 2));
+  const tags = educationalTags(v.hashtags, config);
   const lc = s => s.charAt(0).toLowerCase() + s.slice(1);
   const lines = [
     `🎬 Chart Education: ${topic.title}`,

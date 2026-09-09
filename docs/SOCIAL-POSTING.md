@@ -331,11 +331,35 @@ promote a weaker setup over a stronger one.
 ## Educational explainers (`tv social educate`)
 
 Twice a week (Tuesday and Friday 8 AM, task `post-education-explainer`) the
-account posts one technical-analysis topic as a simple visual explainer: a
-short definition, three labelled examples drawn from specs (not market data),
-and a clear **Bullish / Bearish / Neutral** takeaway for each, on a 1080×1350
-mobile-first card whose footer reads *Educational only. Not financial advice.*
+account posts one technical-analysis topic as a numbered **AI Trade School**
+lesson: a short definition, three labelled examples drawn from specs (not market
+data), and a clear **Bullish / Bearish / Neutral** takeaway for each, on a
+1080×1350 mobile-first card whose footer reads *Educational only. Not financial
+advice.*
 
+Every lesson post has the same shape — header, title, hook, up to five teaching
+points, one reply prompt, two tags:
+
+```
+🎓 AI Trade School — Lesson #01
+Support & Resistance
+Price levels where buyers or sellers have repeatedly stepped in.
+Support = a floor where buyers have shown up before.
+Resistance = a ceiling where sellers have shown up before.
+✅ Bullish — Support holds: buyers keep defending the level.
+🛑 Bearish — Resistance rejects: sellers keep defending the level.
+⚖️ Neutral — Stuck in the range: wait for a decisive break of either level.
+👇 Which do you mark first on a fresh chart — support or resistance?
+#TechnicalAnalysis #TradingEducation
+```
+
+- **Lesson numbers** are per topic and permanent: the first topic taught is
+  #01, each new one takes the next number, and a topic coming round again on the
+  rotation keeps the number it was taught under — "Lesson #02" always means
+  candlestick patterns. `lessonNumbers()` derives them from the audit trail
+  (ordering topics by first publication) and honours a stored `lesson` field, so
+  the two lessons published before this format existed number correctly without
+  a migration. The card's header chip shows the same number.
 - **Library:** `src/social/education.js` — support & resistance, candlestick
   basics, RSI, CMF, breakouts, fakeouts, trendlines, volume confirmation, moving
   averages, Bollinger Bands. Each example carries an illustration spec
@@ -348,8 +372,12 @@ mobile-first card whose footer reads *Educational only. Not financial advice.*
   forward-looking-claim checks apply as usual; a cashtag anywhere blocks
   (`ticker_in_education`) so an explainer can never read as a call on a name;
   the indicator/level/timestamp/risk-context requirements of a setup post do
-  not apply. The card is required (it carries the footer). Hashtags come from
-  `education.hashtags` (two by default).
+  not apply. The card is required (it carries the footer). A lesson ends on
+  exactly the two tags in `education.hashtags` — `#TechnicalAnalysis
+  #TradingEducation`. The `#AITradeSchool` archive tag is *not* appended (the
+  header line is the branding); the video, launch-lesson and intro posts still
+  carry it via `educationalTags`. The all-digit lesson number does not count
+  against the tag cap — `#01` is not a hashtag on X.
 - **One per day**, on the `education.queue` (stocks). Only the stock config has
   `education.enabled`.
 - **Metrics:** posts carry `topic`, and `tv social metrics report` adds a
@@ -360,7 +388,13 @@ mobile-first card whose footer reads *Educational only. Not financial advice.*
 ```bash
 tv social educate --dry-run        # text + card for the next topic, queue nothing
 tv social educate --topic rsi      # queue a specific topic
+tv social educate --list           # lesson number, series and last run per topic
 ```
+
+The two lessons published before this format existed are re-rendered on it in
+[docs/social/lessons/](social/lessons/) — the live posts keep their original text
+and card (X offers no edit path here), so that directory is the on-brand copy to
+use if either is ever re-posted.
 
 ## Post format: "sweep" (the Daily Setup Sweep layout)
 
@@ -566,14 +600,14 @@ fails naming the kind and the missing element. Run it with `npm run test:unit`.
 
 | Element | Setup (sweep) | Follow-up | Scorecard | Explainer | Premarket |
 |---|---|---|---|---|---|
-| Hook (iconed first line) | `📈 $ETH has reclaimed…` | `✅ $ETH — BREAKOUT UPDATE.` | `📊 Weekly Setup Scorecard · …` | `📚 Chart Basics: …` | `🟢 Premarket read for … — BULLISH (confidence 74/100)` |
+| Hook (iconed first line) | `📈 $ETH has reclaimed…` | `✅ $ETH — BREAKOUT UPDATE.` | `📊 Weekly Setup Scorecard · …` | `🎓 AI Trade School — Lesson #01` | `🟢 Premarket read for … — BULLISH (confidence 74/100)` |
 | Bias / status | reclaim confirmed · watch | lifecycle stage | counts + hit rate | bullish / bearish / neutral takeaways | bias + confidence |
-| Concise reasoning | CMF/RSI line | result vs the setup price | hit rate = breakouts ÷ resolved | two definition lines | top 3 drivers |
+| Concise reasoning | CMF/RSI line | result vs the setup price | hit rate = breakouts ÷ resolved | hook + up to five teaching points | top 3 drivers |
 | Plain-English context | `In plain terms: …` | `The lesson: …` on an invalidation | `How to read it: …` | the whole post | hook sentence |
 | Key levels | 🎯 / 🛑 | level cleared / lost / tested, next level | — | — | SPY resistance / support |
 | What changes the read | 🛑 … setup invalidated | 🛑 … negates the breakout | — | — | `Flip event: 8:30 AM ET Core CPI …` |
-| Reply-driving CTA | `Which level gets hit first — … ? 👇` | level question | `Which setup did you follow this week? 👇` | topic question | `Bullish or bearish today? 👇` |
-| Recurring format marker | series line | stage labels | weekly, Fridays | series name | daily, weekdays |
+| Reply-driving CTA | `Which level gets hit first — … ? 👇` | level question | `Which setup did you follow this week? 👇` | `👇 topic question` | `Bullish or bearish today? 👇` |
+| Recurring format marker | series line | stage labels | weekly, Fridays | numbered lesson header | daily, weekdays |
 | Accountability | tracked to resolution | the outcome post itself | expiries shown, not hidden | — | — |
 | Mobile-first | ≤ 14 lines, ≤ 150 chars per line, one thought per line | same | same | same | same |
 | Hashtags | ≤ 2 (`#SYM #Stocks`) | ≤ 2 | ≤ 2 | ≤ 2 | ≤ 2 |

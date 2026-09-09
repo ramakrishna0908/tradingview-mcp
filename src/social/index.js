@@ -13,7 +13,8 @@ import { buildSummaryTable, selectPostCandidates, classifySetup, cohortCandidate
 import { SetupTracker, openFromSetup, detectEvents, graduate, scorecardStats, weekBounds, EVENT, markRemoved } from './tracker.js';
 import { generateFollowUp, followUpModel, followUpSetup, followUpRow, followUpChartOverrides, generateScorecard, buildScorecardSpec, scorecardAltText } from './followup.js';
 import { MetricsStore, readInsights, insightsBoost } from './metrics.js';
-import { TOPICS, getTopic, nextTopic, generateEducationPost, buildEducationSpec, educationAltText } from './education.js';
+import { TOPICS, getTopic, nextTopic, generateEducationPost, buildEducationSpec, educationAltText, lessonNumberFor, lessonLabel, LESSON_BRAND } from './education.js';
+import { LAUNCH_SEQUENCE, launchItem, nextLaunchItem, generateIntroPost, buildIntroSpec, introAltText } from './launch.js';
 import { initialStage } from './sweep-labels.js';
 import { generatePremarketPost, buildPremarketSpec, premarketAltText } from './premarket-post.js';
 import { VIDEO_TOPICS, getVideoTopic, nextVideoTopic, generateVideoPost, buildVideoSpec, videoAltText, renderVideoSpec, DEFAULT_VIDEO_DIR } from './video.js';
@@ -40,6 +41,7 @@ export * from './tracker.js';
 export * from './followup.js';
 export * from './metrics.js';
 export * from './education.js';
+export * from './launch.js';
 export { STAGE, stageLabel, initialStage, sweepLabels } from './sweep-labels.js';
 
 export class SocialWorkflow {
@@ -88,7 +90,7 @@ export class SocialWorkflow {
     if (rec.kind === 'scorecard') {
       return validatePost(this.currentText(rec), { ...common, setup: null, row: null, model: { reportDate: rec.reportDate, dataAsOf: rec.dataAsOf }, kind: 'scorecard', scorecard: rec.scorecard });
     }
-    if (rec.kind === 'education' || rec.kind === 'video') {
+    if (rec.kind === 'education' || rec.kind === 'video' || rec.kind === 'intro') {
       return validatePost(this.currentText(rec), { ...common, setup: null, row: null, model: { reportDate: rec.reportDate, dataAsOf: rec.dataAsOf }, kind: rec.kind });
     }
     if (rec.kind === 'premarket') {
@@ -218,6 +220,27 @@ export class SocialWorkflow {
     const rec = this.mustGet(id);
     if (rec.status === 'published') throw new Error('Cannot reject a published post');
     return this.audit.append({ ...rec, status: 'rejected', rejection: { by: this.actor, reason, at: this.now().toISOString() } });
+  }
+
+  /**
+   * Record that a published post was taken down on X.
+   *
+   * `reject` deliberately refuses a published record — an approval that led to
+   * a live post must stay in the trail. But a post that has actually been
+   * deleted should not keep counting as live: it would block its slot from
+   * being re-queued and would be chased forever by metrics collection. So the
+   * retraction is appended as a new state that preserves the original
+   * publication block alongside the reason it came down.
+   */
+  retract(id, reason) {
+    const rec = this.mustGet(id);
+    if (rec.status !== 'published') throw new Error(`Only a published post can be retracted (${id} is ${rec.status})`);
+    if (!reason?.trim()) throw new Error('A retraction needs a reason');
+    return this.audit.append({
+      ...rec,
+      status: 'retracted',
+      retraction: { by: this.actor, reason, at: this.now().toISOString(), url: rec.publication?.url ?? null, xPostId: rec.publication?.xPostId ?? null },
+    });
   }
 
   // ─── publish ───────────────────────────────────────────────────────────────
@@ -950,7 +973,7 @@ export class SocialWorkflow {
     const policy = this.config.posting.autoPublish ?? {};
     const via = policy.via ?? 'api';
     const today = this.now().toISOString().slice(0, 10);
-    const summary = { dryRun, topic: null, refused: null, record: null, topics: TOPICS.map(t => t.id) };
+    const summary = { dryRun, topic: null, lesson: null, refused: null, record: null, topics: TOPICS.map(t => t.id) };
     if (ed.enabled === false) { summary.refused = 'education posts are disabled in config (education.enabled)'; return summary; }
     if (policy.disabledBy) { summary.refused = `auto-publish disabled by ${policy.disabledBy}`; return summary; }
     const t = topic ? getTopic(topic) : nextTopic(this.audit.latest());
@@ -959,13 +982,15 @@ export class SocialWorkflow {
     const dup = this.audit.latest().find(r => r.kind === 'education' && r.reportDate === today && ['approved', 'ready_to_post', 'published', 'publishing'].includes(r.status));
     if (dup) { summary.refused = `an education post for ${today} is already ${dup.status} (${dup.id}, topic ${dup.topic})`; return summary; }
 
-    const { text } = generateEducationPost(t, this.config);
+    const lesson = lessonNumberFor(this.audit.latest(), t.id);
+    summary.lesson = lesson;
+    const { text } = generateEducationPost(t, this.config, { lesson });
     let chartRec = null;
     if (this.config.charts?.enabled) {
       try {
         const out = join(chartOpts.dir ?? DEFAULT_CHART_DIR, today, `EDU-${t.id}.png`);
-        renderChartSpec(buildEducationSpec(t, this.config, out), { python: chartOpts.python });
-        chartRec = { path: out, altText: educationAltText(t, this.config) };
+        renderChartSpec(buildEducationSpec(t, this.config, out, { lesson }), { python: chartOpts.python });
+        chartRec = { path: out, altText: educationAltText(t, this.config, { lesson }) };
       } catch (err) {
         chartRec = { path: null, error: err.message };
       }
@@ -974,13 +999,14 @@ export class SocialWorkflow {
       id: this.audit.newId(`EDU-${t.id}`, today),
       kind: 'education',
       topic: t.id,
+      lesson,
       stage: null,
       queue: ed.queue ?? 'stocks',
       symbol: 'EDU',
       reportDate: today,
       reportPath: null,
       dataAsOf: this.now().toISOString(),
-      setup: { setup: `${t.series}: ${t.title}`, signal: 'EDUCATION', confidence: '-', direction: 'neutral', score: null },
+      setup: { setup: `${LESSON_BRAND} ${lessonLabel(lesson)}: ${t.title}`, signal: 'EDUCATION', confidence: '-', direction: 'neutral', score: null },
       originalText: text,
       editedText: null,
       textHash: textHash(text),
@@ -1003,15 +1029,105 @@ export class SocialWorkflow {
       summary.refused = reason;
       return summary;
     }
-    if (dryRun) { this.audit.append({ ...rec, status: 'auto_dry_run' }); summary.record = { id: rec.id, topic: t.id, text, chart: chartRec?.path ?? null, dryRun: true }; return summary; }
+    if (dryRun) { this.audit.append({ ...rec, status: 'auto_dry_run' }); summary.record = { id: rec.id, topic: t.id, lesson, text, chart: chartRec?.path ?? null, dryRun: true }; return summary; }
     const approver = new SocialWorkflow({ config: this.config, audit: this.audit, tracker: this.tracker, metrics: this.metrics, now: this.now, actor: 'education policy', insights: this.insights });
     const approved = approver.approve(rec.id, null);
     if (via === 'browser') {
       const ready = this.audit.append({ ...approved, status: 'ready_to_post' });
-      summary.record = { id: ready.id, topic: t.id, text, chart: chartRec?.path ?? null, ready: true };
+      summary.record = { id: ready.id, topic: t.id, lesson, text, chart: chartRec?.path ?? null, ready: true };
     } else {
       const pub = await approver.publish(approved.id, null, { creds, fetchImpl });
-      summary.record = pub.status === 'published' ? { id: pub.id, topic: t.id, text, url: pub.publication.url, chart: chartRec?.path ?? null } : null;
+      summary.record = pub.status === 'published' ? { id: pub.id, topic: t.id, lesson, text, url: pub.publication.url, chart: chartRec?.path ?? null } : null;
+      if (pub.status !== 'published') summary.refused = `publish failed: ${pub.error}`;
+    }
+    return summary;
+  }
+
+  // ─── launch sequence (the first 14 posts) ──────────────────────────────────
+
+  /**
+   * Build, validate and queue one item of the launch sequence.
+   *
+   * Only items with their own generator can be built. Item 1 (the pinned
+   * introduction) is built here; items that delegate to another generator
+   * (education / follow-up / auto) are refused with the command to run
+   * instead, and items with no generator yet are refused outright — this
+   * command never improvises post text.
+   */
+  async queueLaunch({ item = null, dryRun = false, chartOpts = {}, creds = getCredentialsFromEnv(), fetchImpl } = {}) {
+    const ed = this.config.education ?? {};
+    const policy = this.config.posting.autoPublish ?? {};
+    const via = policy.via ?? 'api';
+    const today = this.now().toISOString().slice(0, 10);
+    const summary = { dryRun, item: null, refused: null, record: null, sequence: LAUNCH_SEQUENCE.map(i => i.id) };
+    if (policy.disabledBy) { summary.refused = `auto-publish disabled by ${policy.disabledBy}`; return summary; }
+    const it = item ? launchItem(item) : nextLaunchItem(this.audit.latest());
+    if (!it) { summary.refused = item ? `unknown launch item "${item}"` : 'the launch sequence is complete'; return summary; }
+    summary.item = it.id;
+    if (it.generator !== 'queueLaunch') {
+      summary.refused = it.generator
+        ? `launch item ${it.n} (${it.id}) is built by \`tv social ${it.generator === 'auto' ? 'auto' : it.generator === 'queueEducation' ? `educate --topic ${it.topic}` : 'track'}\`, not by this command`
+        : `launch item ${it.n} (${it.id}) has no generator yet — it must be added to the pipeline before it can be posted`;
+      return summary;
+    }
+    const dup = this.audit.latest().find(r => r.launchItem === it.id && ['approved', 'ready_to_post', 'published', 'publishing'].includes(r.status));
+    if (dup) { summary.refused = `launch item ${it.n} (${it.id}) is already ${dup.status} (${dup.id})`; return summary; }
+
+    const { text } = generateIntroPost(this.config);
+    let chartRec = null;
+    if (this.config.charts?.enabled) {
+      try {
+        const out = join(chartOpts.dir ?? DEFAULT_CHART_DIR, today, `LAUNCH-${it.id}.png`);
+        renderChartSpec(buildIntroSpec(this.config, out), { python: chartOpts.python });
+        chartRec = { path: out, altText: introAltText(this.config) };
+      } catch (err) {
+        chartRec = { path: null, error: err.message };
+      }
+    }
+    const base = {
+      id: this.audit.newId(`LAUNCH-${it.id}`, today),
+      kind: 'intro',
+      launchItem: it.id,
+      topic: null,
+      stage: null,
+      queue: ed.queue ?? 'stocks',
+      symbol: 'EDU',
+      reportDate: today,
+      reportPath: null,
+      dataAsOf: this.now().toISOString(),
+      setup: { setup: `Launch ${it.n}: ${it.title}`, signal: 'EDUCATION', confidence: '-', direction: 'neutral', score: null },
+      originalText: text,
+      editedText: null,
+      textHash: textHash(text),
+      status: 'draft',
+      issues: [],
+      staleAcknowledged: null,
+      approval: null,
+      publication: null,
+      error: null,
+      createdAt: this.now().toISOString(),
+      chart: chartRec,
+      pin: !!it.pin,
+    };
+    base.issues = this.validateRecord(base, null);
+    const rec = this.audit.append(base);
+    const blockers = blocking(rec.issues);
+    const warns = rec.issues.filter(i => i.severity === 'warn');
+    if (blockers.length || (warns.length && !policy.allowWarnings)) {
+      const reason = [...blockers, ...warns].map(i => `${i.code}: ${i.message}`).join('; ');
+      this.audit.append({ ...rec, status: 'auto_skipped', autoSkipReason: reason });
+      summary.refused = reason;
+      return summary;
+    }
+    if (dryRun) { this.audit.append({ ...rec, status: 'auto_dry_run' }); summary.record = { id: rec.id, item: it.id, text, chart: chartRec?.path ?? null, pin: !!it.pin, dryRun: true }; return summary; }
+    const approver = new SocialWorkflow({ config: this.config, audit: this.audit, tracker: this.tracker, metrics: this.metrics, now: this.now, actor: 'launch policy', insights: this.insights });
+    const approved = approver.approve(rec.id, null);
+    if (via === 'browser') {
+      const ready = this.audit.append({ ...approved, status: 'ready_to_post' });
+      summary.record = { id: ready.id, item: it.id, text, chart: chartRec?.path ?? null, pin: !!it.pin, ready: true };
+    } else {
+      const pub = await approver.publish(approved.id, null, { creds, fetchImpl });
+      summary.record = pub.status === 'published' ? { id: pub.id, item: it.id, text, url: pub.publication.url, chart: chartRec?.path ?? null, pin: !!it.pin } : null;
       if (pub.status !== 'published') summary.refused = `publish failed: ${pub.error}`;
     }
     return summary;

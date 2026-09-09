@@ -1,15 +1,15 @@
 {
-  "fetchedAt": "2026-09-07T14:00:28.384Z",
+  "fetchedAt": "2026-09-08T15:42:40.207Z",
   "source": "coingecko /coins/markets (market_cap_desc)",
-  "size": 20,
+  "size": 10,
   "universe": [
     {
       "rank": 1,
       "symbol": "BTC",
       "name": "Bitcoin",
       "id": "bitcoin",
-      "priceUsd": 79368,
-      "marketCapUsd": 1593858262644,
+      "priceUsd": 78602,
+      "marketCapUsd": 1578338471276,
       "marketCapRank": 1,
       "tv": "BTCUSD",
       "tvCandidates": [
@@ -25,8 +25,8 @@
       "symbol": "ETH",
       "name": "Ethereum",
       "id": "ethereum",
-      "priceUsd": 2499.03,
-      "marketCapUsd": 304987752659,
+      "priceUsd": 2492.08,
+      "marketCapUsd": 304071380860,
       "marketCapRank": 2,
       "tv": "ETHUSD",
       "tvCandidates": [
@@ -42,8 +42,8 @@
       "symbol": "BNB",
       "name": "BNB",
       "id": "binancecoin",
-      "priceUsd": 745.57,
-      "marketCapUsd": 99289874136,
+      "priceUsd": 753.49,
+      "marketCapUsd": 100322682278,
       "marketCapRank": 4,
       "tv": "BNBUSD",
       "tvCandidates": [
@@ -59,8 +59,8 @@
       "symbol": "XRP",
       "name": "XRP",
       "id": "ripple",
-      "priceUsd": 1.4,
-      "marketCapUsd": 88015353902,
+      "priceUsd": 1.42,
+      "marketCapUsd": 89075389308,
       "marketCapRank": 5,
       "tv": "XRPUSD",
       "tvCandidates": [
@@ -76,8 +76,8 @@
       "symbol": "SOL",
       "name": "Solana",
       "id": "solana",
-      "priceUsd": 105.07,
-      "marketCapUsd": 61590221460,
+      "priceUsd": 103.76,
+      "marketCapUsd": 60814638055,
       "marketCapRank": 7,
       "tv": "SOLUSD",
       "tvCandidates": [
@@ -93,8 +93,8 @@
       "symbol": "TRX",
       "name": "TRON",
       "id": "tron",
-      "priceUsd": 0.335275,
-      "marketCapUsd": 31831211236,
+      "priceUsd": 0.339143,
+      "marketCapUsd": 32198840947,
       "marketCapRank": 8,
       "tv": "TRXUSD",
       "tvCandidates": [
@@ -110,9 +110,9 @@
       "symbol": "ZEC",
       "name": "Zcash",
       "id": "zcash",
-      "priceUsd": 1185.1,
-      "marketCapUsd": 20042835751,
-      "marketCapRank": 9,
+      "priceUsd": 1181.46,
+      "marketCapUsd": 19991169659,
+      "marketCapRank": 10,
       "tv": "ZECUSD",
       "tvCandidates": [
         "ZECUSD",
@@ -127,9 +127,9 @@
       "symbol": "HYPE",
       "name": "Hyperliquid",
       "id": "hyperliquid",
-      "priceUsd": 87.58,
-      "marketCapUsd": 19488312814,
-      "marketCapRank": 10,
+      "priceUsd": 83.87,
+      "marketCapUsd": 18654196593,
+      "marketCapRank": 11,
       "tv": "HYPEUSD",
       "tvCandidates": [
         "HYPEUSD",
@@ -144,9 +144,9 @@
       "symbol": "DOGE",
       "name": "Dogecoin",
       "id": "dogecoin",
-      "priceUsd": 0.090908,
-      "marketCapUsd": 14163721521,
-      "marketCapRank": 11,
+      "priceUsd": 0.090446,
+      "marketCapUsd": 14091261912,
+      "marketCapRank": 12,
       "tv": "DOGEUSD",
       "tvCandidates": [
         "DOGEUSD",
@@ -161,9 +161,9 @@
       "symbol": "RAIN",
       "name": "Rain",
       "id": "rain",
-      "priceUsd": 0.01646043,
-      "marketCapUsd": 11675436253,
-      "marketCapRank": 12,
+      "priceUsd": 0.01668907,
+      "marketCapUsd": 11830964179,
+      "marketCapRank": 13,
       "tv": "RAINUSD",
       "tvCandidates": [
         "RAINUSD",
@@ -172,31 +172,16 @@
         "CRYPTO:RAINUSD"
       ],
       "yahoo": "RAIN-USD"
-    },
+    }
+  ],
+  "reserves": [
     {
       "rank": 11,
-      "symbol": "XMR",
-      "name": "Monero",
-      "id": "monero",
-      "priceUsd": 536.5,
-      "marketCapUsd": 10085595124,
-      "marketCapRank": 13,
-      "tv": "XMRUSD",
-      "tvCandidates": [
-        "XMRUSD",
-        "COINBASE:XMRUSD",
-        "BINANCE:XMRUSDT",
-        "CRYPTO:XMRUSD"
-      ],
-      "yahoo": "XMR-USD"
-    },
-    {
-      "rank": 12,
       "symbol": "LINK",
       "name": "Chainlink",
       "id": "chainlink",
-      "priceUsd": 13.15,
-      "marketCapUsd": 9838483452,
+      "priceUsd": 12.64,
+      "marketCapUsd": 9458931524,
       "marketCapRank": 15,
       "tv": "LINKUSD",
       "tvCandidates": [
@@ -208,12 +193,12 @@
       "yahoo": "LINK-USD"
     },
     {
-      "rank": 13,
+      "rank": 12,
       "symbol": "WBT",
       "name": "WhiteBIT Coin",
       "id": "whitebit",
-      "priceUsd": 73.2,
-      "marketCapUsd": 8635378247,
+      "priceUsd": 80.03,
+      "marketCapUsd": 9439462848,
       "marketCapRank": 16,
       "tv": "WBTUSD",
       "tvCandidates": [
@@ -225,29 +210,29 @@
       "yahoo": "WBT-USD"
     },
     {
-      "rank": 14,
-      "symbol": "LEO",
-      "name": "LEO Token",
-      "id": "leo-token",
-      "priceUsd": 9.18,
-      "marketCapUsd": 8444409979,
+      "rank": 13,
+      "symbol": "XMR",
+      "name": "Monero",
+      "id": "monero",
+      "priceUsd": 495.99,
+      "marketCapUsd": 9333480282,
       "marketCapRank": 17,
-      "tv": "LEOUSD",
+      "tv": "XMRUSD",
       "tvCandidates": [
-        "LEOUSD",
-        "COINBASE:LEOUSD",
-        "BINANCE:LEOUSDT",
-        "CRYPTO:LEOUSD"
+        "XMRUSD",
+        "COINBASE:XMRUSD",
+        "BINANCE:XMRUSDT",
+        "CRYPTO:XMRUSD"
       ],
-      "yahoo": "LEO-USD"
+      "yahoo": "XMR-USD"
     },
     {
-      "rank": 15,
+      "rank": 14,
       "symbol": "ADA",
       "name": "Cardano",
       "id": "cardano",
-      "priceUsd": 0.222709,
-      "marketCapUsd": 8350761107,
+      "priceUsd": 0.227929,
+      "marketCapUsd": 8550283831,
       "marketCapRank": 18,
       "tv": "ADAUSD",
       "tvCandidates": [
@@ -259,13 +244,30 @@
       "yahoo": "ADA-USD"
     },
     {
+      "rank": 15,
+      "symbol": "LEO",
+      "name": "LEO Token",
+      "id": "leo-token",
+      "priceUsd": 9.22,
+      "marketCapUsd": 8478692443,
+      "marketCapRank": 19,
+      "tv": "LEOUSD",
+      "tvCandidates": [
+        "LEOUSD",
+        "COINBASE:LEOUSD",
+        "BINANCE:LEOUSDT",
+        "CRYPTO:LEOUSD"
+      ],
+      "yahoo": "LEO-USD"
+    },
+    {
       "rank": 16,
       "symbol": "XLM",
       "name": "Stellar",
       "id": "stellar",
-      "priceUsd": 0.192408,
-      "marketCapUsd": 6695823537,
-      "marketCapRank": 19,
+      "priceUsd": 0.191059,
+      "marketCapUsd": 6648491445,
+      "marketCapRank": 20,
       "tv": "XLMUSD",
       "tvCandidates": [
         "XLMUSD",
@@ -280,9 +282,9 @@
       "symbol": "BCH",
       "name": "Bitcoin Cash",
       "id": "bitcoin-cash",
-      "priceUsd": 260.5,
-      "marketCapUsd": 5233562185,
-      "marketCapRank": 20,
+      "priceUsd": 257.43,
+      "marketCapUsd": 5171019837,
+      "marketCapRank": 21,
       "tv": "BCHUSD",
       "tvCandidates": [
         "BCHUSD",
@@ -294,29 +296,12 @@
     },
     {
       "rank": 18,
-      "symbol": "LTC",
-      "name": "Litecoin",
-      "id": "litecoin",
-      "priceUsd": 57.54,
-      "marketCapUsd": 4462327688,
-      "marketCapRank": 22,
-      "tv": "LTCUSD",
-      "tvCandidates": [
-        "LTCUSD",
-        "COINBASE:LTCUSD",
-        "BINANCE:LTCUSDT",
-        "CRYPTO:LTCUSD"
-      ],
-      "yahoo": "LTC-USD"
-    },
-    {
-      "rank": 19,
       "symbol": "UNI",
       "name": "Uniswap",
       "id": "uniswap",
-      "priceUsd": 7.09,
-      "marketCapUsd": 4417428251,
-      "marketCapRank": 23,
+      "priceUsd": 6.89,
+      "marketCapUsd": 4294642644,
+      "marketCapRank": 24,
       "tv": "UNIUSD",
       "tvCandidates": [
         "UNIUSD",
@@ -325,161 +310,6 @@
         "CRYPTO:UNIUSD"
       ],
       "yahoo": "UNI-USD"
-    },
-    {
-      "rank": 20,
-      "symbol": "CC",
-      "name": "Canton",
-      "id": "canton-network",
-      "priceUsd": 0.108536,
-      "marketCapUsd": 4292284044,
-      "marketCapRank": 25,
-      "tv": "CCUSD",
-      "tvCandidates": [
-        "CCUSD",
-        "COINBASE:CCUSD",
-        "BINANCE:CCUSDT",
-        "CRYPTO:CCUSD"
-      ],
-      "yahoo": "CC-USD"
-    }
-  ],
-  "reserves": [
-    {
-      "rank": 21,
-      "symbol": "GRAM",
-      "name": "Gram (prev. Toncoin)",
-      "id": "the-open-network",
-      "priceUsd": 1.42,
-      "marketCapUsd": 3938104629,
-      "marketCapRank": 27,
-      "tv": "GRAMUSD",
-      "tvCandidates": [
-        "GRAMUSD",
-        "COINBASE:GRAMUSD",
-        "BINANCE:GRAMUSDT",
-        "CRYPTO:GRAMUSD"
-      ],
-      "yahoo": "GRAM-USD"
-    },
-    {
-      "rank": 22,
-      "symbol": "HBAR",
-      "name": "Hedera",
-      "id": "hedera-hashgraph",
-      "priceUsd": 0.082994,
-      "marketCapUsd": 3638582956,
-      "marketCapRank": 28,
-      "tv": "HBARUSD",
-      "tvCandidates": [
-        "HBARUSD",
-        "COINBASE:HBARUSD",
-        "BINANCE:HBARUSDT",
-        "CRYPTO:HBARUSD"
-      ],
-      "yahoo": "HBAR-USD"
-    },
-    {
-      "rank": 23,
-      "symbol": "AVAX",
-      "name": "Avalanche",
-      "id": "avalanche-2",
-      "priceUsd": 8.08,
-      "marketCapUsd": 3488970431,
-      "marketCapRank": 29,
-      "tv": "AVAXUSD",
-      "tvCandidates": [
-        "AVAXUSD",
-        "COINBASE:AVAXUSD",
-        "BINANCE:AVAXUSDT",
-        "CRYPTO:AVAXUSD"
-      ],
-      "yahoo": "AVAX-USD"
-    },
-    {
-      "rank": 24,
-      "symbol": "SUI",
-      "name": "Sui",
-      "id": "sui",
-      "priceUsd": 0.832063,
-      "marketCapUsd": 3409610766,
-      "marketCapRank": 30,
-      "tv": "SUIUSD",
-      "tvCandidates": [
-        "SUIUSD",
-        "COINBASE:SUIUSD",
-        "BINANCE:SUIUSDT",
-        "CRYPTO:SUIUSD"
-      ],
-      "yahoo": "SUI-USD"
-    },
-    {
-      "rank": 25,
-      "symbol": "SHIB",
-      "name": "Shiba Inu",
-      "id": "shiba-inu",
-      "priceUsd": 0.00000552,
-      "marketCapUsd": 3254647221,
-      "marketCapRank": 32,
-      "tv": "SHIBUSD",
-      "tvCandidates": [
-        "SHIBUSD",
-        "COINBASE:SHIBUSD",
-        "BINANCE:SHIBUSDT",
-        "CRYPTO:SHIBUSD"
-      ],
-      "yahoo": "SHIB-USD"
-    },
-    {
-      "rank": 26,
-      "symbol": "NEAR",
-      "name": "NEAR Protocol",
-      "id": "near",
-      "priceUsd": 2.39,
-      "marketCapUsd": 3114397408,
-      "marketCapRank": 33,
-      "tv": "NEARUSD",
-      "tvCandidates": [
-        "NEARUSD",
-        "COINBASE:NEARUSD",
-        "BINANCE:NEARUSDT",
-        "CRYPTO:NEARUSD"
-      ],
-      "yahoo": "NEAR-USD"
-    },
-    {
-      "rank": 27,
-      "symbol": "CRO",
-      "name": "Cronos",
-      "id": "crypto-com-chain",
-      "priceUsd": 0.057846,
-      "marketCapUsd": 2801733991,
-      "marketCapRank": 36,
-      "tv": "CROUSD",
-      "tvCandidates": [
-        "CROUSD",
-        "COINBASE:CROUSD",
-        "BINANCE:CROUSDT",
-        "CRYPTO:CROUSD"
-      ],
-      "yahoo": "CRO-USD"
-    },
-    {
-      "rank": 28,
-      "symbol": "XAUT",
-      "name": "Tether Gold",
-      "id": "tether-gold",
-      "priceUsd": 4399.46,
-      "marketCapUsd": 2696208559,
-      "marketCapRank": 37,
-      "tv": "XAUTUSD",
-      "tvCandidates": [
-        "XAUTUSD",
-        "COINBASE:XAUTUSD",
-        "BINANCE:XAUTUSDT",
-        "CRYPTO:XAUTUSD"
-      ],
-      "yahoo": "XAUT-USD"
     }
   ],
   "excluded": [

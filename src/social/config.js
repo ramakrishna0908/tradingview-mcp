@@ -61,8 +61,12 @@ const FALLBACK = {
   followUps: { enabled: true, maxAgeSessions: 15, postLevelTests: true, maxEventAgeHours: 96, maxUpdatesPerRun: 2 },
   // Weekly scorecard (tv social scorecard): counts from the tracker, posted on `weekday` (1=Mon … 5=Fri).
   scorecard: { enabled: true, weekday: 5, queue: 'stocks', hashtags: ['#Stocks', '#Crypto'] },
-  // Educational explainers (tv social educate): one topic per post, rotated.
-  education: { enabled: false, queue: 'stocks', hashtags: ['#TechnicalAnalysis', '#Trading'], footer: 'Educational only. Not financial advice.', width: 1080, height: 1350 },
+  // Educational explainers (tv social educate): one topic per post, rotated,
+  // published as a numbered "AI Trade School" lesson. `hashtags` is the exact
+  // tag line a lesson ends on — the archive tag is not appended to it.
+  education: { enabled: false, queue: 'stocks', hashtags: ['#TechnicalAnalysis', '#TradingEducation'], archiveTag: null, maxTags: 3, footer: 'Educational only. Not financial advice.', width: 1080, height: 1350 },
+  // The 14-post launch sequence (tv social launch): src/social/launch.js is the plan of record.
+  launch: { enabled: false, queue: 'stocks' },
   // Premarket market-direction post (tv social premarket): built from docs/reports/premarket/<date>.json, once per session.
   premarket: { enabled: false, queue: 'stocks', hashtags: ['#Stocks', '#Premarket'] },
   // Daily chart-education video (tv social video): one topic per day from src/social/video.js, 9:16 MP4.
@@ -101,6 +105,7 @@ export function loadConfig(path = process.env.SOCIAL_COMPLIANCE_CONFIG || DEFAUL
     followUps: { ...FALLBACK.followUps, ...(parsed.followUps || {}) },
     scorecard: { ...FALLBACK.scorecard, ...(parsed.scorecard || {}) },
     education: { ...FALLBACK.education, ...(parsed.education || {}) },
+    launch: { ...FALLBACK.launch, ...(parsed.launch || {}) },
     premarket: { ...FALLBACK.premarket, ...(parsed.premarket || {}) },
     video: { ...FALLBACK.video, ...(parsed.video || {}) },
   };

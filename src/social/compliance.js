@@ -124,8 +124,11 @@ export function allowedNumbers(setup, row) {
  */
 export function validatePost(text, ctx) {
   const { setup, row, model, config } = ctx;
-  const kind = ctx.kind ?? 'setup'; // 'setup' | 'thread' | 'closeupdate' | 'followup' | 'scorecard' | 'education' | 'video' | 'premarket'
-  const educational = kind === 'education' || kind === 'video'; // concept posts: no ticker, no levels, no data line
+  const kind = ctx.kind ?? 'setup'; // 'setup' | 'thread' | 'closeupdate' | 'followup' | 'scorecard' | 'education' | 'video' | 'premarket' | 'intro'
+  // Concept posts: no ticker, no levels, no data line. 'intro' is the pinned
+  // account introduction — it describes what the account teaches and cites no
+  // market data at all, so it is held to the same rules as a lesson.
+  const educational = kind === 'education' || kind === 'video' || kind === 'intro';
   const now = ctx.now ?? new Date();
   const issues = [];
   const push = (code, severity, message) => issues.push({ code, severity, message });
@@ -154,8 +157,11 @@ export function validatePost(text, ctx) {
     else if (lastNonTagLine.trim() !== disclosure) push('disclosure_position', 'warn', 'Disclosure should be the final line (a hashtag-only line may follow it)');
   }
 
-  // 3b. hashtags — required tags present, nothing promotional, not spammy
-  const tags = [...t.matchAll(/(?<![\w&])#([A-Za-z0-9_]+)/g)].map(m => '#' + m[1]);
+  // 3b. hashtags — required tags present, nothing promotional, not spammy.
+  // An all-digit "#01" is not a hashtag on X (a tag needs at least one letter or
+  // underscore), so it must not count against the cap — otherwise the lesson
+  // number in "🎓 AI Trade School — Lesson #01" would eat a tag slot.
+  const tags = [...t.matchAll(/(?<![\w&])#([A-Za-z0-9_]+)/g)].map(m => '#' + m[1]).filter(x => /[A-Za-z_]/.test(x));
   const tagSet = new Set(tags.map(x => x.toLowerCase()));
   for (const req of config.hashtags?.required ?? []) {
     if (!tagSet.has(req.toLowerCase())) push('missing_hashtag', 'block', `Required hashtag missing: ${req}`);
@@ -163,8 +169,11 @@ export function validatePost(text, ctx) {
   for (const bad of config.hashtags?.prohibited ?? []) {
     if (tagSet.has(bad.toLowerCase())) push('prohibited_hashtag', 'block', `Prohibited hashtag: ${bad}`);
   }
-  if (config.hashtags?.maxTotal && tags.length > config.hashtags.maxTotal) {
-    push('too_many_hashtags', 'warn', `${tags.length} hashtags (max ${config.hashtags.maxTotal})`);
+  // Educational posts carry the archive tag on top of their reach tags, so they
+  // have their own cap — widening them must never loosen the setup posts.
+  const tagCap = educational ? (config.education?.maxTags ?? config.hashtags?.maxTotal) : config.hashtags?.maxTotal;
+  if (tagCap && tags.length > tagCap) {
+    push('too_many_hashtags', 'warn', `${tags.length} hashtags (max ${tagCap})`);
   }
 
   // 4. stale data

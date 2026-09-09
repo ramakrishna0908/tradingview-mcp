@@ -153,7 +153,7 @@
     }
   },
   "hashtags": {
-    "$comment": "Sweep format: 0-2 tags — the cashtag as a hashtag (#ETH) plus one asset-class tag. No required marker tags: the disclosure lives in the bio AND on every chart, which is why charts.requireForPublish must be true (config loader enforces it). Put #NFA #DYOR back in required to restore the in-post marker.",
+    "$comment": "Sweep setup format: 0-2 tags — the cashtag as a hashtag (#ETH) plus one asset-class tag. maxTotal is the cap for SETUP posts; educational posts have their own, larger cap (education.maxTags) because the video and intro posts carry the #AITradeSchool archive tag on top of their reach tags; explainer lessons end on exactly the two tags in education.hashtags. No required marker tags: the disclosure lives in the bio AND on every chart, which is why charts.requireForPublish must be true (config loader enforces it). Put #NFA #DYOR back in required to restore the in-post marker.",
     "required": [],
     "engagement": {
       "default": [
@@ -253,7 +253,8 @@
     "queue": "stocks",
     "hashtags": [
       "#TechnicalAnalysis",
-      "#ChartEducation"
+      "#ChartEducation",
+      "#AITradeSchool"
     ],
     "footer": "Educational only. Not financial advice.",
     "width": 1080,
@@ -266,12 +267,22 @@
     "queue": "stocks",
     "hashtags": [
       "#TechnicalAnalysis",
-      "#Trading"
+      "#TradingEducation"
     ],
+    "$hashtags": "The exact tag line every AI Trade School lesson ends on, in order. Explainer posts take this list verbatim (education.lessonTags) and do NOT get archiveTag appended — the lesson header '🎓 AI Trade School — Lesson #NN' is the visible branding, so the post does not also spend a tag on it. Video and intro posts still go through educationalTags and still carry the archive tag.",
     "footer": "Educational only. Not financial advice.",
     "width": 1080,
     "height": 1350,
-    "$comment": "Educational explainer posts (tv social educate), Tuesday and Friday 8 AM via the post-education-explainer task. One topic per post from src/social/education.js, rotated so the curriculum cycles. The card is 1080x1350 (Instagram 4:5) with the footer text above; the text carries no ticker (compliance blocks one) and 0-2 hashtags. Only one config should have this enabled."
+    "$comment": "Educational explainer posts (tv social educate), Tuesday and Friday 8 AM via the post-education-explainer task. One topic per post from src/social/education.js, rotated so the curriculum cycles, published as a numbered 'AI Trade School' lesson (header, title, hook, up to five points, 👇 question, two tags). Lesson numbers are per topic and permanent — see lessonNumbers() in src/social/education.js. The card is 1080x1350 (Instagram 4:5) with the footer text above and the lesson number in the header chip; the text carries no ticker (compliance blocks one). Only one config should have this enabled.",
+    "archiveTag": "#AITradeSchool",
+    "$archiveTag": "The archive tag for the video, launch-lesson and pinned-intro posts (educationalTags appends it last). Explainer lessons no longer carry it — they lead with the '🎓 AI Trade School — Lesson #NN' header instead and end on exactly the two tags in education.hashtags. Distinctive to this account on purpose — a generic tag would mix our lessons in with everyone else's. Changing it orphans every post already published under the old tag.",
+    "maxTags": 3,
+    "$maxTags": "Hashtag cap for educational posts (explainer, video, launch lesson, intro) — up to two reach tags plus the archive tag, so 3. Explainer lessons use only two of it. Separate from hashtags.maxTotal so widening the lesson posts never loosens the setup posts."
+  },
+  "launch": {
+    "enabled": true,
+    "queue": "stocks",
+    "$comment": "The 14-post launch sequence (tv social launch), the running order that establishes what the account teaches before the daily rotations take over. The plan of record is LAUNCH_SEQUENCE in src/social/launch.js; only items with a generator there can be built, and this command never improvises post text. Item 1 is the pinned introduction — pin it by hand after posting."
   },
   "thread": {
     "$comment": "Surplus quality setups from the same sweep are queued as replies under the day's hero post instead of standalone tweets (kind 'thread', not tracked/scored). 0 disables.",

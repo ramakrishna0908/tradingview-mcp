@@ -11,7 +11,9 @@
  *   tv social reject  <draftId> --reason "..."
  *   tv social publish <draftId>            (official X API, env credentials)
  *   tv social record  <draftId> --post-id <id> [--url <url>]
+ *   tv social retract <draftId> --reason "..."    post was deleted on X
  *   tv social auto    [--report <html>] [--dry-run]   policy-gated unattended publish
+ *   tv social launch  [--item <id|n>] [--list]         the 14-post launch sequence
  *
  * Manual commands never auto-publish. `auto` publishes only what passes every
  * guard in config posting.autoPublish and is audited like a human approval.
@@ -187,6 +189,17 @@ const subcommands = new Map([
       const next = wf.reject(positionals[0], values.reason || '');
       if (values.json) return out(next);
       printRecord(next);
+      done();
+    },
+  }],
+  ['retract', {
+    description: 'Record that a published post was deleted on X (keeps the publication in the trail, frees the slot)',
+    options: { reason: { type: 'string', description: 'Why it came down' } },
+    handler: async (values, positionals) => {
+      const wf = new SocialWorkflow();
+      if (!values.reason) throw new Error('--reason is required');
+      const rec = wf.retract(positionals[0], values.reason);
+      console.log(`retracted ${rec.id} · was ${rec.retraction.url ?? '(no url)'} · ${rec.retraction.reason}`);
       done();
     },
   }],
@@ -369,11 +382,12 @@ subcommands.set('educate', {
   handler: async (values) => {
     const wf = new SocialWorkflow();
     if (values.list) {
-      const { TOPICS } = await import('../../social/education.js');
+      const { TOPICS, lessonNumbers, lessonLabel } = await import('../../social/education.js');
       const last = new Map();
       for (const r of wf.audit.latest()) if (r.kind === 'education' && r.status === 'published') { const at = r.publication?.at ?? ''; if (!last.has(r.topic) || at > last.get(r.topic)) last.set(r.topic, at); }
-      if (values.json) return out(TOPICS.map(t => ({ id: t.id, series: t.series, title: t.title, lastPosted: last.get(t.id) ?? null })));
-      for (const t of TOPICS) console.log(`${t.id.padEnd(22)} ${t.series.padEnd(13)} ${t.title.padEnd(32)} ${last.get(t.id) ? 'last ' + last.get(t.id).slice(0, 10) : 'never posted'}`);
+      const lessons = lessonNumbers(wf.audit.latest());
+      if (values.json) return out(TOPICS.map(t => ({ id: t.id, series: t.series, title: t.title, lesson: lessons.get(t.id) ?? null, lastPosted: last.get(t.id) ?? null })));
+      for (const t of TOPICS) console.log(`${t.id.padEnd(22)} ${(lessons.has(t.id) ? lessonLabel(lessons.get(t.id)) : '—').padEnd(11)} ${t.series.padEnd(13)} ${t.title.padEnd(32)} ${last.get(t.id) ? 'last ' + last.get(t.id).slice(0, 10) : 'never posted'}`);
       done();
     }
     const summary = await wf.queueEducation({ topic: values.topic ?? null, dryRun: !!values['dry-run'] });
@@ -381,6 +395,34 @@ subcommands.set('educate', {
     console.log(`educate · topic ${summary.topic ?? '—'}${summary.dryRun ? ' · DRY RUN' : ''}`);
     if (summary.refused) { console.log(`refused: ${summary.refused}`); done(2); }
     if (summary.record) console.log(`\n${summary.record.dryRun ? 'WOULD QUEUE' : summary.record.ready ? 'READY (browser)' : 'POSTED'} (${summary.record.id})${summary.record.url ? ' → ' + summary.record.url : ''}\n${summary.record.text}\ncard: ${summary.record.chart ?? 'none'}`);
+    done(0);
+  },
+});
+
+subcommands.set('launch', {
+  description: 'Build, render, validate and queue the next post in the 14-post launch sequence (or --item <id|n>)',
+  options: { item: { type: 'string', description: 'Launch item id or number (see --list)' }, list: { type: 'boolean', description: 'List the launch sequence and what has been posted' }, 'dry-run': { type: 'boolean', description: 'Show the post without queueing it' }, ...jsonOpt },
+  handler: async (values) => {
+    const wf = new SocialWorkflow();
+    if (values.list) {
+      const { LAUNCH_SEQUENCE } = await import('../../social/launch.js');
+      const posted = new Map();
+      for (const r of wf.audit.latest()) {
+        if (!r.launchItem) continue;
+        if (['published', 'ready_to_post', 'approved', 'publishing'].includes(r.status)) posted.set(r.launchItem, r.status);
+      }
+      if (values.json) return out(LAUNCH_SEQUENCE.map(i => ({ ...i, status: posted.get(i.id) ?? null })));
+      for (const i of LAUNCH_SEQUENCE) {
+        const state = posted.get(i.id) ?? (i.generator ? 'buildable' : 'not built yet');
+        console.log(`${String(i.n).padStart(2)}. ${i.id.padEnd(22)} ${i.kind.padEnd(10)} ${state.padEnd(14)} ${i.title}`);
+      }
+      done();
+    }
+    const summary = await wf.queueLaunch({ item: values.item ?? null, dryRun: !!values['dry-run'] });
+    if (values.json) return out(summary);
+    console.log(`launch · item ${summary.item ?? '—'}${summary.dryRun ? ' · DRY RUN' : ''}`);
+    if (summary.refused) { console.log(`refused: ${summary.refused}`); done(2); }
+    if (summary.record) console.log(`\n${summary.record.dryRun ? 'WOULD QUEUE' : summary.record.ready ? 'READY (browser)' : 'POSTED'} (${summary.record.id})${summary.record.url ? ' → ' + summary.record.url : ''}${summary.record.pin ? '  [PIN THIS POST]' : ''}\n${summary.record.text}\ncard: ${summary.record.chart ?? 'none'}`);
     done(0);
   },
 });

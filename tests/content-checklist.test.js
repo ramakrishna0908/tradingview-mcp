@@ -44,16 +44,23 @@ const chart = { path: '/tmp/eth.png', volumeRatio: 0.8 };
 
 const MAX_LINES = 14;            // phone-height: the whole post is readable without "Show more" fatigue
 const MAX_LINE_CHARS = 150;      // one thought per line; wraps to ≤ 3 lines on a phone
-const hashtags = t => [...t.matchAll(/(?<![\w&$])#[A-Za-z0-9_]+/g)].length;
-const hasCta = t => /\? 👇$/m.test(t);
+// An all-digit "#01" (the lesson number) is not a hashtag on X — don't count it.
+const hashtags = t => [...t.matchAll(/(?<![\w&$])#[A-Za-z0-9_]+/g)].filter(m => /[A-Za-z_]/.test(m[0])).length;
+// Setup posts close on "…? 👇"; AI Trade School lessons lead the line with 👇.
+const hasCta = t => /\? 👇$/m.test(t) || /^👇 .*\?$/m.test(t);
 const JARGON_ONLY = /\b(CMF|RSI|RVOL|VWAP|ATR|SMA|EMA|BB)\b/;
 
-/** Shared shape rules for any kind. */
-function common(kind, text) {
+/**
+ * Shared shape rules for any kind. Setup posts run 0-2 tags; the video, launch
+ * lesson and intro posts allow a third — the #AITradeSchool archive tag that
+ * makes the whole back catalogue one tap away. AI Trade School explainers run
+ * exactly two: they carry the branding in the header line instead.
+ */
+function common(kind, text, { maxTags = 2 } = {}) {
   const lines = text.split('\n');
   assert.ok(lines.length <= MAX_LINES, `${kind}: ${lines.length} lines (max ${MAX_LINES})\n${text}`);
   for (const l of lines) assert.ok(l.length <= MAX_LINE_CHARS, `${kind}: line too long for a phone (${l.length}): ${l}`);
-  assert.ok(hashtags(text) <= 2, `${kind}: more than 2 hashtags`);
+  assert.ok(hashtags(text) <= maxTags, `${kind}: more than ${maxTags} hashtags`);
   assert.ok(hasCta(text), `${kind}: no reply-driving question line ending in "? 👇"\n${text}`);
   assert.ok(!/\b(will|guaranteed|target|forecast|projected|to the moon|buy now|sell now)\b/i.test(text), `${kind}: forward-looking or promotional wording\n${text}`);
   assert.ok(!/🚀|💎|🙌/u.test(text), `${kind}: promotional emoji`);
@@ -150,12 +157,15 @@ describe('content checklist: weekly scorecard', () => {
 });
 
 describe('content checklist: educational explainer', () => {
-  it('every topic: series hook, two plain-language lines, bullish/bearish/neutral takeaways, CTA, no ticker, ≤2 tags', () => {
+  it('every topic: lesson header, title, hook, two plain-language lines, bullish/bearish/neutral takeaways, CTA, no ticker, exactly two tags', () => {
     const c = load(STOCK_CFG);
     for (const topic of TOPICS) {
-      const { text } = generateEducationPost(topic, c);
-      common(`education/${topic.id}`, text);
-      assert.match(text.split('\n')[0], /^📚 (Chart Basics|Indicators|Price Action): /);
+      const { text } = generateEducationPost(topic, c, { lesson: 7 });
+      common(`education/${topic.id}`, text, { maxTags: 2 });
+      const head = text.split('\n');
+      assert.equal(head[0], '🎓 AI Trade School — Lesson #07');
+      assert.equal(head[1], topic.title);
+      assert.equal(head[2], topic.definition, 'the hook is the topic definition');
       assert.match(text, /\n✅ Bullish — /); assert.match(text, /\n🛑 Bearish — /); assert.match(text, /\n⚖️ Neutral — /);
       assert.ok(!/\$[A-Z]{1,6}\b/.test(text), `${topic.id}: names a ticker`);
       const ctx = { setup: null, row: null, model: { reportDate: '2026-09-08', dataAsOf: new Date().toISOString() }, config: c, kind: 'education', chart: { path: '/tmp/e.png' } };
@@ -165,11 +175,11 @@ describe('content checklist: educational explainer', () => {
 });
 
 describe('content checklist: daily chart-education video', () => {
-  it('every topic: 🎬 hook line, the 1–2 s hook, What it means / How traders use it, question CTA, Save-this line, no ticker, ≤2 tags; 10–15 s spec with the footer', () => {
+  it('every topic: 🎬 hook line, the 1–2 s hook, What it means / How traders use it, question CTA, Save-this line, no ticker, ≤3 tags incl. the archive tag; 10–15 s spec with the footer', () => {
     const c = load(STOCK_CFG);
     for (const topic of VIDEO_TOPICS) {
       const { text, lines } = generateVideoPost(topic, c);
-      common(`video/${topic.id}`, text);
+      common(`video/${topic.id}`, text, { maxTags: 3 });
       assert.match(lines[0], /^🎬 Chart Education: /);
       assert.match(text, /\nWhat it means: .+\nHow traders use it: .+\n/);
       assert.ok(text.includes(VIDEO_CTA), `${topic.id}: missing "${VIDEO_CTA}"`);

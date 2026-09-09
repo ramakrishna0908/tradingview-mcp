@@ -201,7 +201,7 @@ export function chartAltText(setup, model) {
 /** Run the Pillow renderer. Returns the PNG path, or throws. */
 export function renderChartSpec(spec, { python = process.env.SOCIAL_PYTHON || 'python3' } = {}) {
   mkdirSync(dirname(spec.out), { recursive: true });
-  const renderer = ['sweep', 'scorecard', 'explainer', 'premarket'].includes(spec.style) ? RENDERER_SWEEP : RENDERER;
+  const renderer = ['sweep', 'scorecard', 'explainer', 'premarket', 'intro'].includes(spec.style) ? RENDERER_SWEEP : RENDERER;
   const r = spawnSync(python, [renderer], { input: JSON.stringify(spec), encoding: 'utf8', timeout: 30_000 });
   if (r.status !== 0) throw new Error(`chart renderer failed: ${(r.stderr || r.stdout || '').trim().split('\n').at(-1)}`);
   if (!existsSync(spec.out)) throw new Error('chart renderer produced no file');

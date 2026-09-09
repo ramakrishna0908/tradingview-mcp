@@ -66,7 +66,7 @@ describe('chart-education video library', () => {
     assert.equal(getVideoTopic('nope'), null);
   });
 
-  it('post text: hook, What it means / How traders use it, question CTA, "Save this • Follow…", ≤ 2 tags, compliance-clean as kind video', () => {
+  it('post text: hook, What it means / How traders use it, question CTA, "Save this • Follow…", ≤ 3 tags, compliance-clean as kind video', () => {
     const cfg = load(STOCK_CFG);
     for (const t of VIDEO_TOPICS) {
       const { text, lines } = generateVideoPost(t, cfg);
@@ -76,7 +76,7 @@ describe('chart-education video library', () => {
       assert.match(lines[3], /^How traders use it: [a-z]/);
       assert.equal(lines[4], t.question);
       assert.equal(lines[5], VIDEO_CTA);
-      assert.equal(lines.at(-1), '#TechnicalAnalysis #ChartEducation');
+      assert.equal(lines.at(-1), '#TechnicalAnalysis #ChartEducation #AITradeSchool', 'reach tags plus the archive tag');
       assert.ok(lines.length <= 8);
       const ctx = { setup: null, row: null, model: { reportDate: '2026-09-08', dataAsOf: new Date().toISOString() }, config: cfg, kind: 'video', chart: { path: '/tmp/v.mp4' } };
       assert.deepEqual(blocking(validatePost(text, ctx)), [], `${t.id}: ${JSON.stringify(blocking(validatePost(text, ctx)))}`);

@@ -499,6 +499,117 @@ def render_premarket(spec):
     print(spec['out'])
 
 
+# ─── intro / "start here" card ───────────────────────────────────────────────
+
+
+def render_intro(spec):
+    """The pinned introduction card: brand, hook, what the account teaches,
+    the no-hype promise, the follow line, and the standing disclaimer.
+
+    Two-pass layout: measure every block first, then spread the leftover
+    height evenly across the gaps so the card fills its canvas at any
+    bullet count instead of stranding a hole in the middle."""
+    W, H = int(spec.get('width', 1080)), int(spec.get('height', 1350))
+    img = Image.new('RGB', (W, H), BG)
+    d = ImageDraw.Draw(img)
+    M = 60
+    TOP, FOOT = 150, 104          # content band: below the header, above the rule
+
+    def wrap(text, f, maxw):
+        out, cur = [], ''
+        for w in text.split():
+            t = (cur + ' ' + w).strip()
+            if d.textlength(t, font=f) > maxw and cur:
+                out.append(cur)
+                cur = w
+            else:
+                cur = t
+        if cur:
+            out.append(cur)
+        return out
+
+    f_hook, f_head, f_bul = font(46, True), font(26, True), font(27)
+    f_prom, f_cta = font(31, True), font(25)
+    hook_rows = wrap(spec.get('hook', ''), f_hook, W - 2 * M)
+    bullets = [(b, wrap(b, f_bul, W - 2 * M - 46)) for b in spec.get('bullets', [])]
+    promise = spec.get('promise', [])
+    cta_rows = wrap(spec.get('cta', ''), f_cta, W - 2 * M)
+
+    RULE_H, BUL_PAD, BUL_LINE = 5, 26, 36
+    bul_h = [BUL_PAD + BUL_LINE * len(rows) for _, rows in bullets]
+    content = (58 * len(hook_rows) + RULE_H + 52 + sum(bul_h)
+               + 40 * len(promise) + 34 * len(cta_rows))
+    # gaps, in order: hook→rule, rule→heading, between bullets, bullets→promise, promise→cta
+    n_gaps = 4 + max(0, len(bullets) - 1)
+    slack = max(0, (H - FOOT - 34 - TOP) - content)   # 34 = breathing room above the footer rule
+    base_gaps = [18, 44] + [14] * max(0, len(bullets) - 1) + [30, 16]
+    extra = slack - sum(base_gaps)
+    if extra > 0:
+        # the breathing room goes where it reads best: around the bullet list
+        share = extra / (len(base_gaps) + 1)
+        gaps = [g + share for g in base_gaps]
+        gaps[-2] += share
+    else:
+        gaps = base_gaps
+
+    # header: chip left, brand right
+    chip = spec.get('chip', 'START HERE')
+    fc = font(16, True)
+    cw = d.textlength(chip, font=fc) + 26
+    d.rounded_rectangle((M, 52, M + cw, 84), radius=9, outline=BLUE, width=2)
+    d.text((M + 13, 59), chip, font=fc, fill=BLUE)
+    if spec.get('brand'):
+        fb = font(20, True)
+        bw = d.textlength(spec['brand'], font=fb)
+        d.text((W - M - bw, 54), spec['brand'], font=fb, fill=TEXT)
+        sub = spec.get('handle') or spec.get('tagline')
+        if sub:
+            fs = font(15)
+            sw = d.textlength(sub, font=fs)
+            d.text((W - M - sw, 80), sub, font=fs, fill=MUTED)
+
+    y, gi = TOP, 0
+    for ln in hook_rows:
+        d.text((M, y), ln, font=f_hook, fill=TEXT)
+        y += 58
+    y += gaps[gi]; gi += 1
+    d.rectangle((M, y, M + 96, y + RULE_H), fill=BLUE)
+    y += RULE_H + gaps[gi]; gi += 1
+
+    d.text((M, y), spec.get('heading', 'This account breaks down:'), font=f_head, fill=TEXT)
+    y += 52
+    for i, (_, rows) in enumerate(bullets):
+        h = bul_h[i]
+        d.rounded_rectangle((M, y, W - M, y + h), radius=13, fill=PANEL, outline=GRID)
+        d.ellipse((M + 20, y + h / 2 - 7, M + 34, y + h / 2 + 7), fill=BLUE)
+        ty = y + 13
+        for ln in rows:
+            d.text((M + 54, ty), ln, font=f_bul, fill=TEXT)
+            ty += BUL_LINE
+        y += h
+        if i < len(bullets) - 1:
+            y += gaps[gi]; gi += 1
+    y += gaps[gi]; gi += 1
+
+    for ln in promise:
+        d.text((M, y), ln, font=f_prom, fill=TEXT)
+        y += 40
+    y += gaps[gi]; gi += 1
+    for ln in cta_rows:
+        d.text((M, y), ln, font=f_cta, fill=BLUE)
+        y += 34
+
+    # footer disclaimer + archive tag
+    d.line((M, H - FOOT, W - M, H - FOOT), fill=GRID, width=2)
+    d.text((M, H - 78), spec.get('footer', ''), font=font(20), fill=MUTED)
+    if spec.get('archiveTag'):
+        ft = font(19, True)
+        tw = d.textlength(spec['archiveTag'], font=ft)
+        d.text((W - M - tw, H - 78), spec['archiveTag'], font=ft, fill=BLUE)
+    img.save(spec['out'], 'PNG', optimize=True)
+    print(spec['out'])
+
+
 def main():
     spec = json.load(sys.stdin)
     if spec.get('style') == 'scorecard':
@@ -507,6 +618,8 @@ def main():
         return render_explainer(spec)
     if spec.get('style') == 'premarket':
         return render_premarket(spec)
+    if spec.get('style') == 'intro':
+        return render_intro(spec)
     W, H = int(spec.get('width', 1200)), int(spec.get('height', 1000))
     img = Image.new('RGB', (W, H), BG)
     d = ImageDraw.Draw(img)
