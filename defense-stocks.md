@@ -1,5 +1,7 @@
 # Defense & Aerospace — Stock Analysis
 
+> **ARCHIVED 2026-09-09** — the defense cohort was removed from the daily sweep at the user's request. This file is kept for history; it is no longer refreshed. RKLB took the sweep slot (see `analysisstocks.md`).
+
 Watchlist: **LMT · RTX · NOC · GD · BA · LHX · TDG · HII · LDOS · AXON**. Same methodology as `analysisstocks.md`.
 **Data: 2026-09-01 CLOSE** (full daily bars, swept post-close via TV MCP). First entry for this sector.
 Related macro instrument tracked alongside: **USO** (United States Oil Fund — WTI crude ETF, *not* a defense name).

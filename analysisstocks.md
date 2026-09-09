@@ -15,6 +15,16 @@ $5.84B. So the 09-02 daily bar is pre-news and **stale as a read** — re-baseli
 Pivot after the gap: reclaim of **310.61 / 314.38** (BB-low + cloud SpanA) that holds = the long;
 failure to hold 303.89 (09-02 low) on a beat = the tell that the AI-data trade is being sold regardless.
 
+**Watchlist add — RKLB (Rocket Lab), 2026-09-09.** Space-launch/systems; replaced the defense cohort in the
+sweep (user removed all defense names 09-09). High-beta (ATR 4.04, ~6.3%/day). Baseline 63.92, -3.0% on ~1.3x
+RVOL: broken downtrend, -16.2%/21d (76 -> 64), below cloud (SpanA 69.36 / thick SpanB 82.90), basis 70.24,
+9-20 EMA 68.23; far under Q2 VWAP 92.21. CMF only -0.11 (mild, not heavy distribution), RSI 37.98 = ON its MA
+and <40 (too oversold to short fresh; ~2.5 above the 61.45 recent low / ~7 above BB-low 56.53). Score -2.0.
+Today failed a bounce into the 67.7 EMA/conversion cluster. No trade either side: sellable only on a bounce
+into 68-70 that fails on -CMF (target 61.45 -> 56.53); first bottoming signal = reclaim 69.36 cloud + CMF
+flip. FUNDAMENTAL backdrop constructive (Q2 rev +62%, Space Systems +94%) = valuation/rate de-rate in a hot
+name, so the eventual base is worth catching. Earn ~early Nov, no imminent binary.
+
 **Scoring:** RSI >60 +1 / >50 +0.5 / <50 -0.5 / <40 -1 · above BB basis +1 / below -1 ·
 CMF >0.1 +0.5 / <-0.1 -0.5. **CMF is the leading tell** — green candle + neg/flat CMF =
 distribution into strength = fade/wait; positive CMF = the dip-buys. Score is a snapshot;

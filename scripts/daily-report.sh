@@ -42,13 +42,12 @@ Follow CLAUDE.md and the memory files. Keep any chat text to an absolute minimum
    short HTML error page to $REPORT saying "TradingView not reachable" and stop.
 2) Collapse to a single chart (pane_set_layout s) and set timeframe D.
 3) Sweep ALL names SEQUENTIALLY (chart_set_symbol -> quote_get + data_get_study_values):
-   MAIN(33): QQQ IWM SMH SNDK AMD GOOGL AAPL MSFT NVDA TSLA AMZN META HOOD MSTR
+   MAIN(34): QQQ IWM SMH SNDK AMD GOOGL AAPL MSFT NVDA TSLA AMZN META HOOD MSTR
    NFLX PLTR COIN MRVL CRWV BMNR ORCL BABA DELL LUNR MU SPCX ARM INTC NBIS AVGO
-   UNH HIMS SNOW
+   UNH HIMS SNOW RKLB
    ANNESS(9): ACN LLY ISRG CRCL SOFI MCD SOUN APLD IREN
-   DEFENSE(10): LMT RTX NOC GD BA LHX TDG HII LDOS AXON
-   MACRO(1): USO  <- crude ETF, NOT a defense name. Swept as the cross-check on any
-   geopolitical read: oil must move WITH a conflict narrative, so if a headline says
+   MACRO(1): USO  <- crude ETF, NOT a tradable pick. Swept as a macro cross-check:
+   oil must move WITH any geopolitical/rates narrative, so if a headline says
    de-escalation while USO rips (or vice versa), the narrative is stale - say so.
    Score each: RSI(>60 +1/>50 +0.5/<50 -0.5/<40 -1) + BB-basis(above +1/below -1)
    + CMF(>0.1 +0.5/<-0.1 -0.5). Infer HH/LL structure (HH-up / LL-down / Rng / diverge).
@@ -78,14 +77,12 @@ $PRIOR_CMF
    (d) a short cohort summary below (Calls / Puts / Watches), applying the 3b gate -
    state explicitly which names were demoted or removed by the flow trend and why;
    (e) a one-line "flow breadth" stat: how many names are deteriorating vs improving;
-   (f) a SEPARATE "Defense & Aerospace" section after the main table - its own table with
-   the same columns for the DEFENSE(10) names, its own Calls/Puts/Watches read, and the
-   MACRO row (USO) rendered inside it but visually marked as a non-constituent
-   cross-check, not a sector pick. Keep defense names OUT of the main table and out of
-   the main cohort summary so the two do not blur. Tracker file: defense-stocks.md
-   (read it for the standing sector read; do NOT edit it).
+   (f) a one-line MACRO cross-check for USO (crude ETF) below the table - marked as a
+   non-constituent macro tell, not a tradable pick. Keep it OUT of the Calls/Puts/Watches
+   cohorts. Flag it only when oil diverges from the prevailing geopolitical/rates
+   narrative (the stale-narrative check).
    Flag any known catalyst (e.g. the META trial) per the flag-catalysts memory.
-3c) EARNINGS ALERT (do this for EVERY name swept - main, Anness and defense).
+3c) EARNINGS ALERT (do this for EVERY name swept - main and Anness).
    Check which names report TODAY (before open or after close) or within the next
    2 sessions. Standing user rule: ALWAYS surface same-day earnings prominently.
    Render a banner as the FIRST element of the report body, above the market theme:
