@@ -49,6 +49,18 @@ Follow CLAUDE.md and the memory files. Keep any chat text to an absolute minimum
    MACRO(1): USO  <- crude ETF, NOT a tradable pick. Swept as a macro cross-check:
    oil must move WITH any geopolitical/rates narrative, so if a headline says
    de-escalation while USO rips (or vice versa), the narrative is stale - say so.
+3d) SECTOR TAGGING. Assign every name ONE sector from this FIXED taxonomy (keep the
+   labels byte-identical day to day - filtering depends on stable labels). Use this map;
+   place any new/unlisted name into the best-fit existing sector and note it in the theme:
+     Index/ETF:        QQQ IWM SMH
+     Semiconductors:   NVDA AMD AVGO MRVL MU ARM INTC SNDK
+     Software/Megacap: MSFT GOOGL META AMZN AAPL ORCL PLTR NFLX SNOW ACN
+     AI Infra/DC:      CRWV NBIS DELL APLD IREN
+     Crypto/Fintech:   MSTR COIN BMNR HOOD CRCL SOFI
+     Space:            SPCX LUNR RKLB
+     Healthcare:       UNH LLY ISRG HIMS
+     Consumer/Other:   TSLA MCD BABA SOUN
+     Macro (x-check):  USO   (non-constituent; never in a cohort)
    Score each: RSI(>60 +1/>50 +0.5/<50 -0.5/<40 -1) + BB-basis(above +1/below -1)
    + CMF(>0.1 +0.5/<-0.1 -0.5). Infer HH/LL structure (HH-up / LL-down / Rng / diverge).
 3b) CMF TREND. Prior sessions' CMF per symbol (oldest -> newest) is below. For each
@@ -68,12 +80,25 @@ $PRIOR_CMF
 4) Write ONE self-contained HTML file to EXACTLY this path: $REPORT
    Requirements: inline CSS only, dark-theme friendly, mobile-safe (table scrolls
    horizontally in its own container). Include: (a) header with the date "$DATE";
-   (b) a one-paragraph market theme; (c) a table SORTED BY SCORE desc with columns
-   Sym, Px, RSI/MA, CMF, CMF Trend, ATR, BB L/Basis/Up, VWAP, Cloud A/B, Pos, HH/LL,
-   Score, Bias-Next. The "CMF Trend" cell shows the signed delta and an arrow
+   (b) a one-paragraph market theme;
+   (c) the master table, GROUPED BY SECTOR (from step 3d). Render one labelled sector
+   block per sector, sectors ordered by their average Score (strongest sector first);
+   within each sector sort rows by Score desc. Each sector block has a header row
+   showing the sector name, its member count, and its average score. Columns:
+   Sector, Sym, Px, RSI/MA, CMF, CMF Trend, ATR, BB L/Basis/Up, VWAP, Cloud A/B, Pos,
+   HH/LL, Score, Bias-Next. The "CMF Trend" cell shows the signed delta + arrow
    (up improving / down deteriorating / dash flat), e.g. "-0.15 v" or "+0.07 ^";
-   tint it red when deteriorating and green when improving.
-   Color Score green(>0)/red(<0)/grey(0) and tint HH-up green / LL-down red;
+   tint it red when deteriorating, green when improving. Color Score green(>0)/red(<0)/
+   grey(0); tint HH-up green / LL-down red.
+   FILTERABLE (self-contained inline JS - the report opens as a local file, JS is fine):
+     - a row of filter chips: "All" + one chip per sector + "Calls" "Puts" "Watches".
+       Clicking a chip shows only matching rows (tag each row with data-sector and a
+       data-cohort attribute); "All" resets. Style the active chip.
+     - a text input that live-filters rows by ticker substring (case-insensitive).
+     - clicking a column header sorts the FULL table by that column (toggle asc/desc);
+       keep it dependency-free vanilla JS. Empty sector blocks hide when filtered out.
+   Keep the whole thing in ONE scrollable table container so column widths align across
+   sectors; use <tbody> per sector with a sticky-ish sector header row.
    (d) a short cohort summary below (Calls / Puts / Watches), applying the 3b gate -
    state explicitly which names were demoted or removed by the flow trend and why;
    (e) a one-line "flow breadth" stat: how many names are deteriorating vs improving;
