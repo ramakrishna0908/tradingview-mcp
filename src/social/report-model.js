@@ -359,5 +359,5 @@ export function attachPriorCmf(model, priorModel) {
 }
 
 export function findRow(model, symbol) {
-  return model.rows.find(r => r.symbol === symbol.toUpperCase()) ?? null;
+  return model?.rows?.find(r => r.symbol === symbol.toUpperCase()) ?? null;
 }

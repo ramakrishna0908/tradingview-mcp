@@ -90,7 +90,12 @@ export const INTRO_CTA = 'Follow if you want to read charts with more structure.
  */
 export function generateIntroPost(config) {
   const ed = config.education ?? {};
-  const tag = ed.archiveTag ?? null;
+  // The intro ends on launch.hashtags when set (one line, tags in order); it
+  // falls back to the education archive tag for accounts that still run one,
+  // and on no tag line at all when neither is configured.
+  const tags = config.launch?.hashtags?.length ? config.launch.hashtags
+    : ed.archiveTag ? [ed.archiveTag]
+    : [];
   const lines = [
     INTRO_HOOK,
     '',
@@ -101,7 +106,7 @@ export function generateIntroPost(config) {
     '',
     INTRO_CTA,
     'Educational only — not financial advice.',
-    tag,
+    tags.length ? tags.join(' ') : null,
   ].filter(l => l !== null && l !== undefined);
   const text = lines.join('\n');
   return { text, lines };

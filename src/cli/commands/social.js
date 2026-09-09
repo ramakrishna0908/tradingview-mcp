@@ -222,9 +222,9 @@ const subcommands = new Map([
     handler: async (values, positionals) => {
       const wf = new SocialWorkflow();
       const rec = wf.mustGet(positionals[0]);
-      // Only setup and follow-up records are backed by a sweep report; a
-      // scorecard, explainer or premarket record carries its own numbers.
-      const model = ['setup', 'followup'].includes(rec.kind ?? 'setup') ? loadReportModel(reportPathFrom(values, rec)).model : null;
+      // Only setup, thread and follow-up records are backed by a sweep report;
+      // a scorecard, explainer or premarket record carries its own numbers.
+      const model = ['setup', 'thread', 'followup'].includes(rec.kind ?? 'setup') ? loadReportModel(reportPathFrom(values, rec)).model : null;
       const next = wf.recordManualPublication(rec.id, model, { xPostId: values['post-id'], url: values.url });
       if (values.json) return out(next);
       printRecord(next);

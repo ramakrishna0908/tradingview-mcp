@@ -43,6 +43,17 @@ const MODEL = (rows, over = {}) => ({
   rows, ...over,
 });
 
+// Two publishable rows on one report: the hero plus one thread reply, used by
+// the CLI record regression test below.
+const THREAD_REPORT_HTML = `<!DOCTYPE html><html><head><title>Daily Stock Report &mdash; 2026-09-08</title></head><body>
+<h2>Market Theme</h2><p>Narrow tape.</p>
+<table><thead><tr><th>Sym</th><th>Px</th><th>RSI / MA</th><th>CMF</th><th>ATR</th><th>BB L / Basis / Up</th><th>VWAP</th><th>Cloud A / B</th><th>Pos</th><th>HH/LL</th><th>Score</th><th>Bias-Next</th></tr></thead>
+<tbody>
+<tr><td>AAA</td><td>118.00</td><td>64.0 / 60.0</td><td>+0.19</td><td>2.00</td><td>108.20 / <b>115.00</b> / 123.50</td><td>110.00</td><td>112.00 / 109.00</td><td>Above cloud</td><td>HH-up</td><td>+2.5</td><td>Calls</td></tr>
+<tr><td>BBB</td><td>118.00</td><td>64.0 / 60.0</td><td>+0.19</td><td>2.00</td><td>108.20 / <b>115.00</b> / 123.50</td><td>110.00</td><td>112.00 / 109.00</td><td>Above cloud</td><td>HH-up</td><td>+2.5</td><td>Calls</td></tr>
+</tbody></table>
+</body></html>`;
+
 const MIN_HTML = `<!DOCTYPE html><html><head><title>Daily Stock Report &mdash; 2026-08-31</title></head><body>
 <h2>Market Theme</h2><p>Narrow tape.</p>
 <table><thead><tr><th>Sym</th><th>Px</th><th>RSI / MA</th><th>CMF</th><th>ATR</th><th>BB L / Basis / Up</th><th>VWAP</th><th>Cloud A / B</th><th>Pos</th><th>HH/LL</th><th>Score</th><th>Bias-Next</th></tr></thead>
@@ -1483,6 +1494,9 @@ describe('one hero per day: pending-aware cap, surplus as thread replies, close 
     const dir = mkdtempSync(join(tmpdir(), 'hero-'));
     const cfg = load();
     cfg.posting = { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, enabled: true, via: 'browser', spacingSeconds: 0, ...over } };
+    // Thread replies are an account cadence choice (off on the live account),
+    // so pin them on here: these tests cover the mechanism, not the setting.
+    cfg.thread = { ...cfg.thread, enabled: true, maxReplies: 3 };
     return { cfg, wf: new SocialWorkflow({ config: cfg, audit: new AuditStore(join(dir, 'audit.jsonl')), insights: null }) };
   };
   const rows = () => [ROWX('AAA'), ROWX('BBB'), ROWX('CCC'), ROWX('DDD'), ROWX('EEE')];
@@ -1530,6 +1544,43 @@ describe('one hero per day: pending-aware cap, surplus as thread replies, close 
     assert.equal(resolved.replyToPost.xPostId, '100');
     wf.recordManualPublication(resolved.id, model, { xPostId: '101' });
     assert.equal(wf.tracker.active().length, 1, 'only the hero is tracked');
+  });
+
+  // A thread reply is backed by the same sweep report as its hero, so `social
+  // record` must load that report's model for it. Passing null crashed in
+  // findRow(model, ...) and left a reply live on X but still ready_to_post.
+  it('the CLI records a thread reply without a crash (report model is loaded for kind thread)', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'thread-cli-'));
+    const reportPath = join(dir, 'daily-report.html');
+    writeFileSync(reportPath, THREAD_REPORT_HTML);
+    const { model } = loadReportModel(reportPath);
+    model.dataAsOf = new Date().toISOString();
+    model.cohort = cohort(['AAA', 'BBB']);
+
+    const cfg = load();
+    cfg.posting = { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, enabled: true, via: 'browser', spacingSeconds: 0 } };
+    cfg.thread = { ...cfg.thread, enabled: true, maxReplies: 3 };
+    const auditPath = join(dir, 'audit.jsonl');
+    const wf = new SocialWorkflow({ config: cfg, audit: new AuditStore(auditPath), insights: null });
+    const r = await wf.autoPublish(model);
+    assert.deepEqual(r.published.map(p => p.symbol), ['AAA']);
+    const reply = wf.ready({ queue: 'stocks' }).find(x => x.kind === 'thread');
+    assert.ok(reply, 'a thread reply was queued');
+    assert.equal(reply.reportPath, reportPath, 'the reply carries the report it came from');
+
+    const env = { ...process.env, SOCIAL_AUDIT_PATH: auditPath, SOCIAL_TRACKER_PATH: join(dir, 'setups.jsonl'), SOCIAL_METRICS_PATH: join(dir, 'metrics.jsonl') };
+    const run = args => spawnSync(process.execPath, [join(ROOT, 'src', 'cli', 'index.js'), 'social', ...args], { encoding: 'utf8', env });
+
+    const hero = run(['record', r.published[0].id, '--post-id', '900', '--json']);
+    assert.equal(hero.status, 0, hero.stdout + hero.stderr);
+
+    const out = run(['record', reply.id, '--post-id', '901', '--url', 'https://x.com/u/status/901', '--json']);
+    assert.equal(out.status, 0, out.stdout + out.stderr);
+    const rec = JSON.parse(out.stdout);
+    assert.notEqual(rec.success, false, `CLI reported an error: ${rec.error}`);
+    assert.equal(rec.status, 'published');
+    assert.equal(rec.publication.xPostId, '901');
+    assert.equal(wf.ready({ queue: 'stocks' }).filter(x => x.id === reply.id).length, 0, 'the recorded reply leaves the ready queue');
   });
 
   it('thread reply text never upgrades a WATCH and carries the ticker, price and both levels', () => {
@@ -2026,6 +2077,9 @@ import { educationalTags } from '../src/social/education.js';
 describe('launch sequence: the first 14 posts, the pinned intro, and the #AITradeSchool archive tag', () => {
   const STOCK_CFG = join(ROOT, 'config', 'social-compliance.json');
   const load = (p, over = {}) => { resetConfigCache(); const c = loadConfig(p); resetConfigCache(); return { ...c, ...over }; };
+  // The archive tag is an account choice (the live account has it switched off),
+  // so these tests pin one rather than asserting whatever the shipped config says.
+  const withArchive = (tag = '#AITradeSchool') => { const c = load(STOCK_CFG); return { ...c, launch: { ...c.launch, hashtags: [] }, education: { ...c.education, archiveTag: tag } }; };
 
   it('the plan is well-formed: 14 items, numbered 1..14, unique ids, exactly one pinned', () => {
     assert.equal(LAUNCH_SEQUENCE.length, 14);
@@ -2040,8 +2094,7 @@ describe('launch sequence: the first 14 posts, the pinned intro, and the #AITrad
   });
 
   it('the archive tag is always present and always last, even when the reach tags fill the cap', () => {
-    const cfg = load(STOCK_CFG);
-    assert.equal(cfg.education.archiveTag, '#AITradeSchool');
+    const cfg = withArchive();
     assert.equal(cfg.education.maxTags, 3);
     assert.equal(cfg.hashtags.maxTotal, 2, 'setup posts keep the tighter cap');
     assert.deepEqual(educationalTags(['#A', '#B'], cfg), ['#A', '#B', '#AITradeSchool']);
@@ -2050,8 +2103,23 @@ describe('launch sequence: the first 14 posts, the pinned intro, and the #AITrad
     assert.deepEqual(educationalTags(['#A'], { ...cfg, education: { ...cfg.education, archiveTag: null } }), ['#A']);
   });
 
+  it('the intro tag line comes from launch.hashtags, falling back to the archive tag and then to no tags', () => {
+    const base = load(STOCK_CFG);
+    const withTags = { ...base, launch: { ...base.launch, hashtags: ['#TechnicalAnalysis', '#ChartEducation'] } };
+    assert.equal(generateIntroPost(withTags).lines.at(-1), '#TechnicalAnalysis #ChartEducation');
+    // launch.hashtags wins over an archive tag that is still configured
+    const both = { ...withTags, education: { ...base.education, archiveTag: '#Legacy' } };
+    assert.equal(generateIntroPost(both).lines.at(-1), '#TechnicalAnalysis #ChartEducation');
+    // no launch tags → the archive tag, if any
+    const archiveOnly = { ...base, launch: { ...base.launch, hashtags: [] }, education: { ...base.education, archiveTag: '#Legacy' } };
+    assert.equal(generateIntroPost(archiveOnly).lines.at(-1), '#Legacy');
+    // neither → the post ends on the disclaimer, with no trailing tag line
+    const none = { ...base, launch: { ...base.launch, hashtags: [] }, education: { ...base.education, archiveTag: null } };
+    assert.equal(generateIntroPost(none).lines.at(-1), 'Educational only — not financial advice.');
+  });
+
   it('the pinned intro is compliance-clean: no ticker, no claim, no prohibited wording, archive tag last', () => {
-    const cfg = load(STOCK_CFG);
+    const cfg = withArchive();
     const { text } = generateIntroPost(cfg);
     const lines = text.split('\n');
     assert.equal(lines[0], 'Learning technical analysis does not mean predicting every move.');
@@ -2115,7 +2183,7 @@ describe('launch sequence: the first 14 posts, the pinned intro, and the #AITrad
   });
 
   it('the intro card spec carries the disclaimer footer and the archive tag', { skip: !HAVE_PIL }, () => {
-    const cfg = load(STOCK_CFG);
+    const cfg = withArchive();
     const out = join(mkdtempSync(join(tmpdir(), 'intro-png-')), 'intro.png');
     const spec = buildIntroSpec(cfg, out);
     assert.equal(spec.style, 'intro');

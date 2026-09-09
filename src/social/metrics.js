@@ -196,10 +196,24 @@ function bucket(rows, keyFn) {
 export function buildReport({ metrics, auditRecords, trackerRecords = [], minN = 3 }) {
   const latest = metrics.latestByPost();
   const byTracker = new Map(trackerRecords.map(t => [t.id, t]));
-  const posts = auditRecords
-    .filter(r => r.status === 'published' && r.publication?.xPostId)
+  const published = auditRecords.filter(r => r.status === 'published' && r.publication?.xPostId);
+  // Our own replies (thread, close check, follow-up) land in the parent post's
+  // reply count. They are not audience engagement, and counting them lets the
+  // insights loop rank setups on the account replying to itself — so subtract
+  // them before anything downstream reads `replies`.
+  const ownReplies = new Map();
+  const xPostIdOf = new Map(published.map(r => [r.id, r.publication.xPostId]));
+  for (const r of published) {
+    const parentX = r.replyTo ? xPostIdOf.get(r.replyTo) : null;
+    if (parentX) ownReplies.set(parentX, (ownReplies.get(parentX) ?? 0) + 1);
+  }
+  const posts = published
     .map(r => {
-      const m = latest.get(r.publication.xPostId) ?? {};
+      const raw = latest.get(r.publication.xPostId) ?? {};
+      const own = ownReplies.get(r.publication.xPostId) ?? 0;
+      const m = own && raw.replies != null
+        ? { ...raw, replies: Math.max(0, raw.replies - own), engagements: null }
+        : raw;
       const t = byTracker.get(r.followUpOf ?? r.id) ?? null;
       const row = {
         auditId: r.id,
@@ -219,6 +233,7 @@ export function buildReport({ metrics, auditRecords, trackerRecords = [], minN =
         impressions: m.impressions ?? null,
         likes: m.likes ?? null, replies: m.replies ?? null, reposts: m.reposts ?? null, quotes: m.quotes ?? null,
         bookmarks: m.bookmarks ?? null, profileClicks: m.profileClicks ?? null,
+        ownReplies: own,
         engagements: m.impressions != null ? engagementsOf(m) : null,
         engagementRate: m.impressions != null ? engagementRate(m) : null,
         metricsAt: m.at ?? null,
