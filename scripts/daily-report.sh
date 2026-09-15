@@ -46,6 +46,7 @@ Follow CLAUDE.md and the memory files. Keep any chat text to an absolute minimum
    NFLX PLTR COIN MRVL CRWV BMNR ORCL BABA DELL LUNR MU SPCX ARM INTC NBIS AVGO
    UNH HIMS SNOW RKLB
    ANNESS(9): ACN LLY ISRG CRCL SOFI MCD SOUN APLD IREN
+   CYBER(5): PANW CRWD ZS FTNT NET
    MACRO(1): USO  <- crude ETF, NOT a tradable pick. Swept as a macro cross-check:
    oil must move WITH any geopolitical/rates narrative, so if a headline says
    de-escalation while USO rips (or vice versa), the narrative is stale - say so.
@@ -60,6 +61,7 @@ Follow CLAUDE.md and the memory files. Keep any chat text to an absolute minimum
      Space:            SPCX LUNR RKLB
      Healthcare:       UNH LLY ISRG HIMS
      Consumer/Other:   TSLA MCD BABA SOUN
+     Cybersecurity:    PANW CRWD ZS FTNT NET
      Macro (x-check):  USO   (non-constituent; never in a cohort)
    Score each: RSI(>60 +1/>50 +0.5/<50 -0.5/<40 -1) + BB-basis(above +1/below -1)
    + CMF(>0.1 +0.5/<-0.1 -0.5). Infer HH/LL structure (HH-up / LL-down / Rng / diverge).
@@ -107,7 +109,7 @@ $PRIOR_CMF
    cohorts. Flag it only when oil diverges from the prevailing geopolitical/rates
    narrative (the stale-narrative check).
    Flag any known catalyst (e.g. the META trial) per the flag-catalysts memory.
-3c) EARNINGS ALERT (do this for EVERY name swept - main and Anness).
+3c) EARNINGS ALERT (do this for EVERY name swept - main, Anness and cyber).
    Check which names report TODAY (before open or after close) or within the next
    2 sessions. Standing user rule: ALWAYS surface same-day earnings prominently.
    Render a banner as the FIRST element of the report body, above the market theme:
