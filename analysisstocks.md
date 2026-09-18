@@ -25,6 +25,24 @@ into 68-70 that fails on -CMF (target 61.45 -> 56.53); first bottoming signal = 
 flip. FUNDAMENTAL backdrop constructive (Q2 rev +62%, Space Systems +94%) = valuation/rate de-rate in a hot
 name, so the eventual base is worth catching. Earn ~early Nov, no imminent binary.
 
+**Watchlist add — QUANTUM sector (6), 2026-09-18.** Top pure-plays: IONQ, QBTS (D-Wave), RGTI (Rigetti),
+QUBT (Quantum Computing Inc), ARQQ (Arqit), LAES (SEALSQ). Baselines at the 09-18 read:
+| Sym | Px | Today | 21d | CMF | RSI/MA | Pos | ATR%/day | Vol |
+| IONQ | 40.34 | +9.8% | -7.0% | -0.21 | 51.8/44.2 | in cloud >basis | 6.5% | 22M |
+| QBTS | 17.69 | +8.7% | -8.2% | -0.18 | 49.3/41.9 | in cloud >basis | 6.2% | 21M |
+| RGTI | 15.99 | +8.1% | -8.0% | -0.16 | 50.8/43.9 | in cloud >basis | 6.1% | 20M |
+| QUBT | 8.44 | flat | +1.0% | -0.16 | 53.3/45.0 | in cloud >basis | 5.0% | 8M |
+| ARQQ | 19.52 | flat | -9.2% | -0.20 | 47.6/47.4 | <cloud <basis | 9.0% | **0.25M THIN** |
+| LAES | 2.30 | flat | -16.7% | -0.20 | 41.3/41.5 | <cloud <basis | 5.7% | 6M |
+**Key read: ALL SIX carry NEGATIVE CMF (-0.16 to -0.21) = the whole group is under distribution.** The big-3
+(IONQ/QBTS/RGTI) popped +8-10% today but on the OIL-relief risk-on bounce, NOT accumulation — green candle +
+neg CMF = distribution into strength, don't chase. They're bouncing within a 21d pullback (down 7-8%). QUBT most
+stable (flat 21d, RSI highest). ARQQ **illiquid (247K vol) — tiny size/skip**. LAES weakest ($2, -16.7%/21d,
+<cloud, RSI 41). **No entry on the group until CMF flips positive** (the "selling stopped" tell). "New high-growth
+add" checked: growth is concentrated in QBTS (+345% 2025) / QUBT (+66%/yr) which are already in; no distinct new
+name beyond the 6 warrants adding (IBM/GOOGL/NVDA quantum-adjacent already covered). ⚠️ ALL speculative, 5-9%/day
+ATR, low-priced — treat as one high-risk basket, tiny size. Earn dates unconfirmed — verify before trading (flag rule).
+
 **Scoring:** RSI >60 +1 / >50 +0.5 / <50 -0.5 / <40 -1 · above BB basis +1 / below -1 ·
 CMF >0.1 +0.5 / <-0.1 -0.5. **CMF is the leading tell** — green candle + neg/flat CMF =
 distribution into strength = fade/wait; positive CMF = the dip-buys. Score is a snapshot;
