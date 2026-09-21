@@ -42,9 +42,9 @@ Follow CLAUDE.md and the memory files. Keep any chat text to an absolute minimum
    short HTML error page to $REPORT saying "TradingView not reachable" and stop.
 2) Collapse to a single chart (pane_set_layout s) and set timeframe D.
 3) Sweep ALL names SEQUENTIALLY (chart_set_symbol -> quote_get + data_get_study_values):
-   MAIN(34): QQQ IWM SMH SNDK AMD GOOGL AAPL MSFT NVDA TSLA AMZN META HOOD MSTR
+   MAIN(35): QQQ IWM SMH SNDK AMD GOOGL AAPL MSFT NVDA TSLA AMZN META HOOD MSTR
    NFLX PLTR COIN MRVL CRWV BMNR ORCL BABA DELL LUNR MU SPCX ARM INTC NBIS AVGO
-   UNH HIMS SNOW RKLB
+   UNH HIMS SNOW RKLB MRNA
    ANNESS(9): ACN LLY ISRG CRCL SOFI MCD SOUN APLD IREN
    CYBER(5): PANW CRWD ZS FTNT NET
    QUANTUM(6): IONQ QBTS RGTI QUBT ARQQ LAES
@@ -60,7 +60,7 @@ Follow CLAUDE.md and the memory files. Keep any chat text to an absolute minimum
      AI Infra/DC:      CRWV NBIS DELL APLD IREN
      Crypto/Fintech:   MSTR COIN BMNR HOOD CRCL SOFI
      Space:            SPCX LUNR RKLB
-     Healthcare:       UNH LLY ISRG HIMS
+     Healthcare:       UNH LLY ISRG HIMS MRNA
      Consumer/Other:   TSLA MCD BABA SOUN
      Cybersecurity:    PANW CRWD ZS FTNT NET
      Quantum:          IONQ QBTS RGTI QUBT ARQQ LAES

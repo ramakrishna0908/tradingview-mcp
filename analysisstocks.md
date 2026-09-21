@@ -43,6 +43,17 @@ add" checked: growth is concentrated in QBTS (+345% 2025) / QUBT (+66%/yr) which
 name beyond the 6 warrants adding (IBM/GOOGL/NVDA quantum-adjacent already covered). ⚠️ ALL speculative, 5-9%/day
 ATR, low-priced — treat as one high-risk basket, tiny size. Earn dates unconfirmed — verify before trading (flag rule).
 
+**Watchlist add — MRNA (Moderna), 2026-09-21.** Healthcare/biotech, CATALYST-driven. Baseline 168.90 (+6.9%
+today, new run-highs). **Up ~143%/month** on positive Phase III data for its personalized cancer vaccine
+(intismeran/melanoma) — a real fundamental catalyst, so CMF +0.25 (strong accumulation) is genuine, not a
+squeeze. Far above all structure: 9-20 EMA 140.31, basis 147.08, cloud (SpanA 134.5); RSI 68.4 (near overbought).
+Score +2.5 but PARABOLIC/EXTENDED — today's push on lighter volume (8.6M vs 21.4M avg) = parabola may be thinning.
+**Buy the DIP not the spike:** pullback to 150-158 (conversion/VWAP+1σ/prior swing) that holds w/ CMF ≥ +0.15;
+inval <147. Put = watchlist-only until CMF flips negative w/ a reversal (bearish-exhaustion Stage 1, don't
+front-run a +0.25 parabola). ⚠️ ATR 12 (~7%/day) — small size. ⚠️ CATALYST-BLIND to technicals: moves on
+trial/FDA headlines (unscheduled). Earn 2026-10-29 (no near-term binary, but trial news is the real risk).
+Related: [[feedback-flag-catalysts]].
+
 **Scoring:** RSI >60 +1 / >50 +0.5 / <50 -0.5 / <40 -1 · above BB basis +1 / below -1 ·
 CMF >0.1 +0.5 / <-0.1 -0.5. **CMF is the leading tell** — green candle + neg/flat CMF =
 distribution into strength = fade/wait; positive CMF = the dip-buys. Score is a snapshot;
