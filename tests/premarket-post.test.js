@@ -113,7 +113,13 @@ describe('premarket post', () => {
     assert.equal(spec.confidence, 74);
     assert.equal(spec.tiles[0].label, 'S&P 500 futures');
     assert.equal(spec.tiles[0].color, 'green');
-    assert.equal(spec.tiles[2].color, 'red'); // yields up is the red one
+    // every tile colours by the sign of its own change: up green, down red
+    assert.equal(spec.tiles[1].color, 'red'); // VIX -0.59
+    assert.equal(spec.tiles[2].color, 'green'); // 10-year +0.03
+    assert.equal(spec.tiles[3].color, 'green'); // WTI +0.18
+    const falling = buildPremarketSpec(report({ snapshot: { ...report().snapshot, wti: { ...report().snapshot.wti, change: -1.9, changePct: -2.04 }, us10y: { ...report().snapshot.us10y, change: -0.016, changePct: -0.3 } } }), cfg, '/tmp/card.png');
+    assert.equal(falling.tiles[2].color, 'red'); // a falling yield is red, not green
+    assert.equal(falling.tiles[3].color, 'red'); // a falling crude is red, not green
     assert.match(spec.levels.above, /^772\.87/);
     assert.equal(spec.event.title, 'Core CPI m/m');
     assert.equal(spec.disclosure, cfg.disclosure.trim());

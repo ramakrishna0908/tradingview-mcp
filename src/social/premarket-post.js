@@ -129,7 +129,7 @@ export function buildPremarketSpec(report, config, outPath) {
       tile('vix', 'VIX', x => x.price.toFixed(2)),
       tile('us10y', '10-year yield', x => `${x.price.toFixed(2)}%`),
       tile('wti', 'WTI crude', x => `$${x.price.toFixed(2)}`),
-    ].map(t => (t.label === 'S&P 500 futures' ? t : { ...t, color: t.color === 'green' ? 'red' : t.color === 'red' ? 'green' : t.color })), // rising VIX, yields or crude are the red ones
+    ], // every tile colours by the sign of its own change: up green, down red (standard market convention, same as the HTML report)
     drivers: (report.drivers ?? []).slice(0, 3).map(d => ({ text: d.text, color: d.direction === 'supportive' ? 'green' : d.direction === 'headwind' ? 'red' : 'blue', direction: d.direction })),
     levels: lv ? { label: 'SPY', above: lv.resistance[0] ? `${lv.resistance[0].value.toFixed(2)}  ·  ${lv.resistance[0].label}` : '—', below: lv.support[0] ? `${lv.support[0].value.toFixed(2)}  ·  ${lv.support[0].label}` : '—' } : null,
     sectors: { strong: (report.sectors?.strength ?? []).map(s => s.name), weak: (report.sectors?.weakness ?? []).map(s => s.name) },
