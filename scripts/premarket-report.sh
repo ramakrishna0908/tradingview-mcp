@@ -30,6 +30,18 @@ echo "=== $(date) premarket report for $DATE ===" >> "$LOG"
 if /usr/local/bin/node "$REPO/src/cli/index.js" premarket --date "$DATE" >> "$LOG" 2>&1; then
   REPORT="$OUT_DIR/premarket-$DATE.html"
   echo "$(date): report ready -> $REPORT" >> "$LOG"
+
+  # Publish the SAME model the HTML was rendered from to AssetDecoded. This is
+  # deliberately a separate step after the files are written: a publish failure
+  # (site down, secret rotated, network) leaves the local report untouched and
+  # exits non-zero only for this step, which is logged and then swallowed.
+  # Re-run by hand with:  node src/cli/index.js publish --type premarket --date <DATE>
+  if /usr/local/bin/node "$REPO/src/cli/index.js" publish --type premarket --date "$DATE" >> "$LOG" 2>&1; then
+    echo "$(date): published premarket $DATE to AssetDecoded" >> "$LOG"
+  else
+    echo "$(date): publish FAILED for premarket $DATE (report itself is fine)" >> "$LOG"
+  fi
+
   [ -z "${PREMARKET_NO_OPEN:-}" ] && /usr/bin/open "$REPORT"
 else
   echo "$(date): FAILED — see above" >> "$LOG"

@@ -13,7 +13,7 @@
 import { readFileSync, writeFileSync, existsSync, statSync, readdirSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 
-export const MODEL_VERSION = 2;
+export const MODEL_VERSION = 3; // 3: rows carry the report's own data-sector label
 
 // ─── text helpers ────────────────────────────────────────────────────────────
 
@@ -98,7 +98,7 @@ function parseStructure(text) {
   return text || null;
 }
 
-function parseRow(cells, keys, sectionGroup) {
+function parseRow(cells, keys, sectionGroup, sector = null) {
   const rec = {};
   keys.forEach((k, i) => { if (k) rec[k] = cells[i] ?? ''; });
   if (!rec.symbol) return null;
@@ -116,6 +116,10 @@ function parseRow(cells, keys, sectionGroup) {
   return {
     symbol: sym.symbol,
     group,
+    // The report tags every row with its own sector label (a fixed taxonomy,
+    // byte-identical day to day so filters stay stable). Lifted verbatim —
+    // never re-derived here — and null for report variants that predate it.
+    sector,
     flags: sym.flags,
     price,
     rsi: num(rsi),
@@ -163,10 +167,11 @@ export function parseReportHtml(html, { sourcePath = null, runLog = null } = {})
     const keys = mapHeaders(ths);
     if (!keys.includes('symbol') || !keys.includes('price')) continue;
     const group = sectionGroupFor(html, t.index);
-    for (const tr of tableHtml.matchAll(/<tr[^>]*>(.*?)<\/tr>/gis)) {
-      const cells = [...tr[1].matchAll(/<td[^>]*>(.*?)<\/td>/gis)].map(m => stripTags(m[1]));
+    for (const tr of tableHtml.matchAll(/<tr([^>]*)>(.*?)<\/tr>/gis)) {
+      const cells = [...tr[2].matchAll(/<td[^>]*>(.*?)<\/td>/gis)].map(m => stripTags(m[1]));
       if (cells.length < 6) continue;
-      const row = parseRow(cells, keys, group);
+      const sectorAttr = tr[1].match(/data-sector\s*=\s*"([^"]*)"/i);
+      const row = parseRow(cells, keys, group, sectorAttr ? decodeEntities(sectorAttr[1]) : null);
       if (row) rows.push(row);
     }
   }

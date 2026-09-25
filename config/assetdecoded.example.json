@@ -1,0 +1,5 @@
+{
+  "_comment": "Copy to config/assetdecoded.json (gitignored) or set ASSETDECODED_URL and RESEARCH_PUBLISH_SECRET in the environment. The file exists because launchd runs these jobs with a bare environment. The secret must match AssetDecoded's RESEARCH_PUBLISH_SECRET exactly.",
+  "url": "https://assetdecoded.vercel.app",
+  "secret": ""
+}

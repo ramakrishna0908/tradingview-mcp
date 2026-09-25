@@ -108,6 +108,18 @@ EOF
 
 if [ -f "$REPORT" ]; then
   echo "$(date): report ready -> $REPORT" >> "$LOG"
+
+  # Publish the structured model to AssetDecoded. The model is extracted once
+  # by src/social/report-model.js and cached beside the report, so the web app
+  # and every other downstream step read the same numbers. Non-fatal by design:
+  # the HTML on disk stays the local system of record.
+  # Re-run by hand with:  node src/cli/index.js publish --type daily --date <DATE>
+  if /usr/local/bin/node "$REPO/src/cli/index.js" publish --type daily --date "$DATE" >> "$LOG" 2>&1; then
+    echo "$(date): published daily $DATE to AssetDecoded" >> "$LOG"
+  else
+    echo "$(date): publish FAILED for daily $DATE (report itself is fine)" >> "$LOG"
+  fi
+
   /usr/bin/open "$REPORT"
 
   # Social prepare step is NOT chained here: the desktop poster task runs
