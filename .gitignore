@@ -10,6 +10,7 @@ __pycache__/
 .env
 .env.*
 .env.social
+config/assetdecoded.json
 !.env.social.example
 docs/social/charts/
 docs/social/REHEARSE

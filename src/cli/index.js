@@ -27,6 +27,7 @@ import './commands/tab.js';
 import './commands/stream.js';
 import './commands/social.js';
 import './commands/premarket.js';
+import './commands/publish.js';
 
 // Run
 import { run } from './router.js';

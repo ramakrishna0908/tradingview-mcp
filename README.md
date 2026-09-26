@@ -183,6 +183,7 @@ tv replay start/step/stop/status/autoplay/trade
 tv stream quote/bars/values/lines/labels/tables/all
 tv ui click/keyboard/hover/scroll/find/eval/type/panel/fullscreen/mouse
 tv screenshot / discover / ui-state / range / scroll
+tv premarket / publish
 ```
 
 tv pine_list_scripts
@@ -368,6 +369,53 @@ catalyst-flagged names skipped, per-symbol cooldown, kill switch) that the daily
 launchd job runs after each report. Posts carry `#NFA #DYOR`. See
 [docs/SOCIAL-POSTING.md](docs/SOCIAL-POSTING.md); rules live in
 `config/social-compliance.json`.
+
+## Publishing research to AssetDecoded
+
+The two scheduled report jobs publish their **structured model** to
+[AssetDecoded](https://assetdecoded.vercel.app) after writing their HTML, so
+the local report and the web pages are two renderings of one report rather than
+two analyses.
+
+```
+scripts/premarket-report.sh   →  tv premarket  →  premarket-<date>.{json,md,html}
+                                                →  tv publish --type premarket
+scripts/daily-report.sh       →  Claude sweep  →  daily-<date>.html
+                                                →  (model cached as daily-<date>.json)
+                                                →  tv publish --type daily
+```
+
+`src/publish/canonical.js` maps each model onto AssetDecoded's canonical
+research contract. It never computes a market value: every figure is lifted
+verbatim, and a section the generator did not produce is omitted rather than
+filled in.
+
+### Setup
+
+Either environment variables, or `config/assetdecoded.json` (gitignored —
+launchd runs these jobs with a bare environment):
+
+```bash
+cp config/assetdecoded.example.json config/assetdecoded.json
+# set "secret" to the same value as AssetDecoded's RESEARCH_PUBLISH_SECRET
+```
+
+### Manual use
+
+```bash
+# inspect the payload without sending anything
+node src/cli/index.js publish --type daily --dry-run
+
+# publish, or re-publish, one session
+node src/cli/index.js publish --type premarket --date 2026-09-25
+```
+
+Publishing is idempotent on `(reportType, tradingDate)` — a repeat updates the
+stored report instead of duplicating it — so backfilling a missed day is safe.
+
+A publish failure is **never** fatal to report generation: the shell scripts log
+it and carry on, the HTML on disk is untouched, and the CLI exits `3` so a
+caller can tell "the report is fine but did not publish" from a real failure.
 
 ## Architecture
 
