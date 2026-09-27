@@ -1,9 +1,13 @@
 {
   "$comment": "Compliance configuration for the CRYPTO sweep (config/social-compliance.json is the stock one). Selected with SOCIAL_COMPLIANCE_CONFIG=config/social-compliance-crypto.json. Legal/compliance may edit this file without a code change.",
-  "disclosure": "Educational market analysis only. Not investment advice. Trading involves risk.",
-  "disclosurePlacement": "bio",
+  "disclosure": "Educational only. Not financial advice.",
+  "cardDisclosure": "Educational market analysis only. Not investment advice. Trading involves risk.",
+  "$cardDisclosure": "Printed on every crypto card (and in its alt text). The in-post `disclosure` is the short line because @GameSol404 has no X Premium: posts are capped at 280 characters and the full line alone is 79 of them.",
+  "disclosurePlacement": "post",
+  "$disclosurePlacementCrypto": "Crypto posts go out from @GameSol404 (GameKing) since 2026-09-11. That account has no bio disclosure, so the full disclosure is carried in every crypto post (and still on every card).",
   "$disclosurePlacement": "'post' = the disclosure line is appended to every post and validated; 'bio' = it lives in the account bio only (set it there!) and posts carry the required hashtags (#NFA #DYOR) as the in-post marker. Flip to 'post' to restore per-post disclosures without a code change.",
-  "charLimit": 4000,
+  "charLimit": 280,
+  "$charLimit": "280 since 2026-09-11: @GameSol404 has no X Premium (no long posts). Every crypto generator fits to this with its fit ladder; the card carries the detail.",
   "maxReportAgeHours": 24,
   "marketHolidays": [],
   "$marketHolidays": "Empty by design: a 24/7 market has no full-day closures. Kept as a field so a venue-wide outage date can be added if one ever needs to be skipped.",
@@ -137,7 +141,13 @@
     }
   },
   "hashtags": {
-    "$comment": "Sweep format: 0-2 tags — the cashtag as a hashtag (#ETH) plus one asset-class tag. No required marker tags: the disclosure lives in the bio AND on every chart, which is why charts.requireForPublish must be true (config loader enforces it). Put #NFA #DYOR back in required to restore the in-post marker.",
+    "$tagLine": "Setup-family posts (setup, thread reply, follow-up, close check) end on exactly this line; the ticker appears in the text as $TICKER, not as a hashtag. Compliance blocks a setup-family post that does not end on it (hashtag_line). Remove tagLine (or empty it) to fall back to symbolTag + assetTag.",
+    "tagLine": [
+      "#Crypto",
+      "#TechnicalAnalysis"
+    ],
+    "$tagLineCrypto": "Crypto account (@GameSol404) since 2026-09-11: #Crypto leads (the account's audience) and the line is 10 characters shorter than #TechnicalAnalysis #TradingEducation, which matters at 280.",
+    "$comment": "Sweep format: the fixed tagLine above (was: the cashtag as a hashtag plus one asset-class tag). No required marker tags: the disclosure lives in the bio AND on every chart, which is why charts.requireForPublish must be true (config loader enforces it). Put #NFA #DYOR back in required to restore the in-post marker.",
     "required": [],
     "engagement": {
       "default": [
@@ -179,8 +189,8 @@
       "#1000x",
       "#NextBitcoin"
     ],
-    "symbolTag": true,
-    "assetTag": "#Crypto"
+    "symbolTag": false,
+    "assetTag": null
   },
   "cta": {
     "enabled": true,
@@ -207,15 +217,15 @@
   "priceGrouping": true,
   "$priceGrouping": "Thousands separators, so BTC reads $79,610.00. Off for stocks, which keeps their post formatting byte-identical.",
   "postFormat": "sweep",
-  "plainLanguage": true,
-  "$plainLanguage": "Adds the one-sentence \"In plain terms:\" reading of the setup (src/social/sweep-labels.js) under the indicator line, so a reader who does not know CMF or RSI still gets the point.",
+  "plainLanguage": false,
+  "$plainLanguage": "true adds the one-sentence \"In plain terms:\" reading of the setup (src/social/sweep-labels.js) under the indicator line. Off since 2026-09-11: it restated the chart card's subtitle, and the caption now leaves the details to the card (hook, interpretation, levels, question only).",
   "$postFormat": "\"sweep\" = the Daily Setup Sweep layout (headline verb, two levels, RVOL/score line, level-question CTA, 0-2 hashtags). \"classic\" restores the previous multi-line layout without a code change.",
   "priceDisplay": "compact",
   "$priceDisplay": "\"compact\" shows whole dollars once a price is in the thousands ($2,579). Compliance accepts any value a report level rounds to at the precision shown. \"exact\" keeps full precision.",
   "brand": {
-    "name": "Daily Setup Sweep",
+    "name": "GameKing",
     "tagline": "Charts. Setups. Discipline.",
-    "seriesLine": "Daily Setup Sweep · tracked to a daily close beyond a level · scored every Friday",
+    "seriesLine": null,
     "$seriesLine": "Recurring-format footer on every setup post (before the Data line). Set to null to drop it."
   },
   "$cta": "Engagement line before the Data line; dropped first when the post does not fit. {level1} = the 🎯 level, {level2} = the 🛑 level. With only one level the generator asks a single-level question instead.",
@@ -232,17 +242,23 @@
   "scorecard": {
     "enabled": false,
     "weekday": 5,
-    "queue": "stocks",
+    "queue": "crypto",
     "hashtags": [
-      "#Stocks",
       "#Crypto"
     ],
-    "$comment": "Weekly Setup Scorecard (tv social scorecard): counts from docs/social/setups.jsonl across BOTH queues, queued on the stocks queue every Friday. Only one config should have this enabled or the account posts two scorecards."
+    "$comment": "Weekly Setup Scorecard (tv social scorecard): counts ONLY the crypto queue. Disabled for now — enable it if @GameSol404 should post its own Friday scorecard; it will never include stock setups."
   },
   "video": {
-    "enabled": false,
-    "queue": "stocks",
-    "hashtags": ["#TechnicalAnalysis", "#ChartEducation"],
+    "enabled": true,
+    "queue": "crypto",
+    "library": "crypto",
+    "$library": "\"crypto\" = src/social/crypto-video.js (networks, consensus, scaling, narratives such as restaking, RWA, DePIN, ZK, intents, AI agents), drawn as diagrams. Rotation, the once-a-day guard and the day counter are per queue, so this never collides with the stock chart videos. Enabled 2026-09-11 for @GameSol404, daily 6 AM via the post-crypto-education-video task.",
+    "titlePrefix": "🎬 Crypto Explained",
+    "labels": { "means": "What it is", "use": "Why it matters" },
+    "cta": "Save this • Follow for daily crypto education",
+    "seriesName": "CRYPTO EDUCATION",
+    "endLine": "Every day · one network · one idea",
+    "hashtags": ["#Crypto", "#Blockchain"],
     "footer": "Educational only. Not financial advice.",
     "width": 1080,
     "height": 1920,
@@ -260,5 +276,14 @@
     "width": 1080,
     "height": 1350,
     "$comment": "Educational explainer posts (tv social educate), Tuesday and Friday 8 AM via the post-education-explainer task. One topic per post from src/social/education.js, rotated so the curriculum cycles, published as a numbered 'AI Trade School' lesson. The card is 1080x1350 (Instagram 4:5) with the footer text above; the text carries no ticker (compliance blocks one) and ends on exactly the two tags above. Disabled here — only the stocks config runs the explainers."
+  },
+  "cryptoMarket": {
+    "enabled": true,
+    "queue": "crypto",
+    "hashtags": [
+      "#Crypto",
+      "#Bitcoin"
+    ],
+    "$comment": "Daily crypto market read (tv social cryptomarket), queued by scripts/crypto-social-auto.sh BEFORE the setup so the poster publishes the market context first and the setup 2 minutes later. Built from the nightly crypto sweep: tone (RISK-ON / MIXED / RISK-OFF from breadth above the 20-day basis + average score), BTC and ETH lines, BTC levels with what negates the read, money flow, leaders/laggards, CTA, short disclaimer, Data line, 0-2 hashtags. Compliance kind 'cryptomarket' re-checks tone, breadth and BTC levels against the report."
   }
 }

@@ -210,7 +210,11 @@ export function weekBounds(date) {
  * rate is breakouts over resolved (breakouts + invalidations) — expiries are
  * neither a hit nor a miss and are reported separately.
  */
-export function scorecardStats(records, { from, to }) {
+export function scorecardStats(records, { from, to, queue = null }) {
+  // `queue` scopes the tally to one queue: the stocks and crypto queues post
+  // from different accounts, so a cross-queue scorecard would put crypto
+  // symbols on a stocks-only account. Omit it to count every record.
+  if (queue) records = records.filter(r => (r.queue ?? 'stocks') === queue);
   const inWin = d => d && d >= from && d <= to;
   const posted = records.filter(r => inWin(r.reportDate));
   const breakouts = records.filter(r => r.outcome === 'breakout' && inWin(r.closedBar));
@@ -239,6 +243,6 @@ export function scorecardStats(records, { from, to }) {
     hitRate: resolved ? Math.round((breakouts.length / resolved) * 100) : null,
     allTime: { setups: records.filter(live).length, breakouts: allBreak, invalidated: allInv, resolved: allResolved, hitRate: allResolved ? Math.round((allBreak / allResolved) * 100) : null },
     best, worst,
-    symbols: { posted: posted.filter(live).map(r => r.symbol), breakouts: breakouts.map(r => r.symbol), invalidated: invalidated.map(r => r.symbol), active: active.map(r => r.symbol) },
+    symbols: { posted: posted.filter(live).map(r => r.symbol), breakouts: breakouts.map(r => r.symbol), invalidated: invalidated.map(r => r.symbol), expired: expired.map(r => r.symbol), active: active.map(r => r.symbol) },
   };
 }

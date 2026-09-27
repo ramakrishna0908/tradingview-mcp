@@ -58,6 +58,13 @@ else
 fi
 
 echo "=== $(date) crypto social auto-publish for $DATE ===" >> "$LOG"
+
+# Daily market read FIRST, so it is the first ready record and goes out ahead
+# of the setup (the poster spaces records 2 minutes apart). Idempotent: one per
+# report date; "refused: … already ready_to_post/published" on a re-run is fine.
+/usr/local/bin/node "$REPO/src/cli/index.js" social cryptomarket --report "$REPORT" >> "$LOG" 2>&1
+echo "$(date): crypto market read exited $?" >> "$LOG"
+
 /usr/local/bin/node "$REPO/src/cli/index.js" social auto --report "$REPORT" >> "$LOG" 2>&1
 echo "$(date): crypto social auto-publish exited $?" >> "$LOG"
 

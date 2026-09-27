@@ -13,6 +13,9 @@ __pycache__/
 config/assetdecoded.json
 !.env.social.example
 docs/social/charts/
+# Rendered video assets: regenerable from the source data by
+# scripts/render-edu-video.py, and 6.7MB and growing daily.
+docs/social/videos/
 docs/social/REHEARSE
 .firecrawl/
 .playwright-mcp/

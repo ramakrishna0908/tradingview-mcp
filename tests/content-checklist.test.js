@@ -32,7 +32,11 @@ import { VIDEO_TOPICS, generateVideoPost, buildVideoSpec, VIDEO_CTA } from '../s
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const STOCK_CFG = join(ROOT, 'config', 'social-compliance.json');
 const CRYPTO_CFG = join(ROOT, 'config', 'social-compliance-crypto.json');
-const load = p => { resetConfigCache(); const c = loadConfig(p); resetConfigCache(); return c; };
+// The checklists pin the sweep presentation (bio disclosure + series line).
+// The live crypto policy moved to @GameSol404 on 2026-09-11 (in-post
+// disclosure, no series line); tests/crypto-market-post.test.js pins that.
+const SWEEP_PRESENTATION = c => ({ ...c, disclosurePlacement: 'bio', charLimit: 4000, hashtags: { ...c.hashtags, tagLine: ['#TechnicalAnalysis', '#TradingEducation'] }, disclosure: 'Educational market analysis only. Not investment advice. Trading involves risk.', cardDisclosure: undefined, brand: { ...c.brand, name: 'Daily Setup Sweep', seriesLine: 'Daily Setup Sweep · tracked to a daily close beyond a level · scored every Friday' } });
+const load = p => { resetConfigCache(); const c = loadConfig(p); resetConfigCache(); return p === CRYPTO_CFG ? SWEEP_PRESENTATION(c) : c; };
 
 const ROW = (over = {}) => ({
   symbol: 'ETH', group: 'main', flags: '', price: 2498.20, rsi: 64, rsiMa: 60, cmf: 0.22, cmfTrend: null, atr: 95,
@@ -70,7 +74,7 @@ function common(kind, text, { maxTags = 2 } = {}) {
 
 describe('content checklist: setup post (Daily Setup Sweep)', () => {
   for (const [label, path] of [['stocks', STOCK_CFG], ['crypto', CRYPTO_CFG]]) {
-    it(`${label}: hook, status, reasoning + plain English, two levels, labelled invalidation, CTA, series line, ≤2 tags, compliant`, () => {
+    it(`${label}: hook, status, reasoning, participation warning, two levels, labelled invalidation, CTA, series line, fixed tag line, compliant`, () => {
       const cfg = load(path);
       const row = ROW();
       const setup = classifySetup(row);
@@ -80,8 +84,9 @@ describe('content checklist: setup post (Daily Setup Sweep)', () => {
       const lines = text.split('\n');
       assert.match(lines[0], /^📈 \$ETH .+ — reclaim confirmed\.$/, 'hook names the ticker and the verdict');
       assert.match(lines[1], /^CMF .+ while RSI .+\.$/, 'one-line reasoning from the indicators');
-      assert.match(lines[2], /^In plain terms: /, 'plain-English context follows the indicator line');
-      assert.ok(!JARGON_ONLY.test(lines[2]), 'the plain-English line carries no indicator acronyms');
+      assert.match(lines[2], /^⚠️ RVOL 0\.8× — low participation, so confirmation is weaker\.$/, 'a sub-1.0× RVOL is called out as low participation');
+      assert.ok(!text.includes('In plain terms'), 'the card subtitle carries the plain reading; the caption does not repeat it');
+      assert.match(text, /\n#TechnicalAnalysis #TradingEducation$/, 'closes on the fixed tag line');
       assert.match(text, /\n🎯 Above \$[\d,.]+ → potential breakout\n🛑 Below \$[\d,.]+ → setup invalidated\n/, 'both levels, invalidation labelled');
       assert.match(text, /\nWhich level gets hit first — \$[\d,.]+ or \$[\d,.]+\? 👇\n/, 'level-question CTA');
       assert.match(text, /\nDaily Setup Sweep · tracked to a daily close beyond a level · scored every Friday\n/, 'recurring format + accountability loop named');
@@ -90,14 +95,16 @@ describe('content checklist: setup post (Daily Setup Sweep)', () => {
     });
   }
 
-  it('a WATCH never reads as confirmed, and its plain-English line says so', () => {
+  it('a WATCH never reads as confirmed and is labelled a watch (plain-English line says so when enabled)', () => {
     const cfg = load(CRYPTO_CFG);
     const row = ROW({ position: 'in_cloud' });
     const setup = classifySetup(row);
     const { text } = generatePost(setup, MODEL([row]), cfg, { chart });
     assert.ok(!/confirmed/i.test(text.split('\n')[0]));
-    assert.match(text, /\nIn plain terms: .*a watch, not a call\.\n/);
+    assert.match(text.split('\n')[0], /reclaim watch\.$/);
     assert.ok(/\bwatch\b/i.test(text));
+    const withPlain = generatePost(setup, MODEL([row]), { ...cfg, plainLanguage: true }, { chart }).text;
+    assert.match(withPlain, /\nIn plain terms: .*a watch, not a call\.\n/);
   });
 
   it('every setup the classifier can name has a plain-English reading with no forward-looking wording', () => {
@@ -142,17 +149,24 @@ describe('content checklist: follow-ups (accountability)', () => {
 });
 
 describe('content checklist: weekly scorecard', () => {
-  it('counts, hit rate, expiries shown, how-to-read line, CTA, compliant', () => {
+  it('counts, pending hit rate, lesson of the week, full watch list, accountability, CTA, two education tags, compliant', () => {
     const c = load(STOCK_CFG);
-    const stats = { from: '2026-09-07', to: '2026-09-11', posted: 4, breakouts: 2, invalidated: 1, expired: 1, active: 1, resolved: 3, hitRate: 67, allTime: { setups: 6, breakouts: 2, invalidated: 2, resolved: 4, hitRate: 50 }, best: { symbol: 'ETH', pct: 4.5 }, worst: { symbol: 'SOL', pct: -2.7 }, symbols: { posted: [], breakouts: ['ETH', 'ADA'], invalidated: ['SOL'], active: ['BTC'] } };
-    const { text } = generateScorecard(stats, c);
-    common('scorecard', text);
-    assert.match(text, /^📊 Weekly Setup Scorecard · /, 'recurring format named in the hook');
-    for (const must of ['Setups posted: 4', '✅ Breakouts / levels reached: 2', '🛑 Invalidated: 1', '👀 Still active: 1', '⏳ Expired (no resolution): 1', 'Hit rate this week: 67% (2 of 3 resolved)', 'All-time: 6 setups', 'Every setup, its levels and its outcome are logged before posting.', 'How to read it: hit rate = breakouts ÷ resolved setups.', 'Which setup did you follow this week? 👇']) {
-      assert.ok(text.includes(must), `scorecard missing "${must}"\n${text}`);
+    const stats = { from: '2026-09-07', to: '2026-09-11', posted: 4, breakouts: 2, invalidated: 1, expired: 1, active: 1, resolved: 3, hitRate: 67, allTime: { setups: 6, breakouts: 2, invalidated: 2, resolved: 4, hitRate: 50 }, best: null, worst: null, symbols: { posted: [], breakouts: ['NVDA', 'CRCL'], invalidated: ['AMD'], expired: ['LLY'], active: ['RKLB'] } };
+    for (const st of [stats, { ...stats, breakouts: 0, invalidated: 0, expired: 0, resolved: 0, hitRate: null, active: 4, symbols: { ...stats.symbols, breakouts: [], invalidated: [], expired: [], active: ['CRCL', 'MSTR', 'LLY', 'RKLB'] } }]) {
+      const { text } = generateScorecard(st, c);
+      common('scorecard', text);
+      assert.match(text, /^📊 Weekly Setup Scorecard · /, 'recurring format named in the hook');
+      for (const must of [`Setups Tracked: ${st.posted}`, `Active: ${st.active}`, `🎯 Targets Hit: ${st.breakouts}`, `🛑 Invalidated: ${st.invalidated}`, '🧠 Lesson of the Week: ', `🔭 Watching Next Week: ${st.symbols.active.map(s => '$' + s).join(' ')}`, 'No deleting losers. No cherry-picking winners.', 'Which setup should we break down next? 👇']) {
+        assert.ok(text.includes(must), `scorecard missing "${must}"\n${text}`);
+      }
+      assert.ok(text.includes(st.hitRate == null ? 'Hit Rate: Pending' : `Hit Rate: ${st.hitRate}%`));
+      if (st.expired) assert.ok(text.includes(`⏳ Expired (not scored): ${st.expired}`), 'expiries shown, not hidden');
+      assert.equal(text.split('\n').at(-1), '#TechnicalAnalysis #TradingEducation');
+      // "target" appears only inside the past-outcome "Targets Hit"/"targets hit" wording
+      assert.equal(text.replace(/\btargets? hit\b/gi, '').match(/target/i), null);
+      const ctx = { setup: null, row: null, model: { reportDate: '2026-09-11', dataAsOf: new Date().toISOString() }, config: c, kind: 'scorecard', scorecard: st, chart: { path: '/tmp/s.png' } };
+      assert.deepEqual(blocking(validatePost(text, ctx)), []);
     }
-    const ctx = { setup: null, row: null, model: { reportDate: '2026-09-11', dataAsOf: new Date().toISOString() }, config: c, kind: 'scorecard', scorecard: stats, chart: { path: '/tmp/s.png' } };
-    assert.deepEqual(blocking(validatePost(text, ctx)), []);
   });
 });
 

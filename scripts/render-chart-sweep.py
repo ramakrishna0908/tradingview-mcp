@@ -65,72 +65,127 @@ def tick_fmt(v):
     return f"{v:.7f}"
 
 
+def fit_font(d, text, maxw, size, bold=True, floor=20):
+    """Largest font (down to floor) at which text fits maxw."""
+    while size > floor and d.textlength(text, font=font(size, bold)) > maxw:
+        size -= 2
+    return font(size, bold)
+
+
 def render_scorecard(spec):
-    """The Friday scorecard card: four counts, the hit rate, the week's setups, disclaimer."""
-    W, H = int(spec.get('width', 1200)), int(spec.get('height', 1000))
-    img = Image.new('RGB', (W, H), BG)
+    """The Friday scorecard card, compact: five counts, Lesson of the Week,
+    Watching Next Week, what resolved, the accountability line, disclaimer.
+    The canvas height follows the content, so there is no dead space."""
+    W = int(spec.get('width', 1200))
+    H_MAX = 2000
+    img = Image.new('RGB', (W, H_MAX), BG)
     d = ImageDraw.Draw(img)
-    M = 40
-    COL = {'green': GREEN, 'red': RED, 'blue': BLUE}
-    d.text((M, 36), spec.get('title', 'Weekly Setup Scorecard'), font=font(48, True), fill=TEXT)
-    d.text((M, 100), spec.get('range', ''), font=font(22), fill=MUTED)
+    M, GAP = 44, 16
+    COL = {'green': GREEN, 'red': RED, 'blue': BLUE, 'amber': AMBER, 'muted': MUTED}
+
+    # header
+    d.text((M, 32), spec.get('title', 'Weekly Setup Scorecard'), font=font(46, True), fill=TEXT)
+    d.text((M, 90), spec.get('range', ''), font=font(22), fill=MUTED)
     if spec.get('brand'):
-        f_b = font(18, True)
+        f_b = font(20, True)
         bw = d.textlength(spec['brand'], font=f_b)
-        d.text((W - M - bw, 40), spec['brand'], font=f_b, fill=TEXT)
+        d.text((W - M - bw, 38), spec['brand'], font=f_b, fill=TEXT)
         if spec.get('tagline'):
-            tw = d.textlength(spec['tagline'], font=font(14))
-            d.text((W - M - tw, 66), spec['tagline'], font=font(14), fill=MUTED)
-    # count tiles
+            f_t = font(15)
+            tw = d.textlength(spec['tagline'], font=f_t)
+            d.text((W - M - tw, 66), spec['tagline'], font=f_t, fill=MUTED)
+
+    # five count tiles
     tiles = spec.get('tiles', [])
-    TT, TB, gap = 150, 290, 16
-    tw_each = (W - 2 * M - gap * (len(tiles) - 1)) / max(len(tiles), 1)
+    TT, TH = 136, 124
+    n = max(len(tiles), 1)
+    tw_each = (W - 2 * M - GAP * (n - 1)) / n
     for i, t in enumerate(tiles):
-        x1 = M + i * (tw_each + gap)
+        x1 = M + i * (tw_each + GAP)
         col = COL.get(t.get('color'), BLUE)
-        d.rounded_rectangle((x1, TT, x1 + tw_each, TB), radius=14, fill=PANEL, outline=GRID)
-        d.rectangle((x1, TT + 14, x1 + 5, TB - 14), fill=col)
-        d.text((x1 + 24, TT + 18), t.get('label', ''), font=font(16), fill=MUTED)
-        d.text((x1 + 24, TT + 48), str(t.get('value', '')), font=font(64, True), fill=col)
-    # hit rate band
-    HT, HB = 318, 430
-    d.rounded_rectangle((M, HT, W - M, HB), radius=14, fill=PANEL2, outline=GRID)
-    hr = spec.get('hitRate')
-    hr_txt = f"{hr}%" if hr is not None else '—'
-    d.text((M + 28, HT + 16), 'Hit rate this week', font=font(18), fill=MUTED)
-    d.text((M + 28, HT + 44), hr_txt, font=font(54, True), fill=GREEN if (hr or 0) >= 50 else RED if hr is not None else MUTED)
-    d.text((M + 200, HT + 66), spec.get('hitRateText', ''), font=font(18), fill=MUTED)
-    # progress bar
-    bx1, bx2, by = W // 2, W - M - 28, HT + 60
-    d.rounded_rectangle((bx1, by, bx2, by + 22), radius=11, fill=GRID)
-    if hr is not None:
-        d.rounded_rectangle((bx1, by, bx1 + (bx2 - bx1) * hr / 100, by + 22), radius=11, fill=GREEN)
-    d.text((bx1, by + 32), spec.get('allTime', ''), font=font(15), fill=MUTED)
-    # setup rows
-    rows = spec.get('rows', [])
-    RT = 460
-    d.text((M, RT), 'This week\'s setups', font=font(20, True), fill=TEXT)
-    y = RT + 40
-    cols = 2
-    cw = (W - 2 * M - 16) / cols
-    for i, r in enumerate(rows):
-        cx = M + (i % cols) * (cw + 16)
-        cy = y + (i // cols) * 44
-        if cy > H - 150: break
-        col = COL.get(r.get('color'), BLUE)
-        d.rounded_rectangle((cx, cy, cx + cw, cy + 36), radius=8, fill=PANEL, outline=GRID)
-        d.ellipse((cx + 12, cy + 11, cx + 26, cy + 25), fill=col)
-        d.text((cx + 38, cy + 8), f"${r.get('symbol', '')}", font=font(18, True), fill=TEXT)
-        ow = d.textlength(r.get('outcome', ''), font=font(16))
-        d.text((cx + cw - ow - 14, cy + 9), r.get('outcome', ''), font=font(16), fill=col)
-    if not rows:
-        d.text((M, y), 'No setups were opened this week.', font=font(16), fill=MUTED)
-    # footer
+        d.rounded_rectangle((x1, TT, x1 + tw_each, TT + TH), radius=14, fill=PANEL, outline=GRID)
+        d.rectangle((x1, TT + 14, x1 + 5, TT + TH - 14), fill=col)
+        d.text((x1 + 22, TT + 14), t.get('label', ''), font=font(17), fill=MUTED)
+        val = str(t.get('value', ''))
+        d.text((x1 + 22, TT + 38), val, font=fit_font(d, val, tw_each - 40, 54), fill=col)
+        if t.get('sub'):
+            d.text((x1 + 22, TT + TH - 28), t['sub'], font=fit_font(d, t['sub'], tw_each - 40, 15, bold=False, floor=11), fill=MUTED)
+    y = TT + TH + GAP
+
+    # Lesson of the Week (left) · Watching Next Week (right)
+    LW = (W - 2 * M - GAP) * 0.58
+    RX = M + LW + GAP
+    RW = W - M - RX
+    f_lesson = font(25)
+    lesson_lines = wrap_text(d, spec.get('lesson', ''), f_lesson, LW - 56)
+    lesson_h = 58 + len(lesson_lines) * 34 + 18
+    f_chip = font(21, True)
+    chips, cx, cy = [], 0, 0
+    for sym in spec.get('watching', []):
+        label = f"${sym}"
+        cw = d.textlength(label, font=f_chip) + 30
+        if cx and cx + cw > RW - 48:
+            cx, cy = 0, cy + 46
+        chips.append((cx, cy, cw, label))
+        cx += cw + 10
+    watch_h = 58 + ((cy + 46) if chips else 34) + 14
+    ph = max(lesson_h, watch_h, 150)
+
+    d.rounded_rectangle((M, y, M + LW, y + ph), radius=14, fill=PANEL2, outline=GRID)
+    d.rectangle((M, y + 14, M + 5, y + ph - 14), fill=AMBER)
+    d.text((M + 28, y + 18), 'LESSON OF THE WEEK', font=font(17, True), fill=AMBER)
+    for k, line in enumerate(lesson_lines):
+        d.text((M + 28, y + 54 + k * 34), line, font=f_lesson, fill=TEXT)
+
+    d.rounded_rectangle((RX, y, RX + RW, y + ph), radius=14, fill=PANEL2, outline=GRID)
+    d.rectangle((RX, y + 14, RX + 5, y + ph - 14), fill=BLUE)
+    d.text((RX + 28, y + 18), 'WATCHING NEXT WEEK', font=font(17, True), fill=BLUE)
+    for (ox, oy, cw, label) in chips:
+        bx, by = RX + 28 + ox, y + 56 + oy
+        d.rounded_rectangle((bx, by, bx + cw, by + 36), radius=18, fill=PANEL, outline=BLUE)
+        d.text((bx + 15, by + 6), label, font=f_chip, fill=TEXT)
+    if not chips:
+        d.text((RX + 28, y + 58), 'No open setups carry over.', font=font(19), fill=MUTED)
+    y += ph + GAP
+
+    # what resolved this week (only when something did)
+    resolved = spec.get('resolved', [])
+    if resolved:
+        d.text((M, y), 'Resolved this week', font=font(18, True), fill=TEXT)
+        rx, ry = M, y + 32
+        f_r = font(18, True)
+        for r in resolved:
+            col = COL.get(r.get('color'), BLUE)
+            label = f"${r.get('symbol', '')}  {r.get('outcome', '')}"
+            cw = d.textlength(label, font=f_r) + 44
+            if rx > M and rx + cw > W - M:
+                rx, ry = M, ry + 44
+            d.rounded_rectangle((rx, ry, rx + cw, ry + 36), radius=8, fill=PANEL, outline=GRID)
+            d.ellipse((rx + 12, ry + 11, rx + 26, ry + 25), fill=col)
+            d.text((rx + 34, ry + 7), label, font=f_r, fill=TEXT)
+            rx += cw + 10
+        y = ry + 36 + GAP
+
+    # accountability strip
+    if spec.get('accountability'):
+        AH = 58
+        d.rounded_rectangle((M, y, W - M, y + AH), radius=14, fill=PANEL, outline=GRID)
+        f_a = font(24, True)
+        aw = d.textlength(spec['accountability'], font=f_a)
+        d.text(((W - aw) / 2, y + 15), spec['accountability'], font=f_a, fill=TEXT)
+        y += AH + 20
+
+    # footer: disclaimer, then data/method line
     if spec.get('disclosure'):
-        d.text((M, H - 86), spec['disclosure'], font=font(16), fill=TEXT)
-    d.text((M, H - 58), spec.get('footer', ''), font=font(15), fill=MUTED)
-    d.text((M, H - 36), spec.get('source', ''), font=font(15), fill=MUTED)
-    img.save(spec['out'], 'PNG', optimize=True)
+        d.text((M, y), spec['disclosure'], font=font(17), fill=TEXT)
+        y += 28
+    if spec.get('footer'):
+        f_f = font(15)
+        for line in wrap_text(d, spec['footer'], f_f, W - 2 * M):
+            d.text((M, y), line, font=f_f, fill=MUTED)
+            y += 22
+    y += 22
+    img.crop((0, 0, W, min(int(y), H_MAX))).save(spec['out'], 'PNG', optimize=True)
     print(spec['out'])
 
 
@@ -419,12 +474,12 @@ def render_premarket(spec):
     d.text((M + 28, 102), label, font=fpill, fill=bias_col)
     cx = M + pw + 32
     conf = int(spec.get('confidence', 0) or 0)
-    d.text((cx, 98), 'Confidence', font=font(18), fill=MUTED)
-    d.text((cx, 120), f"{conf}/100", font=font(40, True), fill=TEXT)
+    d.text((cx, 98), spec.get('confidenceLabel', 'Confidence'), font=font(18), fill=MUTED)
+    d.text((cx, 120), spec.get('confidenceText') or f"{conf}/100", font=font(40, True), fill=TEXT)
     bx1, bx2, by = cx + 190, W - M, 132
     d.rounded_rectangle((bx1, by, bx2, by + 22), radius=11, fill=GRID)
     d.rounded_rectangle((bx1, by, bx1 + (bx2 - bx1) * conf / 100, by + 22), radius=11, fill=bias_col)
-    d.text((bx1, by + 30), 'how much the inputs agree — not a probability', font=font(14), fill=MUTED)
+    d.text((bx1, by + 30), spec.get('confidenceNote', 'how much the inputs agree — not a probability'), font=font(14), fill=MUTED)
     # hook
     y = 190
     for ln in wrap_text(d, spec.get('hook', ''), font(22), W - 2 * M)[:2]:
@@ -446,7 +501,7 @@ def render_premarket(spec):
     # drivers
     DT = TB + 18; DB = DT + 150
     d.rounded_rectangle((M, DT, W - M, DB), radius=14, fill=PANEL, outline=GRID)
-    d.text((M + 24, DT + 14), 'TOP DRIVERS', font=font(14, True), fill=MUTED)
+    d.text((M + 24, DT + 14), spec.get('driversLabel', 'TOP DRIVERS'), font=font(14, True), fill=MUTED)
     yy = DT + 42
     for drv in spec.get('drivers', [])[:3]:
         col = COLOR.get(drv.get('color'), BLUE)
@@ -472,7 +527,7 @@ def render_premarket(spec):
     sx = M + half + 16
     d.rounded_rectangle((sx, LT, W - M, LB), radius=14, fill=PANEL, outline=GRID)
     sec = spec.get('sectors') or {}
-    d.text((sx + 24, LT + 14), 'SECTORS', font=font(14, True), fill=MUTED)
+    d.text((sx + 24, LT + 14), spec.get('sectorsLabel', 'SECTORS'), font=font(14, True), fill=MUTED)
     d.text((sx + 24, LT + 42), 'Strongest', font=font(15), fill=MUTED)
     d.text((sx + 24, LT + 62), ', '.join(sec.get('strong', [])) or '—', font=font(19, True), fill=GREEN)
     d.text((sx + 24, LT + 90), 'Weakest', font=font(15), fill=MUTED)
@@ -664,7 +719,8 @@ def main():
     # check / eye mark
     mx, my = M + 46, by1 + 58
     d.ellipse((mx - 16, my - 16, mx + 16, my + 16), fill=verdict_col)
-    if confirmed:
+    # mark 'dot' keeps the ✓ off a badge that is confirmed-coloured but not a confirmation
+    if confirmed and spec.get('mark') != 'dot':
         d.line((mx - 8, my, mx - 2, my + 6), fill=BG, width=4)
         d.line((mx - 2, my + 6, mx + 9, my - 6), fill=BG, width=4)
     else:
@@ -802,7 +858,8 @@ def main():
         d.text((tx1 + 18, TT + 14), t.get('label', ''), font=f_tlab, fill=MUTED)
         d.text((tx1 + 18, TT + 38), str(t.get('value', '')), font=f_tval, fill=TEXT)
         if t.get('sub'):
-            d.text((tx1 + 18, TT + 82), t['sub'], font=f_tsub, fill=MUTED)
+            # warn = a caution the post also states (e.g. RVOL under 1.0x)
+            d.text((tx1 + 18, TT + 82), t['sub'], font=f_tsub, fill=AMBER if t.get('warn') else MUTED)
 
     # ── bull / bear / question strip ────────────────────────────────────────
     bottom = spec.get('bottom', [])

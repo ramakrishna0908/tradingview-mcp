@@ -17,16 +17,12 @@
  */
 import { fmtPrice } from './money.js';
 import { fmtCmf } from './setup.js';
-import { sweepLabels, sweepLevels } from './sweep-labels.js';
+import { sweepLabels, sweepLevels, setupTags } from './sweep-labels.js';
 import { formatDataTimestamp } from './generate.js';
 import { xWeightedLength } from './compliance.js';
 
 function tagLine(symbol, config) {
-  const h = config.hashtags ?? {};
-  const out = [...(h.required ?? [])];
-  if (h.symbolTag) out.push(`#${symbol}`);
-  if (h.assetTag) out.push(h.assetTag);
-  return out.slice(0, h.maxTotal ?? 6).join(' ') || null;
+  return setupTags(symbol, config).join(' ') || null;
 }
 
 /**

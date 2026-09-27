@@ -11,13 +11,14 @@ import { loadConfig } from './config.js';
 import { loadReportModel, findRow } from './report-model.js';
 import { buildSummaryTable, selectPostCandidates, classifySetup, cohortCandidates, CONFIDENCE_RANK, qualityRank } from './setup.js';
 import { SetupTracker, openFromSetup, detectEvents, graduate, scorecardStats, weekBounds, EVENT, markRemoved } from './tracker.js';
-import { generateFollowUp, followUpModel, followUpSetup, followUpRow, followUpChartOverrides, generateScorecard, buildScorecardSpec, scorecardAltText } from './followup.js';
+import { generateFollowUp, followUpModel, followUpSetup, followUpRow, followUpChartOverrides, generateScorecard, buildScorecardSpec, scorecardAltText, LESSON_MAX_CHARS } from './followup.js';
 import { MetricsStore, readInsights, insightsBoost } from './metrics.js';
 import { TOPICS, getTopic, nextTopic, generateEducationPost, buildEducationSpec, educationAltText, lessonNumberFor, lessonLabel, LESSON_BRAND } from './education.js';
 import { LAUNCH_SEQUENCE, launchItem, nextLaunchItem, generateIntroPost, buildIntroSpec, introAltText } from './launch.js';
-import { initialStage } from './sweep-labels.js';
+import { initialStage, recordStageLabel } from './sweep-labels.js';
 import { generatePremarketPost, buildPremarketSpec, premarketAltText } from './premarket-post.js';
-import { VIDEO_TOPICS, getVideoTopic, nextVideoTopic, generateVideoPost, buildVideoSpec, videoAltText, renderVideoSpec, DEFAULT_VIDEO_DIR } from './video.js';
+import { generateCryptoMarketPost, buildCryptoMarketSpec, cryptoMarketAltText } from './crypto-market-post.js';
+import { VIDEO_TOPICS, videoLibrary, getVideoTopic, nextVideoTopic, generateVideoPost, buildVideoSpec, videoAltText, renderVideoSpec, DEFAULT_VIDEO_DIR } from './video.js';
 import { loadReport as loadPremarketReport, DEFAULT_OUT_DIR as PREMARKET_DIR } from '../premarket/index.js';
 import { etDate } from '../premarket/data.js';
 import { join, dirname } from 'node:path';
@@ -95,6 +96,9 @@ export class SocialWorkflow {
     }
     if (rec.kind === 'premarket') {
       return validatePost(this.currentText(rec), { ...common, setup: null, row: null, model: { reportDate: rec.reportDate, dataAsOf: rec.dataAsOf }, kind: 'premarket', premarket: rec.premarket });
+    }
+    if (rec.kind === 'cryptomarket') {
+      return validatePost(this.currentText(rec), { ...common, setup: null, row: null, model: { reportDate: rec.reportDate, dataAsOf: rec.dataAsOf }, kind: 'cryptomarket', cryptoMarket: rec.cryptoMarket });
     }
     if (rec.kind === 'closeupdate') {
       const tr = this.tracker.get(rec.closeUpdateOf);
@@ -313,7 +317,7 @@ export class SocialWorkflow {
       if (tr && !tr.posts.some(p => p.auditId === pub.id)) this.tracker.append({ ...tr, posts: [...tr.posts, post] });
       return;
     }
-    if (['scorecard', 'education', 'video', 'premarket', 'thread'].includes(pub.kind)) return;
+    if (['scorecard', 'education', 'video', 'premarket', 'cryptomarket', 'thread'].includes(pub.kind)) return;
     if (pub.kind === 'closeupdate') {
       const tr = this.tracker.get(pub.closeUpdateOf);
       if (tr && !tr.posts.some(p => p.auditId === pub.id)) this.tracker.append({ ...tr, posts: [...tr.posts, { ...post, stage: 'CLOSE_CHECK' }] });
@@ -534,7 +538,7 @@ export class SocialWorkflow {
       if (cool) { skip(`posted ${cool.publication.at.slice(0, 16)}Z — within ${cooldownLabel} cooldown (${cool.id})`); continue; }
       if (policy.skipTracked !== false) {
         const open = this.tracker.openFor(setup.symbol, this.queue);
-        if (open) { skip(`already tracked as ${open.stageLabel} since ${open.reportDate} (${open.id}) — follow-ups cover it`); continue; }
+        if (open) { skip(`already tracked as ${recordStageLabel(open)} since ${open.reportDate} (${open.id}) — follow-ups cover it`); continue; }
       }
 
       const [rec] = await this.draft(model, { symbol: setup.symbol, reportPath, chartOpts: { fetchImpl: fetchImplForCharts } });
@@ -868,25 +872,34 @@ export class SocialWorkflow {
   // ─── weekly scorecard ──────────────────────────────────────────────────────
 
   /** Build, validate and queue the weekly scorecard for the week containing `date`. */
-  async queueScorecard({ date = this.now().toISOString().slice(0, 10), dryRun = false, chartOpts = {}, creds = getCredentialsFromEnv(), fetchImpl } = {}) {
+  async queueScorecard({ date = this.now().toISOString().slice(0, 10), dryRun = false, lesson = null, chartOpts = {}, creds = getCredentialsFromEnv(), fetchImpl } = {}) {
     const sc = this.config.scorecard ?? {};
     const policy = this.config.posting.autoPublish ?? {};
     const via = policy.via ?? 'api';
     const { from, to } = weekBounds(date);
-    const stats = scorecardStats(this.tracker.latest(), { from, to });
+    // Scoped to the scorecard's own queue: @DailySetupSweep is stocks-only and
+    // the crypto queue posts from a separate account, so a cross-queue tally
+    // would put crypto symbols on a stocks account (and vice versa).
+    const stats = scorecardStats(this.tracker.latest(), { from, to, queue: sc.queue ?? 'stocks' });
     const summary = { dryRun, from, to, stats, refused: null, record: null };
     if (sc.enabled === false) { summary.refused = 'scorecard is disabled in config (scorecard.enabled)'; return summary; }
     if (policy.disabledBy) { summary.refused = `auto-publish disabled by ${policy.disabledBy}`; return summary; }
     const dup = this.audit.latest().find(r => r.kind === 'scorecard' && r.reportDate === to && ['approved', 'ready_to_post', 'published', 'publishing'].includes(r.status));
     if (dup) { summary.refused = `scorecard for the week ending ${to} is already ${dup.status} (${dup.id})`; return summary; }
 
-    const { text } = generateScorecard(stats, this.config);
+    // An explicit Lesson of the Week must fit its phone line; the text itself
+    // still goes through compliance with the rest of the post.
+    if (lesson != null && String(lesson).trim().length > LESSON_MAX_CHARS) {
+      summary.refused = `lesson is ${String(lesson).trim().length} chars (max ${LESSON_MAX_CHARS})`;
+      return summary;
+    }
+    const { text } = generateScorecard(stats, this.config, { lesson });
     let chartRec = null;
     if (this.config.charts?.enabled) {
       try {
         const out = join(chartOpts.dir ?? DEFAULT_CHART_DIR, to, 'SCORECARD.png');
-        renderChartSpec(buildScorecardSpec(stats, this.config, out), { python: chartOpts.python });
-        chartRec = { path: out, altText: scorecardAltText(stats, this.config) };
+        renderChartSpec(buildScorecardSpec(stats, this.config, out, { lesson }), { python: chartOpts.python });
+        chartRec = { path: out, altText: scorecardAltText(stats, this.config, { lesson }) };
       } catch (err) {
         chartRec = { path: null, error: err.message };
       }
@@ -1147,21 +1160,27 @@ export class SocialWorkflow {
     const policy = this.config.posting.autoPublish ?? {};
     const via = policy.via ?? 'api';
     const today = this.now().toISOString().slice(0, 10);
-    const summary = { dryRun, topic: null, refused: null, record: null, topics: VIDEO_TOPICS.map(t => t.id) };
-    if (v.enabled === false) { summary.refused = 'chart-education videos are disabled in config (video.enabled)'; return summary; }
+    // The library (chart topics or crypto explainers) and the queue come from
+    // the config; rotation, the once-a-day guard and the day counter are per
+    // queue, so the stock and crypto series never block or renumber each other.
+    const lib = videoLibrary(this.config);
+    const vq = v.queue ?? 'stocks';
+    const inQueue = r => (r.queue ?? 'stocks') === vq;
+    const summary = { dryRun, topic: null, refused: null, record: null, topics: lib.map(t => t.id) };
+    if (v.enabled === false) { summary.refused = 'education videos are disabled in config (video.enabled)'; return summary; }
     if (policy.disabledBy) { summary.refused = `auto-publish disabled by ${policy.disabledBy}`; return summary; }
     // Never film the concept the explainer card already covered today.
     const live = ['approved', 'ready_to_post', 'published', 'publishing'];
     const todaysExplainer = this.audit.latest().filter(r => r.kind === 'education' && r.reportDate === today && live.includes(r.status)).map(r => r.topic);
-    const t = topic ? getVideoTopic(topic) : nextVideoTopic(this.audit.latest(), { exclude: todaysExplainer });
-    if (!t) { summary.refused = topic ? `unknown topic "${topic}" (known: ${VIDEO_TOPICS.map(x => x.id).join(', ')})` : 'no topic available'; return summary; }
+    const t = topic ? getVideoTopic(topic, lib) : nextVideoTopic(this.audit.latest(), { exclude: todaysExplainer, topics: lib, queue: vq });
+    if (!t) { summary.refused = topic ? `unknown topic "${topic}" (known: ${lib.map(x => x.id).join(', ')})` : 'no topic available'; return summary; }
     summary.topic = t.id;
-    const dup = this.audit.latest().find(r => r.kind === 'video' && r.reportDate === today && live.includes(r.status));
-    if (dup) { summary.refused = `a chart-education video for ${today} is already ${dup.status} (${dup.id}, topic ${dup.topic})`; return summary; }
+    const dup = this.audit.latest().find(r => r.kind === 'video' && inQueue(r) && r.reportDate === today && live.includes(r.status));
+    if (dup) { summary.refused = `an education video for ${today} is already ${dup.status} on the ${vq} queue (${dup.id}, topic ${dup.topic})`; return summary; }
 
     const { text } = generateVideoPost(t, this.config);
-    // Day number for the on-screen series chip: one more than the videos already published.
-    const day = this.audit.latest().filter(r => r.kind === 'video' && r.status === 'published').length + 1;
+    // Day number for the on-screen series chip: one more than this queue's videos already published.
+    const day = this.audit.latest().filter(r => r.kind === 'video' && inQueue(r) && r.status === 'published').length + 1;
     let chartRec = null;
     try {
       const out = join(chartOpts.dir ?? DEFAULT_VIDEO_DIR, today, `EDU-${t.id}.mp4`);
@@ -1299,6 +1318,82 @@ export class SocialWorkflow {
       summary.record = pub.status === 'published' ? { id: pub.id, text, url: pub.publication.url, chart: chartRec?.path ?? null } : null;
       if (pub.status !== 'published') summary.refused = `publish failed: ${pub.error}`;
     }
+    return summary;
+  }
+
+  // ─── crypto market-read post ────────────────────────────────────────────────
+
+  /**
+   * Build, render, validate and queue the daily crypto market read from the
+   * nightly crypto sweep (docs/reports/crypto/daily-<date>.html). One post per
+   * report date, queued ahead of the day's setup so the poster publishes the
+   * market context first (kind 'cryptomarket', symbol 'CRYPTO').
+   */
+  async queueCryptoMarket({ reportPath, dryRun = false, chartOpts = {} } = {}) {
+    const cm = this.config.cryptoMarket ?? {};
+    const policy = this.config.posting.autoPublish ?? {};
+    const summary = { dryRun, reportDate: null, tone: null, refused: null, record: null };
+    if (!cm.enabled) { summary.refused = 'crypto market posts are disabled in config (cryptoMarket.enabled)'; return summary; }
+    if (policy.disabledBy) { summary.refused = `auto-publish disabled by ${policy.disabledBy}`; return summary; }
+    if (policy.via !== 'browser') { summary.refused = 'crypto market posts are browser-only (posting.autoPublish.via must be "browser")'; return summary; }
+    const { model } = this.loadReport(reportPath);
+    const day = model.reportDate;
+    summary.reportDate = day;
+    const queue = cm.queue ?? this.queue;
+    const dup = this.audit.latest().find(r => r.kind === 'cryptomarket' && r.reportDate === day && (r.queue ?? 'stocks') === queue && ['approved', 'ready_to_post', 'published', 'publishing'].includes(r.status));
+    if (dup) { summary.refused = `a crypto market post for ${day} is already ${dup.status} (${dup.id})`; return summary; }
+
+    const { text, stats } = generateCryptoMarketPost(model, this.config);
+    summary.tone = stats.tone;
+    let chartRec = null;
+    if (this.config.charts?.enabled) {
+      try {
+        const out = join(chartOpts.dir ?? DEFAULT_CHART_DIR, day, `CRYPTO-market-${day}.png`);
+        renderChartSpec(buildCryptoMarketSpec(model, this.config, out), { python: chartOpts.python });
+        chartRec = { path: out, altText: cryptoMarketAltText(model, this.config) };
+      } catch (err) {
+        chartRec = { path: null, error: err.message };
+      }
+    }
+    const base = {
+      id: this.audit.newId('CRYPTO-market', day),
+      kind: 'cryptomarket',
+      topic: null,
+      stage: null,
+      queue,
+      symbol: 'CRYPTO',
+      reportDate: day,
+      reportPath,
+      dataAsOf: model.dataAsOf,
+      cryptoMarket: stats,
+      setup: { setup: `Crypto market: ${stats.tone}`, signal: 'MARKET', confidence: `${stats.above}/${stats.n}`, direction: stats.tone === 'RISK-ON' ? 'bullish' : stats.tone === 'RISK-OFF' ? 'bearish' : 'neutral', score: null },
+      originalText: text,
+      editedText: null,
+      textHash: textHash(text),
+      status: 'draft',
+      issues: [],
+      staleAcknowledged: null,
+      approval: null,
+      publication: null,
+      error: null,
+      createdAt: this.now().toISOString(),
+      chart: chartRec,
+    };
+    base.issues = this.validateRecord(base, null);
+    const rec = this.audit.append(base);
+    const blockers = blocking(rec.issues);
+    const warns = rec.issues.filter(i => i.severity === 'warn');
+    if (blockers.length || (warns.length && !policy.allowWarnings)) {
+      const reason = [...blockers, ...warns].map(i => `${i.code}: ${i.message}`).join('; ');
+      this.audit.append({ ...rec, status: 'auto_skipped', autoSkipReason: reason });
+      summary.refused = reason;
+      return summary;
+    }
+    if (dryRun) { this.audit.append({ ...rec, status: 'auto_dry_run' }); summary.record = { id: rec.id, text, chart: chartRec?.path ?? null, dryRun: true }; return summary; }
+    const approver = new SocialWorkflow({ config: this.config, audit: this.audit, tracker: this.tracker, metrics: this.metrics, now: this.now, actor: 'crypto market policy', insights: this.insights });
+    const approved = approver.approve(rec.id, null);
+    const ready = this.audit.append({ ...approved, status: 'ready_to_post' });
+    summary.record = { id: ready.id, text, chart: chartRec?.path ?? null, ready: true };
     return summary;
   }
 

@@ -21,7 +21,7 @@
 import { SIGNAL, fmtCmf } from './setup.js';
 import { xWeightedLength } from './compliance.js';
 import { fmtPrice } from './money.js';
-import { sweepLabels, sweepLevels, cmfPhrase, rsiPhrase, plainLine } from './sweep-labels.js';
+import { sweepLabels, sweepLevels, cmfPhrase, rsiPhrase, plainLine, participationLine, lowParticipation, setupTags } from './sweep-labels.js';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -127,7 +127,8 @@ export function engagementHashtags(setup, config) {
 /** "Volume: 1.4× 20-day avg (last bar)" — only when chart candle data exists. */
 export function volumeLine(chart, config) {
   if (!config.charts?.volumeLine || chart?.volumeRatio == null) return null;
-  return `Volume: ${chart.volumeRatio.toFixed(1)}× 20-day avg (last bar)`;
+  const low = lowParticipation(chart.volumeRatio) ? ' — low participation, so confirmation is weaker' : '';
+  return `Volume: ${chart.volumeRatio.toFixed(1)}× 20-day avg (last bar)${low}`;
 }
 
 export function generatePost(setup, model, config, opts = {}) {
@@ -138,18 +139,23 @@ export function generatePost(setup, model, config, opts = {}) {
 /**
  * The Daily Setup Sweep format.
  *
- *   📈 $ETH has reclaimed its 20-day base — reclaim confirmed.
- *   CMF +0.22 shows positive money flow while RSI 64 keeps momentum healthy.
- *   In plain terms: price is back above its 20-day average and volume is backing it — buyers are in control while it holds.
- *   🎯 Above $2,579 → potential breakout
- *   🛑 Below $2,449 → setup invalidated
- *   Current price: $2,498 · RVOL 0.8× · Setup score +2.5
- *   Which level gets hit first — $2,579 or $2,449? 👇
+ *   📉 $RKLB has lost its 20-day base — bearish setup active.
+ *   CMF -0.20 shows money leaving while RSI 37 stays weak.
+ *   ⚠️ RVOL 0.4× — low participation, so confirmation is weaker.
+ *   🎯 Below $55.81 → bearish continuation confirmed
+ *   🛑 Above $68.37 → setup invalidated
+ *   Current price: $62.77 · Setup score -2.5
+ *   Which level gets hit first — $55.81 or $68.37? 👇
  *   Daily Setup Sweep · tracked to a daily close beyond a level · scored every Friday
- *   Data: daily · Sep 7, 2026 10:11 AM ET
- *   #ETH #Crypto
+ *   Data: daily · Sep 11, 2026 9:51 AM ET
+ *   #TechnicalAnalysis #TradingEducation
  *
- * The "In plain terms" line (config `plainLanguage`, default on) is the
+ * RVOL is stated once: in the ⚠️ participation line when it is under 1.0×
+ * (never dropped — it qualifies the read), otherwise on the stats line. The
+ * closing tags come from `hashtags.tagLine` via setupTags(); a configured tag
+ * line is part of the format and is never trimmed.
+ *
+ * The "In plain terms" line (config `plainLanguage`) is the
  * beginner's reading of the setup from sweep-labels.js; the series line
  * (config `brand.seriesLine`, null to drop) names the recurring format and
  * the accountability loop so a first-time reader knows what comes next.
@@ -174,7 +180,9 @@ export function generateSweepPost(setup, model, config, { chart = null } = {}) {
   const stamp = formatDataTimestamp(model.dataAsOf);
 
   const price = `Current price: ${$(setup.price)}`;
-  const rvol = config.charts?.volumeLine && chart?.volumeRatio != null ? `RVOL ${chart.volumeRatio.toFixed(1)}×` : null;
+  const ratio = config.charts?.volumeLine ? (chart?.volumeRatio ?? null) : null;
+  const participation = participationLine(ratio);
+  const rvol = ratio != null && !participation ? `RVOL ${ratio.toFixed(1)}×` : null;
   const score = setup.score != null ? `Setup score ${setup.score > 0 ? '+' : ''}${setup.score.toFixed(1)}` : null;
 
   let cta = null;
@@ -186,52 +194,63 @@ export function generateSweepPost(setup, model, config, { chart = null } = {}) {
   }
 
   const h = config.hashtags ?? {};
-  const required = h.required ?? [];
-  const prohibited = new Set((h.prohibited ?? []).map(x => x.toLowerCase()));
-  const extras = [];
-  if (h.symbolTag) extras.push(`#${setup.symbol}`);
-  if (h.assetTag) extras.push(h.assetTag);
-  const seen = new Set(required.map(x => x.toLowerCase()));
-  const optional = extras.filter(t => { const k = t.toLowerCase(); if (seen.has(k) || prohibited.has(k)) return false; seen.add(k); return true; })
-    .slice(0, Math.max(0, (h.maxTotal ?? 6) - required.length));
+  const tags = setupTags(setup.symbol, config);
+  const reqKeys = new Set((h.required ?? []).map(x => x.toLowerCase()));
+  // Required tags and a configured tag line are fixed; only the legacy #SYM / asset extras may be trimmed.
+  const fixedTag = t => reqKeys.has(t.toLowerCase()) || !!h.tagLine?.length;
+  const required = tags.filter(fixedTag);
+  const optional = tags.filter(t => !fixedTag(t));
 
   const parts = {
     headline: `${words.icon} $${setup.symbol} ${words.headline}`,
     narrative: `CMF ${fmtCmf(setup.cmf)} ${cmfPhrase(setup.cmf)} while ${rsiPhrase(setup.rsi, setup.direction)}.`,
+    participation,
     plain: config.plainLanguage === false ? null : plainLine(setup),
     series: (config.brand?.seriesLine ?? '').trim() || null,
     target: target ? `🎯 ${target.side} ${$(target.value)} → ${target.outcome}` : null,
     stop: stop ? `🛑 ${stop.side} ${$(stop.value)} → ${stop.outcome}` : null,
     stats: [price, rvol, score].filter(Boolean).join(' · '),
     statsNoScore: [price, rvol].filter(Boolean).join(' · '),
+    // Once the narrative is dropped to fit, the stats line carries RSI and CMF
+    // so the required indicators survive on a 280-character account.
+    statsCompact: [`Price: ${$(setup.price)}`, setup.rsi != null ? `RSI ${setup.rsi.toFixed(0)}` : null, setup.cmf != null ? `CMF ${fmtCmf(setup.cmf)}` : null, rvol].filter(Boolean).join(' · '),
     cta,
     timestamp: tf ? `Data: ${tf} · ${stamp}` : `Data: ${stamp}`,
+    timestampShort: (tf ? `Data: ${tf} · ${stamp}` : `Data: ${stamp}`).replace(/ \d{1,2}:\d{2} [AP]M ET$/, ''),
     disclosure: config.disclosurePlacement === 'bio' ? null : config.disclosure.trim(),
     requiredHashtags: required,
     engagementHashtags: optional,
     labels: words,
   };
 
-  const assemble = ({ withSeries = true, withPlain = true, withCta = true, narrative = true, withScore = true, extraCount = optional.length } = {}) => {
+  const assemble = ({ withSeries = true, withPlain = true, withCta = true, narrative = true, withScore = true, withParticipation = true, shortStamp = false, withTarget = true, extraCount = optional.length } = {}) => {
     const tags = [...required, ...optional.slice(0, extraCount)];
     return [
       parts.headline,
       narrative ? parts.narrative : null,
+      withParticipation ? parts.participation : null,
       withPlain ? parts.plain : null,
-      parts.target,
+      withTarget ? parts.target : null,
       parts.stop,
-      withScore ? parts.stats : parts.statsNoScore,
+      narrative ? (withScore ? parts.stats : parts.statsNoScore) : parts.statsCompact,
       withCta ? parts.cta : null,
       withSeries ? parts.series : null,
-      parts.timestamp,
+      shortStamp ? parts.timestampShort : parts.timestamp,
       parts.disclosure,
       tags.length ? tags.join(' ') : null,
     ].filter(Boolean).join('\n');
   };
 
   const trimmed = { withSeries: false, withPlain: false };
-  const ladder = [{}, { withSeries: false }, trimmed, { ...trimmed, withCta: false }, { ...trimmed, withCta: false, narrative: false }, { ...trimmed, withCta: false, narrative: false, withScore: false }];
-  for (let n = optional.length - 1; n >= 0; n--) ladder.push({ ...trimmed, withCta: false, narrative: false, withScore: false, extraCount: n });
+  const bare = { ...trimmed, withCta: false, narrative: false, withScore: false };
+  const ladder = [{}, { withSeries: false }, trimmed, { ...trimmed, withCta: false }, { ...trimmed, withCta: false, narrative: false }, bare];
+  // 280-character accounts: the low-participation line goes (the compact stats
+  // line then cites no volume, and the card still shows the RVOL warning), then
+  // the clock time, then — only when the 🛑 line still names a level — the 🎯 line.
+  let tight = { ...bare, withParticipation: false };
+  ladder.push(tight, (tight = { ...tight, shortStamp: true }));
+  if (parts.stop) ladder.push((tight = { ...tight, withTarget: false }));
+  for (let n = optional.length - 1; n >= 0; n--) ladder.push({ ...tight, extraCount: n });
 
   let text = assemble();
   for (const step of ladder) {

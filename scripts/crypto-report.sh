@@ -1,7 +1,7 @@
 #!/bin/bash
 # Nightly TradingView crypto-summary report (top 10 by market cap).
 #
-# Invoked by launchd EVERY day at 1:00 AM local time — crypto trades 24/7, so
+# Invoked by launchd EVERY day at 12:30 AM local time — crypto trades 24/7, so
 # there is no weekend or exchange-holiday guard here (that is the whole reason
 # this is a separate job from scripts/daily-report.sh).
 #

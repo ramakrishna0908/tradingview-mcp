@@ -266,8 +266,17 @@ at 7:00 PM ET from a 15-topic rotation.
 | Stage | When | Post label |
 |---|---|---|
 | `DEVELOPING` | posted as a WATCH | `DEVELOPING` (badge), setup name in the chip |
-| `CONFIRMED` | posted CONFIRMED, or a later report confirms a DEVELOPING one | `RECLAIM CONFIRMED` / `TREND CONFIRMED` / `BREAKDOWN CONFIRMED` |
-| `BREAKOUT` | a daily close beyond the 🎯 level | `BREAKOUT UPDATE` (`BREAKDOWN UPDATE` for bearish) |
+| `CONFIRMED` | posted CONFIRMED, or a later report confirms a DEVELOPING one | `RECLAIM CONFIRMED` / `TREND CONFIRMED` / `BEARISH SETUP ACTIVE` |
+| `BREAKOUT` | a daily close beyond the 🎯 level | `BREAKOUT UPDATE` (`BREAKDOWN CONFIRMED` for bearish) |
+
+*Breakdown confirmed* means a daily close below the Downside Confirmation
+level (the bearish 🎯 line). A setup post is written before any such close —
+that level sits below price by construction — so a base loss is labelled
+`BEARISH SETUP ACTIVE` (classifier-confirmed) or `BREAKDOWN WATCH`, and the
+phrase is reserved for the bearish `BREAKOUT` follow-up. Compliance blocks it
+anywhere else (`signal_upgraded`). Tracker records opened under the old label
+display the new one: labels are derived from the stage (`recordStageLabel`),
+not read back from the stored `stageLabel`.
 | `INVALIDATED` | a daily close beyond the 🛑 level | `INVALIDATED` |
 | `EXPIRED` | no resolution within `followUps.maxAgeSessions` bars | not posted, not scored |
 
@@ -300,13 +309,48 @@ tv social setups [--all]           # lifecycle state of every tracked setup
 
 Every Friday the `post-weekly-scorecard` task settles the week's closes
 (`social track` for both queues), then queues the scorecard on the stocks
-queue: setups posted, breakouts / levels reached, invalidations, still active,
-hit rate (breakouts over resolved — expiries are neither), and the all-time
-line. The counts come from `scorecardStats` over `setups.jsonl`; compliance
-re-derives every number and blocks on a mismatch (`kind: 'scorecard'`). Only
-the stock config has `scorecard.enabled`, so the account posts one scorecard
-covering both queues. The card is rendered by the same renderer (`style:
-"scorecard"`).
+queue. It counts **only its own queue** (`scorecard.queue`): @DailySetupSweep
+is stocks-only, so crypto setups never appear on it.
+
+```
+📊 Weekly Setup Scorecard · Sep 7–11, 2026
+📋 Setups Tracked: 4 · 👀 Active: 4
+🎯 Targets Hit: 0 · 🛑 Invalidated: 0
+📈 Hit Rate: Pending — nothing resolved yet (targets hit ÷ resolved setups)
+
+🧠 Lesson of the Week: A level only counts on a daily close. Intraday pokes through it are noise until the candle settles.
+
+🔭 Watching Next Week: $CRCL $MSTR $LLY $RKLB
+🧾 No deleting losers. No cherry-picking winners.
+Which setup should we break down next? 👇
+Data: daily · Sep 11, 2026
+#TechnicalAnalysis #TradingEducation
+```
+
+- **Counts** come from `scorecardStats` over `setups.jsonl`. "⏳ Expired (not
+  scored): N" is added whenever N > 0. The hit rate reads **Pending** until a
+  setup resolves (targets hit ÷ resolved; expiries are neither).
+- **Lesson of the Week** is picked from `SCORECARD_LESSONS` in
+  `src/social/followup.js` by what the week shows (quiet / hits / misses /
+  mixed / stalled / none) and rotates by week. Write your own with
+  `tv social scorecard --lesson "…"` (≤ 127 characters; it still goes through
+  compliance).
+- **Watching Next Week** lists every still-active ticker. Past 150 characters
+  the post collapses the tail to "+N more"; the card always shows all of them.
+- **Compliance** (`kind: 'scorecard'`) re-derives every number and blocks on a
+  mismatch, blocks a watch list that drops or invents a ticker, requires
+  "Hit Rate: Pending" when nothing resolved, and requires the accountability
+  line. "Targets Hit" / "targets hit" is the one exemption from the
+  forward-looking `target` pattern, and only on scorecards: it reports levels
+  already reached on a daily close.
+- **Hashtags** are `scorecard.hashtags` — `#TechnicalAnalysis #TradingEducation`.
+- **Card** (`style: "scorecard"`, same renderer): five tiles (Setups Tracked,
+  Active, Targets Hit, Invalidated, Hit Rate), Lesson of the Week beside
+  Watching Next Week, a "Resolved this week" row only when something resolved,
+  the accountability strip, the disclaimer and the data/method line. The canvas
+  height follows the content (about 1200×600 on a quiet week).
+
+Only the stock config has `scorecard.enabled`, so the account posts one scorecard.
 
 ### Metrics and the feedback loop (`tv social metrics …`)
 
@@ -404,17 +448,23 @@ previous layout without a code change. The generator lives in
 text and the chart is `src/social/sweep-labels.js`.
 
 ```
-📈 $ETH has reclaimed its 20-day base — reclaim confirmed.
-CMF +0.22 shows positive money flow while RSI 64 keeps momentum healthy.
-In plain terms: price is back above its 20-day average and volume is backing it — buyers are in control while it holds.
-🎯 Above $2,579 → potential breakout
-🛑 Below $2,449 → setup invalidated
-Current price: $2,498 · RVOL 0.8× · Setup score +2.5
-Which level gets hit first — $2,579 or $2,449? 👇
+📉 $RKLB has lost its 20-day base — bearish setup active.
+CMF -0.20 shows money leaving while RSI 37 stays weak.
+⚠️ RVOL 0.4× — low participation, so confirmation is weaker.
+🎯 Below $55.81 → bearish continuation confirmed
+🛑 Above $68.37 → setup invalidated
+Current price: $62.77 · Setup score -2.5
+Which level gets hit first — $55.81 or $68.37? 👇
 Daily Setup Sweep · tracked to a daily close beyond a level · scored every Friday
-Data: daily · Sep 7, 2026 10:11 AM ET
-#ETH #Crypto
+Data: daily · Sep 11, 2026 9:51 AM ET
+#TechnicalAnalysis #TradingEducation
 ```
+
+The caption carries the hook, the interpretation, the two levels and the
+question; the chart card carries the detail (tiles, subtitle, level roles).
+Neither restates the other's prose, and both use the same words for the same
+thing — `sweep-labels.js` is the single source for badge, level roles and the
+RVOL warning.
 
 What each line is, and what guards it:
 
@@ -428,18 +478,24 @@ What each line is, and what guards it:
   treats as a skip).
 - **Narrative.** Present-tense description of the current CMF and RSI readings
   (`cmfPhrase`, `rsiPhrase`). Both numbers are integrity-checked.
+- **Participation warning.** When RVOL (the chart's last-bar volume vs its
+  20-day average) is under 1.0×, "⚠️ RVOL 0.4× — low participation, so
+  confirmation is weaker." follows the narrative and is never trimmed; the
+  card's RVOL tile says "Low volume — weaker confirmation" in amber. Any post
+  that cites a sub-1.0× ratio without "low participation" is blocked
+  (`missing_participation_note`).
 - **In plain terms.** One beginner-friendly sentence per setup and signal
-  (`plainLine` in `sweep-labels.js`): what the reading means without the
-  acronyms, present tense, no forecast, and never the word *confirmed* for a
-  WATCH. `"plainLanguage": false` drops it.
+  (`plainLine` in `sweep-labels.js`). Off in both shipped configs
+  (`"plainLanguage": false`) because it restated the card's subtitle.
 - **🎯 / 🛑 levels.** The nearest report level in the setup's direction and the
   one that negates it (`sweepLevels`). Bearish setups flip the roles: "Below $X
-  → breakdown continues" / "Above $Y → setup invalidated". The 🛑 line is the
-  risk context the validator requires. When the report has no level on one
-  side, only the 🛑 line is printed.
-- **Stats line.** Current price, RVOL (the chart's last-bar volume vs its
-  20-day average; omitted when there is no chart data) and the report's own
-  setup score. All three are integrity-checked (`value_mismatch`).
+  → bearish continuation confirmed" / "Above $Y → setup invalidated"; on the
+  card the lower level is the **Downside Confirmation** and the upper one the
+  **Invalidation level**. The 🛑 line is the risk context the validator
+  requires. When the report has no level on one side, only the 🛑 line is printed.
+- **Stats line.** Current price, RVOL (only when it is 1.0× or more — below
+  that it is stated once, in the warning) and the report's own setup score.
+  All are integrity-checked (`value_mismatch`).
 - **CTA.** `cta.text` is a template: `{level1}` is the 🎯 level, `{level2}` the
   🛑 level. With a single level the generator asks "Does $X hold? 👇" instead.
 - **Series line.** `brand.seriesLine` — names the recurring format and the
@@ -447,9 +503,13 @@ What each line is, and what guards it:
   Friday") so a first-time reader knows the post is one of a series and that
   the outcome will be published. `null` drops it.
 - **Data line.** Unchanged — it is the freshness marker.
-- **Hashtags.** `hashtags.symbolTag` adds the cashtag as a hashtag and
-  `hashtags.assetTag` adds one class tag (`#Stocks` / `#Crypto`); `maxTotal` is
-  2 and `required` is empty. See the marker rule below.
+- **Hashtags.** `hashtags.tagLine` is the exact closing line for every
+  setup-family post (setup, thread reply, follow-up, close check):
+  `#TechnicalAnalysis #TradingEducation` in both configs. The ticker lives in
+  the text as `$TICKER`, not as a hashtag. Compliance blocks a setup-family post
+  that does not end on the tag line (`hashtag_line`). With `tagLine` removed,
+  the legacy `symbolTag` / `assetTag` pair (`#SYM #Stocks`) comes back;
+  `maxTotal` is 2 and `required` is empty. See the marker rule below.
 
 ### Compact prices
 
@@ -577,6 +637,25 @@ Records written before queues existed read as `stocks`. Passing no `--queue` ret
 everything, as before. Without this the 9:35 stock poster would pick up any crypto
 post still sitting in `ready_to_post`.
 
+### Account, market read and the 280-character format (since 2026-09-11)
+
+The crypto queue posts from **@GameSol404** (display name GameKing), not @DailySetupSweep. It uses its own Chrome, with deviceId `4ecc6708…` in the `post-daily-crypto-to-x` task. Every other posting task stays on @DailySetupSweep. What that account change changed:
+
+- **Market read first, setup second.** `tv social cryptomarket --report docs/reports/crypto/daily-<date>.html` queues one market read per report date: tone, breadth, BTC levels with what negates the read, and the Data line (kind `cryptomarket`, symbol `CRYPTO`, src/social/crypto-market-post.js). `crypto-social-auto.sh` queues it before `social auto`, so it is the first ready record. The poster publishes it and then, 2 minutes later, the day's one setup plus any follow-ups. The tone is RISK-ON / MIXED / RISK-OFF, from breadth above the 20-day basis plus the average sweep score. A one-sided tone also needs BTC on that side of its basis. Compliance re-checks the tone word, the breadth count and the BTC levels against the report (`value_mismatch`).
+- **280 characters.** @GameSol404 has no X Premium, so `charLimit` is 280. Each generator fits with its ladder, and the full detail lives on the card:
+  - The market read goes to a compact headline and a compact levels line.
+  - The setup drops the narrative; `statsCompact` (`Price · RSI · CMF`) keeps the required indicators. It then drops the low-participation line and cites no volume (the card keeps the RVOL warning), then uses a date-only Data line, and as a last resort drops the 🎯 line.
+  - The follow-up drops its context lines (the lesson, then the origin) before the CTA.
+
+  Raising `charLimit` restores the long layout with no code change.
+- **Disclosure in the post.** The account has no bio disclosure, so `disclosurePlacement` is `"post"` with the short `disclosure` "Educational only. Not financial advice.". The full line lives in `cardDisclosure` and is printed on every card and in its alt text.
+- **Brand.** The cards say "GameKing". `brand.seriesLine` is null (no "Daily Setup Sweep … scored every Friday" footer), and the tag line is `#Crypto #TechnicalAnalysis`.
+- **Three posts a day.** The report job runs at 12:30 AM (`com.ramakrishna.tvcryptoreport`) and queues the market read, the setup and the follow-ups.
+  - `post-daily-crypto-to-x` posts the market read at 1:00 AM.
+  - `post-crypto-education-video` renders and posts a crypto education video at 6:00 AM.
+  - `post-crypto-setup-to-x` posts the setup and follow-ups at 11:00 AM.
+- **Crypto education video.** `video.library: "crypto"` in the crypto config switches `tv social video` to src/social/crypto-video.js. It covers networks, consensus, scaling and narratives such as restaking, RWA, DePIN, ZK, intents and AI agents. Each topic is drawn as a `diagram` (boxes, arrows, labelled bands) by scripts/render-edu-video.py, with "What it is / Why it matters" labels and a crypto end card. Rotation, the once-a-day guard and the day counter are per queue, so the stock chart videos and the crypto series never collide. The caption fits 280 with a ladder that drops the CTA, then the question, then the "why it matters" line, since the video carries all of them.
+
 ### Install
 
 ```bash
@@ -601,14 +680,14 @@ fails naming the kind and the missing element. Run it with `npm run test:unit`.
 | Element | Setup (sweep) | Follow-up | Scorecard | Explainer | Premarket |
 |---|---|---|---|---|---|
 | Hook (iconed first line) | `📈 $ETH has reclaimed…` | `✅ $ETH — BREAKOUT UPDATE.` | `📊 Weekly Setup Scorecard · …` | `🎓 AI Trade School — Lesson #01` | `🟢 Premarket read for … — BULLISH (confidence 74/100)` |
-| Bias / status | reclaim confirmed · watch | lifecycle stage | counts + hit rate | bullish / bearish / neutral takeaways | bias + confidence |
-| Concise reasoning | CMF/RSI line | result vs the setup price | hit rate = breakouts ÷ resolved | hook + up to five teaching points | top 3 drivers |
-| Plain-English context | `In plain terms: …` | `The lesson: …` on an invalidation | `How to read it: …` | the whole post | hook sentence |
+| Bias / status | reclaim confirmed · watch | lifecycle stage | tracked / active / targets hit / invalidated + hit rate (Pending until resolved) | bullish / bearish / neutral takeaways | bias + confidence |
+| Concise reasoning | CMF/RSI line | result vs the setup price | hit rate = targets hit ÷ resolved | hook + up to five teaching points | top 3 drivers |
+| Plain-English context | `In plain terms: …` | `The lesson: …` on an invalidation | `🧠 Lesson of the Week: …` | the whole post | hook sentence |
 | Key levels | 🎯 / 🛑 | level cleared / lost / tested, next level | — | — | SPY resistance / support |
 | What changes the read | 🛑 … setup invalidated | 🛑 … negates the breakout | — | — | `Flip event: 8:30 AM ET Core CPI …` |
-| Reply-driving CTA | `Which level gets hit first — … ? 👇` | level question | `Which setup did you follow this week? 👇` | `👇 topic question` | `Bullish or bearish today? 👇` |
+| Reply-driving CTA | `Which level gets hit first — … ? 👇` | level question | `Which setup should we break down next? 👇` | `👇 topic question` | `Bullish or bearish today? 👇` |
 | Recurring format marker | series line | stage labels | weekly, Fridays | numbered lesson header | daily, weekdays |
-| Accountability | tracked to resolution | the outcome post itself | expiries shown, not hidden | — | — |
+| Accountability | tracked to resolution | the outcome post itself | `No deleting losers. No cherry-picking winners.` · every active ticker listed · expiries shown | — | — |
 | Mobile-first | ≤ 14 lines, ≤ 150 chars per line, one thought per line | same | same | same | same |
 | Hashtags | ≤ 2 (`#SYM #Stocks`) | ≤ 2 | ≤ 2 | ≤ 2 | ≤ 2 |
 | Compliance | `validatePost` (kind-specific integrity checks), disclaimer on the card | same | same | same, no ticker | same + in-text disclaimer |

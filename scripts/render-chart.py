@@ -14,6 +14,7 @@ Spec (JSON on stdin):
   "candles": [{"t": "2026-07-01", "o": 1, "h": 2, "l": 0.5, "c": 1.5}, ...],
   "levels": [{"label": "Resistance $265.80", "value": 265.8, "color": "#ff6b6b", "style": "solid"}, ...],
   "annotation": {"text": "Bearish exhaustion watch", "color": "#ff6b6b"},
+  "marks": [{"t": "2026-07-03", "at": "high|low|close", "label": "Jul 3 wick", "color": "#7dd3fc"}, ...],
   "stats": "RSI 35 · CMF -0.23", "footer": "Data: ...", "disclosure": "...", "source": "Chart: ..."
 }
 """
@@ -178,6 +179,28 @@ def main():
     for yy, txt in ticks:
         if all(abs(yy - lv['_ly']) > 20 for lv in levels):
             d.text((R + 12, yy - 8), txt, font=f_axis, fill=MUTED)
+
+    # marks — dated touches of a level (wicks, closes, rejections) as rings on
+    # the named candle with its date label; only real bars from `candles`
+    idx = {c['t']: i for i, c in enumerate(candles)}
+    for mk in spec.get('marks', []):
+        i = idx.get(mk.get('t'))
+        if i is None:
+            continue
+        c = candles[i]
+        at = mk.get('at', 'close')
+        v = c['h'] if at == 'high' else c['l'] if at == 'low' else c['c']
+        col = hexc(mk.get('color'), ACCENT)
+        cx, cy = x(i), y(v)
+        d.ellipse((cx - 9, cy - 9, cx + 9, cy + 9), outline=col, width=3)
+        lab = mk.get('label') or c['t'][5:]
+        tw = d.textlength(lab, font=f_axis)
+        # label clears the candle: below the wick for lows, above it otherwise
+        ly = y(c['l']) + 14 if at == 'low' else y(c['h']) - 26
+        ly = max(T + 4, min(B - 22, ly))
+        lx = max(L + 4, min(R - tw - 10, cx - tw / 2))
+        d.rounded_rectangle((lx - 5, ly - 2, lx + tw + 5, ly + 18), radius=4, fill=PANEL)
+        d.text((lx, ly), lab, font=f_axis, fill=col)
 
     # annotation at the last bar — arrow inside the plot, label to the left
     ann = spec.get('annotation')

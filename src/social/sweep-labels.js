@@ -34,8 +34,13 @@ const TABLE = {
   'Extended momentum — exhaustion watch': {
     watch: { headline: 'is extended above its upper band — exhaustion watch.', badge: 'EXHAUSTION WATCH', subtitle: 'Stretched through the upper band — continuation only, not a fresh entry', annotation: 'Extended' },
   },
+  // A classifier-confirmed breakdown has only lost the 20-day base: price is
+  // still ABOVE the downside confirmation level (the 🎯 line), so "breakdown
+  // confirmed" would claim a close that has not happened. That label belongs
+  // to the lifecycle event (a daily close below 🎯) — see stageLabel().
   'Breakdown': {
-    confirmed: { headline: 'has broken below its 20-day base — breakdown confirmed.', badge: 'BREAKDOWN CONFIRMED', subtitle: 'Broke below the 20-day base and cloud with money flow negative', annotation: '20D Base Lost' },
+    // mark 'dot': the card's ✓ would read as "confirmed", which this is not.
+    confirmed: { headline: 'has lost its 20-day base — bearish setup active.', badge: 'BEARISH SETUP ACTIVE', subtitle: 'Below the 20-day base and cloud with money flow negative', annotation: '20D Base Lost', mark: 'dot' },
     watch: { headline: 'has slipped below its 20-day base — breakdown watch.', badge: 'BREAKDOWN WATCH', subtitle: 'Below the base, but cloud, flow and structure have not all confirmed it', annotation: 'Below Base' },
   },
   'Seller exhaustion watch': {
@@ -63,8 +68,10 @@ const GENERIC = {
  *
  *   DEVELOPING  — posted as a WATCH: the read is constructive but not confirmed
  *   CONFIRMED   — score, cloud, flow and structure agree (badge names the setup:
- *                 RECLAIM CONFIRMED / TREND CONFIRMED / BREAKDOWN CONFIRMED)
- *   BREAKOUT    — a daily close beyond the 🎯 level ("BREAKOUT UPDATE")
+ *                 RECLAIM CONFIRMED / TREND CONFIRMED / BEARISH SETUP ACTIVE)
+ *   BREAKOUT    — a daily close beyond the 🎯 level ("BREAKOUT UPDATE"; for a
+ *                 bearish setup "BREAKDOWN CONFIRMED" — the only place that
+ *                 label is used, because only this close earns it)
  *   INVALIDATED — a daily close beyond the 🛑 level
  *   EXPIRED     — neither happened within the tracking window (not posted,
  *                 not counted in the hit rate)
@@ -91,12 +98,21 @@ export function stageLabel(stage, { setup = null, direction = 'bullish' } = {}) 
       const entry = setup ? TABLE[setup] : null;
       return entry?.confirmed?.badge ?? 'SETUP CONFIRMED';
     }
-    case STAGE.BREAKOUT: return direction === 'bearish' ? 'BREAKDOWN UPDATE' : 'BREAKOUT UPDATE';
+    case STAGE.BREAKOUT: return direction === 'bearish' ? 'BREAKDOWN CONFIRMED' : 'BREAKOUT UPDATE';
     case STAGE.INVALIDATED: return 'INVALIDATED';
     case STAGE.EXPIRED: return 'EXPIRED';
     case STAGE.REMOVED: return 'REMOVED';
     default: return String(stage);
   }
+}
+
+/**
+ * Label for a tracker record's current stage, derived from the stage rather
+ * than read from the stored `stageLabel`, so records opened under older
+ * wording (e.g. "BREAKDOWN CONFIRMED" for a base loss) display correctly.
+ */
+export function recordStageLabel(rec) {
+  return stageLabel(rec.stage, { setup: rec.setupName, direction: rec.direction });
 }
 
 /**
@@ -195,24 +211,61 @@ export function cmfTile(cmf) {
   return 'Negative money flow';
 }
 
+/**
+ * Relative volume under 1.0× means the move is happening on below-average
+ * participation. Every post and card that shows such a reading says so, in
+ * the same words, so a thin move is never presented as full-strength.
+ */
+export function lowParticipation(ratio) {
+  return ratio != null && ratio < 1.0;
+}
+
+/** "⚠️ RVOL 0.4× — low participation, so confirmation is weaker." (null at ≥ 1.0×) */
+export function participationLine(ratio) {
+  return lowParticipation(ratio) ? `⚠️ RVOL ${ratio.toFixed(1)}× — low participation, so confirmation is weaker.` : null;
+}
+
 export function rvolTile(ratio) {
   if (ratio == null) return null;
-  if (ratio < 0.9) return 'Below average';
+  if (lowParticipation(ratio)) return 'Low volume — weaker confirmation';
   if (ratio <= 1.1) return 'Around average';
   return 'Above average';
 }
+
+/** What a close beyond the 🎯 level means, per direction — shared by setup posts, follow-ups and cards. */
+export const TARGET_OUTCOME = Object.freeze({ bullish: 'potential breakout', bearish: 'bearish continuation confirmed' });
 
 /**
  * The two levels the format is built around, in the order the post states
  * them: the level in the setup's direction (🎯) and the one that negates it (🛑).
  * Either may be null when the report has no level on that side of price.
+ * For a bearish setup the 🎯 level is the Downside Confirmation: a daily close
+ * below it is what confirms the breakdown.
  */
 export function sweepLevels(setup) {
   const bearish = setup.direction === 'bearish';
   const target = bearish ? setup.support : setup.resistance;
   const stop = bearish ? setup.resistance : setup.support;
   return {
-    target: target ? { ...target, side: bearish ? 'Below' : 'Above', outcome: bearish ? 'breakdown continues' : 'potential breakout', tile: bearish ? 'Breakdown level' : 'Breakout level' } : null,
+    target: target ? { ...target, side: bearish ? 'Below' : 'Above', outcome: bearish ? TARGET_OUTCOME.bearish : TARGET_OUTCOME.bullish, tile: bearish ? 'Downside Confirmation' : 'Breakout level' } : null,
     stop: stop ? { ...stop, side: bearish ? 'Above' : 'Below', outcome: 'setup invalidated', tile: 'Invalidation level' } : null,
   };
+}
+
+/**
+ * The closing tag line for setup-family posts (setup, thread reply, follow-up):
+ * the required tags, then either the fixed `hashtags.tagLine` (e.g.
+ * #TechnicalAnalysis #TradingEducation — the ticker stays in the text as
+ * $TICKER) or, when no tag line is configured, the legacy #SYM + asset tag
+ * capped at `maxTotal`. The tag line is used verbatim — it is the format.
+ */
+export function setupTags(symbol, config) {
+  const h = config.hashtags ?? {};
+  const prohibited = new Set((h.prohibited ?? []).map(x => x.toLowerCase()));
+  const required = h.required ?? [];
+  const seen = new Set(required.map(x => x.toLowerCase()));
+  const keep = t => { const k = t.toLowerCase(); if (seen.has(k) || prohibited.has(k)) return false; seen.add(k); return true; };
+  if (h.tagLine?.length) return [...required, ...h.tagLine.filter(keep)];
+  const extras = [h.symbolTag ? `#${symbol}` : null, h.assetTag || null].filter(Boolean).filter(keep);
+  return [...required, ...extras.slice(0, Math.max(0, (h.maxTotal ?? 6) - required.length))];
 }

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.ramakrishna.tvcryptoreport</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/ramakrishna0908/MyProjects/trading/tradingview-mcp/scripts/crypto-report.sh</string>
+    </array>
+
+    <!-- EVERY day at 12:30 AM local time (Mac is on ET) — crypto trades 24/7; the daily candle closes at 8 PM ET.
+         crypto-report.sh queues the market read + setup via crypto-social-auto.sh
+         when the report is written; the 1:00 AM task posts the market read, the 11:00 AM task the setup. -->
+    <key>StartCalendarInterval</key>
+    <dict><key>Hour</key><integer>0</integer><key>Minute</key><integer>30</integer></dict>
+
+    <key>StandardOutPath</key>
+    <string>/Users/ramakrishna0908/MyProjects/trading/tradingview-mcp/docs/reports/crypto/launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/ramakrishna0908/MyProjects/trading/tradingview-mcp/docs/reports/crypto/launchd.err.log</string>
+
+    <key>RunAtLoad</key>
+    <false/>
+</dict>
+</plist>

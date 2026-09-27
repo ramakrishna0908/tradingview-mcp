@@ -1,0 +1,329 @@
+{
+  "$comment": "X Engagement Agent target list for @DailySetupSweep. 'core' = accounts checked every run. 'candidates' = discovered accounts under evaluation (promote to core when a thoughtful reply could reach the right audience). lastCheckedAt is the newest post timestamp seen on that profile at the previous run. Every core account is also scanned for stock ideas (ticker + stance) which go to ideas.jsonl and are aggregated in ideas-summary.md.",
+  "core": [
+    {
+      "handle": "amitisinvesting",
+      "lastCheckedAt": "2026-09-24T01:41:00Z",
+      "notes": "Macro/news recaps, big audience; rarely pure TA - reply only on chart-specific posts Replied 2026-09-11 15:00 run (PLTR PT-raise post: volume/MA context). | 2026-09-12 metrics: the 2026-09-11 PLTR reply drew 7 replies on 353 views - the most conversation of any reply so far. Question-style replies on his high-reach ticker posts work; keep replying on the ticker posts, keep skipping the macro recaps. | 2026-09-14: FOMC-week/macro/AI-policy posts (Vance, Trump, 10y at 5%) - no chart content, skipped. PLTR reply still the best conversation (7 replies / 392 views). | 2026-09-15 14:20: Bessent $5000-checks/inflation and daily recap posts - macro, skipped. 2026-09-11 PLTR reply now 397 views / 7 replies. | 2026-09-15 15:00: replied on the $GRAB Grab-Atome bullish post (Sep 9 4.5x-volume drop, 2.96-3.06 shelf since, falling 200-day ~4.0; logged GRAB bullish long-term). Clarity Act / Bessent posts skipped (political/macro). | 2026-09-17 15:00 run (fired 4 AM ET): Fed hiked 25bp Sep 16 (unanimous); posts were Fed/war macro, recaps, a hiring post and the PLTR-Chipotle partnership (logged PLTR bullish). No chart content - not replied. | 2026-09-17 15:00 PM run: new posts were the daily quad-witching/rate macro recap and a Karp/PLTR token-economics commentary - no chart content, not replied."
+    },
+    {
+      "handle": "pdicarlotrader",
+      "lastCheckedAt": "2026-09-24T14:40:00Z",
+      "notes": "Confirmed by user 2026-09-11 (list originally said @pdlcarlostrader). Peter DiCarlo: Smart Money zone charts, video breakdowns on NVDA/GOOGL/CIFR/BTC, active conversations. Good reply fit. Replied 2026-09-11 (CIFR levels). | 2026-09-12 metrics: 2026-09-11 CIFR reply drew 1 reply and 2 likes on 113 views. Level-context replies land here; high priority. | 2026-09-13 metrics: the 2026-09-12 HIMS reply (to a 29h-old post, posted 9:55 PM Sat) got 18 views - freshness matters more than creator fit. No new posts since Sep 11. | 2026-09-13 15:00 run (fired 4:14 PM ET): posted four ticker frameworks within 12 min (ORCL $138-144 decision zone, RKLB $87/$56, CRDO hold $140, SPCX waiting for pullback); replied on RKLB ~45 min after posting with the 50/200-day levels between price and his $87 objective. He answers framework questions in-thread (replied to a wick-vs-close question) - question endings fit. | 2026-09-14 12:50 run: replied on the ORCL $140 post (50-day ~140.7 sits on his line; heavy-volume red sessions). Metrics: the 2026-09-13 RKLB reply posted ~45 min after his post reached 463 views, 1 reply, 1 like - early replies on his fresh level posts outperform the late-night ones (HIMS reply 85 views). Keep replying within an hour of his level posts. | 2026-09-14 13:30: APP bottom-in + expected rejection/one-more-pullback posts (logged as bullish idea; already replied today). | 2026-09-14 15:00: BSX Smart-Money-Zone bounce (logged bullish; BSX RSI ~25, ~2% above 52-week low) and BTC structure posts; already replied today. | 2026-09-15 14:20: replied on the CIFR Smart-Money-Zone bounce post (Sep 2 low 14.18 as the floor, 50/200-day band ~18.4-18.8 overhead). Logged ON (best semis setup), PLTR (watch at resistance), SPY (slow Sept/strong Q4), CIFR. BSX/APP/HIMS video posts repeat theses already logged. | 2026-09-15 15:00: WULF make-or-break weekly Smart Money Zone post (14:55, missed by the 14:20 run; body behind show-more) logged as watch; already replied today. | 2026-09-17 15:00 run (fired 4 AM ET): replied on the SPY bounce-or-$750 post (749.60 low printed 20 min later, close 754.05 on 1.5x volume under Tue low 756.15 and the 50-day ~759). Logged CIFR +15% target $20, NVDA holding support, SPY watch, GNRC exit/watch, oil breakout (USO). Late reply (~13h after post) - check whether it still draws views. | 2026-09-17 15:00 PM run: posted a full slate (META resistance, SOFI bearish, RKLB sweep, ORCL bounce, COIN rejection, TSLA structure) - already replied this morning, so ideas only. | 2026-09-18 15:00 run: replied on the MSTR structure post (53.3K views, 20 replies) with the 149-154 shelf below his 160-175 sell zone - where the June breakdown started, and MSTR has not closed above 144.82 since June 1. Every existing reply just echoed his 160-175 zone."
+    },
+    {
+      "handle": "thestockwhale",
+      "lastCheckedAt": "2026-09-24T04:16:00Z",
+      "notes": "Video market-plan posts with heavy Discord promo; educational replies fit poorly | 2026-09-14: buy-the-dip Mag 7 list post with Discord promo (logged as 7 bullish ideas, no reasoning beyond red days = buy). | 2026-09-15: memory buy-the-dip list DRAM/MU/SNDK with Discord promo (logged bullish). | 2026-09-17: expects a SPY/QQQ bounce (video + Discord promo; logged bullish) and SPY late-cycle stay-balanced post. | 2026-09-24: unchanged pattern of Discord-funnel videos with 'here is exactly what to expect' framing and no readable levels in the post text. Idea-source only."
+    },
+    {
+      "handle": "Team2Trading",
+      "lastCheckedAt": "2026-09-25T01:25:00Z",
+      "notes": "High-quality S/R flip and intraday education; best fit for our voice. Replied 2026-09-11. 2026-09-12: replied on the four-level day-trading starter post (nested premarket range failure case). NOTE: a concurrent agent run also replied to the same post - two replies from us on one post. | 2026-09-12 metrics: 2026-09-11 education reply drew 1 reply on 52 views. | 2026-09-13 metrics: the duplicate pair on the starter-package post split reach (132 and 36 views, no engagement). | 2026-09-14: no new posts since Sep 12. Metrics: the 2026-09-12 21:40 four-level reply now 2 replies + 1 bookmark / 193 views; the duplicate 57 views, 1 reply. | 2026-09-15 14:20: replied on the IWM PDL-flip annotated chart post (two-touch shelf ~287.1 with Sep 10 low, 1.4-1.5x volume, 20/50-day cross). His annotated intraday level posts are the best fit for level replies; 2026-09-12 four-level reply now 3 replies + 1 bookmark / 210 views. | 2026-09-17 15:00 run (fired 4 AM ET): replied on the FOMC-day SPY downside setup post (EMA fan + PDL break confirmed by 15-min close + 13EMA flag): 2:30 candle wicked to 756.05 under the 756.15 PDL and closed back at 759, confirming close 2:45, low 749.60; asked whether he skips wick-only breaks. Skipped the P&L-streak and \"who wants a breakdown\" posts. | 2026-09-25: another 100%-win-rate P&L brag overnight; the only substantive post was yesterday's 15-min/2-min chart-layout education at 18:09, already ~19h old and ~12 views/min by the time we swept."
+    },
+    {
+      "handle": "MasiTrades",
+      "lastCheckedAt": "2026-08-10T13:47:00Z",
+      "notes": "Dormant since 2026-08-10; hiring/affiliate posts. Low priority until active again. | 2026-09-17: still dormant."
+    },
+    {
+      "handle": "fullportnik",
+      "lastCheckedAt": "2026-09-18T22:54:00Z",
+      "notes": "P&L / full-port posts, no TA content; low priority | 2026-09-15: Druckenmiller quote, AI-doom opinion - no TA. | 2026-09-17: $10K Kalshi bet on no rate change (lost), \"it's over\" - no TA."
+    },
+    {
+      "handle": "Mr_Derivatives",
+      "lastCheckedAt": "2026-09-25T10:01:00Z",
+      "notes": "Very active (20+ posts/day), mix of macro + ticker TA (RSI, streaks). Replied 2026-09-11 ($COST). Do not pile on - max 1 reply per day. 2026-09-12: replied on the $SPX rising-channel / RSI-divergence post (moving-average distances). NOTE: a concurrent agent run replied to the SAME post minutes later - two replies from us on one post. | 2026-09-12 metrics: 2026-09-11 COST reply got 97 views, no engagement. | 2026-09-13 11:30 run: replied on the $SPX-would-be-red-without-AI post with equal-weight data (RSP +12% YTD like SPY; RSP under its 50-day). Metrics: the two 2026-09-12 late-night SPX replies (a concurrent-run duplicate pair) got only 40 and 50 views - late Saturday-night replies to a day-old post barely surface. Reply within a few hours of his post. | 2026-09-14: replied on the NFLX 50dma-bounce post (declining 200-day ~86 overhead). Metrics remain weak: 5 replies to him so far all 35-104 views (RSP reply 1 reply / 35 views). Lower priority: reply only when the post is fresh (<1h) and the angle is strong. | 2026-09-15: SPY 1.5-month low / down 6 of 7 days, VIX not confirming (VIX not on Massive plan - could not verify), META ~700 relief-rally post (logged bullish), AVGO bear market, JPM drawdown. Not replied: posts 2h+ old by run time and his replies average ~70 views. | 2026-09-15 learning: still lowest avg views (70 across 5 replies) - keep low priority. | 2026-09-15 15:00: replied ~80 min after the $NKE 12.5-year-low time-to-nibble post (44K views, 90 replies): no 1.5x volume session in September, no close above the 50-day ~41 since Jul 17. Tests whether a fresh reply on one of his high-view posts beats his ~70-view average. Logged NKE bullish; USO 11-year-high and AVGO bear-market posts are observations. | 2026-09-17 15:00 run (fired 4 AM ET): replied ~45 min after the \"same playbook as last 3 FOMCs, red day then strong bounce\" post (11K views): five-session follow-through after Apr/Jun/Jul was +3.1/-0.9/+5.5% and the current close sits under the 50-day like July. His next-day claim verified (Apr/Jun/Jul next days green). Also MCD -30% from ATH and QQQ overnight retrace posts (observations). | 2026-09-17 15:00 PM run: very active (SPY 35-day no -1% streak, VIX Friday stats, EOQ window dressing, RDDT, INTC 111s, DELL ATH streak) - all good reply material but he already got the morning reply, so only ideas were logged (RDDT bullish, DELL bullish, INTC watch). Queue the 35-day streak post for a future run if it is still fresh. | 2026-09-18 15:00 run: replied on the QQQ fresh-one-month-high close (30.9K views) with the Aug 17-18 breakdown shelf and the 719-724 band. His VIX Friday-streak post (33.6K views) had more reach but Massive has no VIX entitlement, so the claim could not be verified and was left alone. | 2026-09-24: three candidate posts, all rejected on crowding or verifiability - the SPY/QQQ 'buying the dip' post had 78 replies and the Fed-50bps post 119, both far past the ~50 threshold, and the VIX Friday-streak stat is still unverifiable because Massive has no VIX entitlement. The ORCL post (18,442 views) was the one live option at 27 replies but lost the slot to less crowded threads. | 2026-09-25 run: replied on the INTC victory-lap post (47,292 views, 24 replies, 202 min, 234 views/min) with the timeline and extension numbers - 95 was Sep 3, +34% in three weeks, 29% over the 50-day against a 103% peak extension in May. Submit needed two attempts; the first left the draft in place and the page then blocked navigation with a Leave-site dialog."
+    },
+    {
+      "handle": "WheelieInvestor",
+      "lastCheckedAt": "2026-09-24T22:04:00Z",
+      "notes": "Directional chart calls (META/SOFI/ORCL) plus agent-product promo; replies with levels get conversation. Replied 2026-09-11. | 2026-09-12 metrics: 2026-09-11 META reply got 1 like on 57 views. | 2026-09-14: livestream promos; weekend SNDK dip-buy (logged) and ANTH (Anthropic, not a listed stock - not logged). | 2026-09-15: AAPL puts shout-out and savings-account post - no stance of his own. | 2026-09-15 15:00: brokerage swag / F1 promo posts. | 2026-09-17: NVDA calls via Flow Show / agent swing long (logged bullish), all-in Roth ALAB + LABX (logged ALAB bullish), agent/lifestyle promos. Away until Monday. | 2026-09-25: timeline is now almost entirely ATG Discord promos; INTC calls post logged as an idea, nothing repliable."
+    },
+    {
+      "handle": "TheValueist",
+      "focus": "Fundamental stock ideas",
+      "addedAt": "2026-09-11",
+      "lastCheckedAt": "2026-09-25T13:19:00Z",
+      "notes": "Active, ticker-dense (refiners VLO/MPC/PSX/DK/CRAK, AI infra long-dated calls). Good idea source; replies with levels fit. Replied 2026-09-11 (refiner extension/RSI). | 2026-09-12 metrics: 2026-09-11 refiner reply got only 27 views and no engagement - his threads are low-visibility. Treat as an idea source first, reply target second. | 2026-09-13: posting a refiner/tanker stream (Russian refinery strikes, Costco motor-oil rationing, DHT thesis, CLMT added to the refiner basket); still 1-3K views per post - idea source, not reply target. | 2026-09-13 afternoon: refiner (VLO/MPC/PSX/DK/CLMT) and tanker (FRO/DHT/INSW/LPG/BWET) posts at 16:26-17:51 were missed by the 13:30 run (search rendered late) and logged at 15:00. | 2026-09-14: refiner basket posts continue (heating oil at all-time contract high, East-West pipeline shutdown); 1-3K views. 2026-09-11 reply 28 views - confirmed idea source only. | 2026-09-15: refiner/diesel thesis continues (ULSD contract high, possible US diesel export ban, CRAK as intl diesel proxy, expects short-term gap down but no FCF impact) - same thesis already logged, not re-logged. | 2026-09-15 15:00: refiners ripping back to all-time highs after the Trump-comment dip, Dangote IPO - same refiner thesis, not re-logged. | 2026-09-17: refiner stream continues (new Russian refinery drone strike, VLO setup RSI 77 with elevated put demand), IYT rolling over on diesel costs (logged IYT bearish), GNRC-Amazon generator deal as diesel demand (logged GNRC bullish), CIEN investor-forum notes. | 2026-09-17 15:00 PM run: replied on the refiner post (fuel costs political, refiner FCF safe for a couple of quarters) with the extension read - VLO 21% above its 50-day, RSI 84, widest since mid-Aug. His refiner complex (VLO MPC PSX DK CLMT) is now the highest-conviction repeated call in ideas.jsonl and all five are RSI-overbought near 52-week highs. | 2026-09-18: heavy refiner geopolitics thread (VLO MPC PSX DK CLMT) plus NVDA bearish and MU bullish into the Sep 30 print. Ideas logged; not replied (2-3K views, reply budget went to higher-reach threads)."
+    },
+    {
+      "handle": "citrini",
+      "focus": "Themes, AI/tech, sector opportunities",
+      "addedAt": "2026-09-11",
+      "lastCheckedAt": "2026-09-17T19:35:00Z",
+      "notes": "Macro/themes, huge reach (100K+ views), few tickers. Reply only on chart/market-structure posts. | 2026-09-15: Muse one-liner, no ticker. | 2026-09-17: bought TLT calls at the close (logged TLT bullish), 5s30s flattener up 33bp. Search view rendered one post only - profile page used. | 2026-09-18: no new posts since Sep 17 19:35. | 2026-09-24: profile dump returned empty twice; not checked this run."
+    },
+    {
+      "handle": "KawzInvests",
+      "focus": "Growth/tech stock ideas",
+      "addedAt": "2026-09-11",
+      "lastCheckedAt": "2026-09-24T14:51:00Z",
+      "notes": "Growth/tech commentary with data (optical LITE/COHR/AAOI, SMH vs macro). Good idea source and reply target. | 2026-09-15: semis demand data (B200 rental $5.67/hr, BofA $2T) and AI-selloff-overdone opinion; no single-ticker stance. | 2026-09-15 15:00: FOMC game-theory post (hike to regain control) - no ticker. | 2026-09-17: Fed hike + dot-plot data post only; no ticker. | 2026-09-17 15:00 PM run: $NOK hyperscaler-partnership post and an EXPE/BKNG agentic-booking moat question; not replied (CK got the NOK reply this run), both logged as ideas."
+    },
+    {
+      "handle": "CKCapitalxx",
+      "focus": "Semiconductors + tech setups",
+      "addedAt": "2026-09-11",
+      "lastCheckedAt": "2026-09-25T13:08:00Z",
+      "notes": "AI/semis bull; earnings recaps + ORCL/MSFT/RKLB/VICR calls. Active conversations (40+ replies). Good reply target. Replied 2026-09-11 (ORCL thesis). 2026-09-12: VST/CEG power-bottleneck post replied to by the concurrent run; this run stood down to avoid a duplicate. | 2026-09-12 metrics: 2026-09-11 ORCL reply drew 2 replies and 2 likes on 218 views. Strong conversation per impression; high priority. | 2026-09-13 metrics: VST/CEG momentum reply 1 reply / 185 views; ORCL reply now 2 replies, 2 likes / 219 views. Still the best conversation rate per view. Weekend posts were doom/moon sentiment and follower milestones, nothing to add to. | 2026-09-14: posts were fear-is-nonsense sentiment and APP/GOOG dip-add brag (logged as ideas), nothing chart-based to add. ORCL reply metrics now 2 replies / 219 views (likes read 0); VST/CEG reply 1 reply / 231 views. Still best replies-per-view. | 2026-09-14 13:30 run: replied on the $GEV -10% on GLJ $470 PT post (target below 52-week low ~530; drop breaks the 200-day ~894 that held every close since mid-May). Tests whether level context on his news-reaction posts draws conversation like the ORCL/VST replies. | 2026-09-14 15:00: META pump post (logged bullish); already replied today. | 2026-09-15: FPS earnings/backlog-from-filings posts (logged FPS bullish), RKLB funded Iridium deal via $1.94B ATM (~$66/share avg; same bullish thesis already logged). 2026-09-14 GEV reply 470 views, 1 reply, 1 like. | 2026-09-15 15:00: Autopilot portfolio update (closed BE/APP/PLTR/SNDK for profit, adding FPS, tiny PENG, more NVDA/AMZN, some cash before the Fed) - logged NVDA/AMZN/PENG bullish; not replied (portfolio moves, nothing chart-based to add; FPS already covered). Clarity Act/Kalshi posts skipped. | 2026-09-17: NBIS raised GPU prices 17-21% (logged bullish), VICR underrated (logged), FPS +20% from $29 entry (logged), EOS.AX (ASX), macro-hostage and SPY \"oh no\" posts. Not replied this run (3-reply cap; posts 5-10h old at 4 AM). | 2026-09-17 15:00 PM run: replied on the $NOK post (every-other-week partnership news, stock flat) with the Sep 14 -13.3% gap on 1.8x volume and the 11.17 gap edge; other replies there were all fundamental (revenue mix, PE), so price-structure replies still find open ground on his threads. Also logged AEHR + FORM long (AI test/probe-card thesis). | 2026-09-24 run: replied on the NBIS BNP Paribas upgrade post (14,982 views, 9 replies, 133 min old, 113 views/min) with the prior-peak overhead (-21% vs the June 18 close 286.69) and the declining volume on the latest leg. Note the post was 2h+ old when we arrived - the weakest freshness of the four, worth comparing against the other three on the next metrics pass. | 2026-09-25 run: replied on the fresh AAON vs VRT comparison (3,472 views, 5 replies, 11 min, 316 views/min) with the six-month relative performance he never computed - AAON -4.1% vs VRT -11.2% - plus AAON's 200-day and off-high figures, which cut the other way. MEASURED 2026-09-24: his 133-minute-old NBIS post gave us 17 impressions on 14,982 views = 0.11% capture, the worst of the four - consistent with arriving late mattering more than audience size."
+    },
+    {
+      "handle": "RagingVentures",
+      "focus": "High-conviction value ideas",
+      "addedAt": "2026-09-11",
+      "lastCheckedAt": "2026-09-18T16:34:00Z",
+      "notes": "Low-frequency high-conviction value/short ideas (short PANW, long HAWK, SNDK cycle top). Idea source; rarely a reply target. | 2026-09-15: conference promo only. | 2026-09-17: search view showed only an Aug 31 post (render lag); no new post seen."
+    },
+    {
+      "handle": "1MainCapital",
+      "focus": "Quality/growth investing",
+      "addedAt": "2026-09-11",
+      "lastCheckedAt": "2026-09-01T13:35:00Z",
+      "notes": "Very low frequency (last original post Mar 30, GSE thread). Idea source only. | 2026-09-13: newest original post found is 2026-09-01 (chat with @AndrewRangeley), no ticker view. | 2026-09-17: no new posts since Sep 1."
+    },
+    {
+      "handle": "GavinSBaker",
+      "focus": "Institutional-quality tech analysis",
+      "addedAt": "2026-09-11",
+      "lastCheckedAt": "2026-09-16T15:06:00Z",
+      "notes": "Institutional tech/AI commentary, few tickers, mostly quote-posts. Reply only on analytical threads. | 2026-09-14 15:00: AI-lab pacing/compute-margins thread, no ticker or chart - skipped. | 2026-09-17: OpenAI vs Anthropic OpenRouter share and AI-pacing/compute-demand posts - no ticker or chart."
+    },
+    {
+      "handle": "MarkMinervini",
+      "focus": "Swing trading / technical setups",
+      "addedAt": "2026-09-11",
+      "lastCheckedAt": "2026-09-24T13:19:00Z",
+      "notes": "Market-condition posts plus IWM short; high engagement (1K+ likes). Good reply target on setup/market-structure posts; search view sometimes empty - use profile page. Replied 2026-09-11 (market-direction post, 600+ likes). 2026-09-12: no new posts since 2026-09-11 19:22 (seat-confirmation promo); search view empty again, profile page used. | 2026-09-12 metrics: 2026-09-11 reply got 404 views but only 1 like and 1 bookmark, no conversation - high reach, low engagement. | 2026-09-14: replied on the stealth-correction / AI-infra rotation post with SPY vs RSP vs SMH distance-from-high and 50-day data. 2026-09-11 reply now 427 views, 1 like, 1 bookmark - reach without conversation. | 2026-09-15: position update - longs DE, TEVA (working), ET, CAH (above stops), still short IWM since Aug 31 as hedge (logged TEVA/ET/CAH; DE and IWM already logged). 2026-09-14 stealth-correction reply 1,298 views, 2 replies, 2 likes - first conversation on his posts. | 2026-09-15 learning: data-backed market-structure replies now get conversation - raise priority for his market-read posts. | 2026-09-17: Fed-day posts (market technically vulnerable, relief rally not an all-clear; guessed a 25bp+ hike) and book promo. Already had 3 replies this run - skipped; the \"technically vulnerable\" post was 14h old. | 2026-09-18: no new posts since the Sep 17 20:11 workshop promo. | 2026-09-24 run: replied on the 9:19 AM breadth post 11 minutes after it went up - 14,047 views, only 4 replies, ~1,277 views/min, the best crowding profile we have ever logged. He gives no numbers, so we quantified the small-cap leg (IWM 7.6% under its Aug 14 peak, only 2 of 80 sessions closed lower, SPY +0.8% vs IWM -0.8% since Sep 18). He disclosed longs TWLO/SDE/TEVA, short SWM and a reduced IWM short hedge. Highest-priority account for early arrival: he posts long-form breadth notes pre-open and the thread stays thin for the first ~15 minutes. | 2026-09-25: no new post as of 9:20 ET; yesterday's breadth note is now 32 replies / 72.7K views, so velocity is dead and it was not re-engaged. MEASURED 2026-09-24: our reply took 785 impressions on 14,047 views = 5.59% capture, SEVEN times the next best and far above every other creator. He is now the highest-value single target on the list; the note lands ~13:19 UTC and the thread is under 5 replies for the first ~15 minutes."
+    },
+    {
+      "handle": "DanZanger",
+      "focus": "Breakouts / chart setups",
+      "addedAt": "2026-09-11",
+      "lastCheckedAt": "2026-09-22T17:47:00Z",
+      "notes": "Posts a few times a month (SOXL/SNOW calls, chartpattern.com promo). Idea source; low reply priority. | 2026-09-17: no posts since Sep 4. | 2026-09-18 12:52: back in stocks with a few select names after stepping aside when SNDK topped in June - no tickers or levels named, so nothing logged and nothing to add."
+    },
+    {
+      "handle": "unusual_whales",
+      "focus": "Options flow + unusual activity",
+      "addedAt": "2026-09-11",
+      "lastCheckedAt": "2026-09-18T23:47:00Z",
+      "notes": "News firehose (20+ posts/day), rarely a stance. Only options-flow posts qualify for replies; search view empty - use profile page. | 2026-09-15: foreign buyers of US stocks vs bonds, diesel export ban, promo - news. | 2026-09-15 15:00: news/political firehose plus moomoo cashtag promo - nothing to reply to. | 2026-09-17: news/political firehose (BRICS illness, OpenAI disclosures, EU social ban) - nothing to reply to. | 2026-09-18: all breaking-news and product posts (Greenland, Anthropic IPO, hackathon) - skipped per the news-recap rule. | 2026-09-24: page load timed out on the JS dump; not checked this run. News-only account, never a reply target."
+    },
+    {
+      "handle": "MapleStax",
+      "focus": "Intraday strategy education (VWAP / ORB / 9-20 EMA) with chart videos",
+      "addedAt": "2026-09-11",
+      "lastCheckedAt": "2026-09-25T13:08:00Z",
+      "notes": "Added by the user 2026-09-11. Day-trading streamer; short rule-based education posts (VWAP/ORB/9-20 EMA) and chart-video breakdowns get 100-300 likes and real replies; also many P&L/lifestyle polls to skip. Reply on the strategy/education and chart-video posts with a risk consideration, failure case, or a question. Replied 2026-09-11 (ORB post and VWAP/EMA chart video, both at the user's request). 2026-09-12: nothing to reply to - all posts were lifestyle, mindset or polls, no strategy education or chart video. | 2026-09-12 metrics: the two 2026-09-11 education replies got 1281 and 576 views (highest impressions so far) but almost no engagement; good for reach, weak for conversation. | 2026-09-13 metrics: ORB reply 1361 views, VWAP-video reply 591 views; the 1 like on the VWAP reply is our own (shows Liked) so real engagement is bookmarks only. Weekend posts all mindset/lifestyle. | 2026-09-14: timeline dominated by Lucid prop-firm affiliate promos, a giveaway and mindset tips; one ORB-sweep/EMA-pullback one-liner and a SPY 770s call (logged). ORB reply now 1391 views, VWAP reply 599 views (2 external likes) - reach account, no conversation. | 2026-09-14 15:00: only a Lucid 25k fast-pass promo since the 13:30 run. | 2026-09-15: live-stream links, loss-mindset tips, gas-price quip - no strategy post. | 2026-09-15 15:00: trade-plan quip, loss-mindset question, gas price - no strategy post. | 2026-09-17: triple-witching Friday warning, SPY directional-analysis levels (PD ORB L 758.74 / PDH 760.36), mindset and lifestyle posts - no strategy education to add to. | 2026-09-17 15:00 PM run: replied on the $WMT 102 dip-buy / 100-sweep post with the five late-August tests of 102.15-102.85 and the 44M-share session; existing replies were about the 100-strike put wall and stop hunts, so dated daily structure was the missing piece. He is posting fewer chart-video breakdowns this week and more mindset/P&L posts - the level posts ($SPY DirectionalAnalysis, $WMT) are the ones worth replying to. | 2026-09-18 15:00 run: replied on the VWAP + 9/20 EMA + ORB rules post (13.3K views, 190 bookmarks, only 4 replies) - pointed out the ORB break is normally the entry trigger, so using it as the profit target exits at the start of trend moves, and asked whether he filters the exit by extension from VWAP. Exactly the priority post type; nobody else in the thread touched the exit rule. | 2026-09-24 run: replied on the 9:13 AM SPY #DirectionalAnalysis ladder (2,027 views, 2 replies, 21 min). Mapped his premarket/previous-day levels onto the daily tape - the whole downside ladder is a Sep 18 retest (761.69 = that close, 757.95 = that low 757.97) and PDL 766.5 is reinforced by the Sep 21 low 766.03. He now posts this ladder every morning around 9:13 ET; it is a standing low-crowding, on-theme target. | 2026-09-25: posted the usual SPY ladder at 13:08 but it was only ~212 views/min, and MEASURED 2026-09-24 his ladder gave us 7 impressions on 2,027 views = 0.35% capture despite being the LEAST crowded thread we replied to (2 replies). Low absolute reach is the binding constraint on his posts, not crowding - deprioritise unless nothing fresher exists."
+    },
+    {
+      "handle": "Banana3Stocks",
+      "focus": "Moving-average structure on mega-cap tech (NVDA 13EMA/50DMA/100DMA)",
+      "addedAt": "2026-09-12",
+      "lastCheckedAt": "2026-09-24T13:38:00Z",
+      "notes": "Promoted from candidate 2026-09-12: our 2026-09-11 reply on the NVDA hated-stock post drew 1 reply and 2 likes on 137 views, i.e. real conversation. Structured MA/breakout posts with 300 likes and 25 replies; good reply target for MA-context and level replies. | 2026-09-13: newest posts are subscriber-presentation promos (Sep 12); nothing to reply to. | 2026-09-14: replied on the NVDA cup-and-handle / weekly 13EMA post (handle volume signature). NVDA hated-stock reply now 2 replies, 2 likes / 146 views - consistent conversation; high priority for MA/pattern posts. | 2026-09-14 13:30: CRWD 193 forward P/E valuation caution (logged as watch), US-gov AI stake speculation. | 2026-09-14 15:00: NVDA forward-P/E range post (logged bullish, long-term); already replied today. | 2026-09-15: Fed/rate-hike opinion posts, META subscriber brag, WTI $10 down-day call (logged USO bearish). | 2026-09-15 15:00: Fed-credibility/Rick Rieder opinion posts; $BA due-for-a-10-point-move post (body hidden, direction not visible - not logged). | 2026-09-17: QQQ subscriber calls idea (logged bullish intraday), Gundlach/CNBC rants - nothing chart-based. | 2026-09-17 15:00 PM run: NVDA 217 target hit / 220.20 pivot and TSLA 384; heavy subscriber promo framing, skipped for replies, ideas logged. | 2026-09-18: entire timeline was subscriber-only trade-idea teasers with the body paywalled (AMZN GOOGL TSLA RMBS META NVDA). Logged the AMZN multi-month swing only; nothing repliable. | 2026-09-24: still almost entirely subscriber-only teasers with paywalled bodies. The one public chart post (SPY vs the MOVE index, 11,701 views) had no readable level, so nothing to add."
+    },
+    {
+      "handle": "EliteOptions2",
+      "lastCheckedAt": "2026-09-25T13:00:00Z",
+      "mandatoryDailyReply": true,
+      "notes": "MANDATORY DAILY REPLY (user instruction 2026-09-17): reply every day to any post of his, on top of the normal per-run cap - this account does not compete with the other reply slots and the one-reply-per-creator-per-day rule still applies (one reply a day, not more). Posts daily pre-market $SPX/$QQQ trade plans with explicit levels and red-to-green triggers (~35K views, 130+ likes); level-driven so there is always something concrete to add. Promoted from candidates the same day it was discovered. | 2026-09-17: first mandatory reply posted on the QQQ 3.5-month base post (base edges 661.14-748.65, best close since 744, 20-day volume 30.6M vs 48.1M in June). He posts a mix of level-driven SPX/QQQ plans (reply-worthy) and mindset/lifestyle posts (skip); the plans land around 13:00 UTC pre-market and after the close. | 2026-09-18 15:00 run (fired 7:40 PM ET): MANDATORY reply posted on the 9:00 AM quad-witching plan (SPX 7600/7700, QQQ 722 -> 734-736) - added that 722 sits inside the post-Aug-18 ceiling, real intraday cap 724.13 (Aug 28) and best close 718.96 (Sep 4). His other new posts were trading-psychology one-liners and a Discord signup, plus a 17:40 target list (MU 1250, SNDK 2000, MSTR 200, HOOD 154, QQQ 748) logged as ideas but not replied to. | 2026-09-24 run (fired 9:22 AM ET, not 3 PM): MANDATORY reply on the 9:00 AM gap-down plan - showed his 738 QQQ threshold is Wednesday's low to the tick (738.19) and added the Sep 22 cash high 748.35 as the cap. Target was 12,443 views / 8 replies / 32 min old (389 views/min) - the uncrowded-and-fresh profile the new ranking rule wants. His psychology one-liners still dominate the timeline and are never repliable. | 2026-09-25 run (fired 9:04 AM ET): MANDATORY reply on the 9:00 AM gap-up plan at 15 min old, 7,913 views, 2 replies (528 views/min) - quantified his 'winding up' claim as three of the last four closes inside a 0.4-point band and identified 748 as the Sep 22 high 748.35. MEASURED 2026-09-24: our reply to him took 94 impressions on a 12,443-view post = 0.76% capture, second of four."
+    }
+  ],
+  "candidates": [
+    {
+      "handle": "The_Blake_VIC",
+      "foundAt": "2026-09-11",
+      "status": "evaluate",
+      "why": "Posts detailed $QQQ Elliott-wave counts with charts (62 likes / 7K views on a 16h-old post); TA-literate audience, reasonable reply conversations | 2026-09-11 13:30 run: no fresh TA post worth a reply (9/11 tribute, closing-calls note); QQQ count 19h old."
+    },
+    {
+      "handle": "rbswingtrader",
+      "foundAt": "2026-09-11",
+      "status": "evaluate",
+      "why": "Surfaced in X who-to-follow next to TA searches; swing-trade framing. Check post quality and conversation before promoting"
+    },
+    {
+      "handle": "kpak82",
+      "foundAt": "2026-09-11",
+      "status": "evaluate",
+      "why": "Concise daily-chart reads on SPY/QQQ/NVDA (failed breakouts, bull traps, EMA convergence); 50-95 likes and 8-20K views per post, real replies, no promo seen"
+    },
+    {
+      "handle": "TheProfInvestor",
+      "foundAt": "2026-09-11",
+      "status": "evaluate",
+      "why": "S&P 500 weekly-chart support post (Aug 4 gap fill, breadth/NYMO oversold) 469 likes/26 replies; 21-week EMA QQQ education thread 717 likes/925 bookmarks. Chart/education-driven"
+    },
+    {
+      "handle": "TedHZhang",
+      "foundAt": "2026-09-11",
+      "status": "evaluate",
+      "why": "$QQQ weekly base analysis (shakeout within 3-month base, 10/20-week MAs pinching) 203 likes/19 replies; pattern-focused"
+    },
+    {
+      "handle": "TraderJonesy",
+      "foundAt": "2026-09-12",
+      "status": "evaluate",
+      "why": "Posts a dated, specific $SPY setup with an exact scaling level (~769.3) and publicly timestamps the call to prevent hindsight claims; 207 likes / 26 replies / 25K views, real back-and-forth in the thread, no visible promo"
+    },
+    {
+      "handle": "varuntakkar01",
+      "foundAt": "2026-09-12",
+      "status": "evaluate",
+      "why": "Daily $QQQ structure reads naming a specific support level (~717) and short-term moving averages; 64 likes / 9K views, chart-driven but smaller reach - watch a few posts before promoting"
+    },
+    {
+      "handle": "GnT_Trades",
+      "foundAt": "2026-09-12",
+      "status": "evaluate",
+      "why": "Weekly SPY/QQQ recap framed around breakout failures and lack of continuation rather than P&L (67 likes / 6.6K views, 2026-09-11); process-driven tone, no promo seen. Check post frequency and reply quality before promoting."
+    },
+    {
+      "handle": "stageanalysis",
+      "foundAt": "2026-09-13",
+      "status": "evaluate",
+      "why": "Stage-analysis breadth reads on NDX/QQQ (under 50-day but inside range; % of stocks above the 20-day in the lower zone for the first time since March), 67 likes; chart/breadth education, no promo seen. Small reply counts - watch for conversation before promoting."
+    },
+    {
+      "handle": "smashelito",
+      "foundAt": "2026-09-13",
+      "status": "evaluate",
+      "why": "Weekly $ES/$SPX plan in auction-market terms (daily balance, weekly one-time-framing down, monthly OTFU, marked Friday levels), 83 likes / 6.5K views; process-driven, fits level/structure replies. Check reply threads before promoting."
+    },
+    {
+      "handle": "JesseOlson",
+      "foundAt": "2026-09-13",
+      "status": "evaluate",
+      "why": "Daily/weekly chart signal reads with explicit invalidation logic ($NVDA daily sell signal: two closes below trending dots and rising trendline plus weekly bearish engulfing; $IWM weekly RSI pending sell), 44-47 likes / ~9-10K views; chart-driven, no promo seen. Small reply counts - watch before promoting."
+    },
+    {
+      "handle": "3PeaksTrading",
+      "foundAt": "2026-09-14T17:33:31.695Z",
+      "status": "evaluate",
+      "why": "Weekly key-levels post for $SPY $QQQ $IWM $VIX with a short market read (33 likes, 16 bookmarks / 5K views, Sep 14); level-driven, not promo on the post found"
+    },
+    {
+      "handle": "PrimeTrading_",
+      "foundAt": "2026-09-14T17:33:31.695Z",
+      "status": "evaluate",
+      "why": "$QQQ breadth/participation education post (35 likes, 25 bookmarks / 4K views, Sep 13); looks beneath the price chart - fits breadth/MA data replies"
+    },
+    {
+      "handle": "TradeBrigadeCo",
+      "foundAt": "2026-09-14T17:33:31.695Z",
+      "status": "evaluate",
+      "why": "$SPY post-CPI bull-trap read using sector weakness, breadth and cheap vol (35 likes / 4.8K views, Sep 12); analytical, data-driven"
+    },
+    {
+      "handle": "EchoAnalysis",
+      "foundAt": "2026-09-14",
+      "status": "evaluate",
+      "why": "QQQ chart outlooks with 50DMA, trendline and 0.618 fib alternate scenario; ~11K views, real replies; chart-driven, no promo seen"
+    },
+    {
+      "handle": "dannycheng2022",
+      "foundAt": "2026-09-14",
+      "status": "evaluate",
+      "why": "QQQ weekly-chart posts (drawdown/ribbon breakout framing), ~13K views; chart-driven, check reply quality before engaging"
+    },
+    {
+      "handle": "satymahajan",
+      "foundAt": "2026-09-14",
+      "status": "evaluate",
+      "why": "Daily pre-market SPX/SPY day-trade plans with explicit upside/downside strikes, VIX key level and ATR-based targets (89-117 likes, 13-33K views, several days in a row); rule-based and level-driven, no promo seen. Reply early (post lands ~8:40 AM ET) with a failure-case or level question."
+    },
+    {
+      "handle": "BreadWinneh",
+      "foundAt": "2026-09-15",
+      "status": "evaluate",
+      "why": "Daily $QQQ structure plans around the weekly pivot / failed-breakdown responses (10K views on the Sep 14 plan); level-driven, few replies so far"
+    },
+    {
+      "handle": "1769_alex",
+      "foundAt": "2026-09-15",
+      "status": "evaluate",
+      "why": "Anchored-VWAP education with chart examples (49 bookmarks on 11K views); tool/education content rather than promo"
+    },
+    {
+      "handle": "epictrades1",
+      "foundAt": "2026-09-15",
+      "status": "evaluate",
+      "why": "Evening moving-average level map across semis/AI names (NVDA held the 100-day ~211, LITE needs the 50-day, AMD bounced at the 100-day, MU under the 50-day), 75 likes / 22 bookmarks / 10K views; level-driven, fits MA-context replies"
+    },
+    {
+      "handle": "mementovitam",
+      "foundAt": "2026-09-17",
+      "status": "evaluate",
+      "why": "Weekly $SPY/$SPX plans with a marked line in the sand (767) and daily-candle reads (inside bar / bearish harami), 64 likes / 37 bookmarks / 26K views; level-driven, fits level replies"
+    },
+    {
+      "handle": "MarkRitchie_II",
+      "foundAt": "2026-09-17",
+      "status": "evaluate",
+      "why": "Market-thoughts posts tying an SPY position to the 50-day (small short when living below the 50-day and rejected on good news), 182 likes / 27K views; process-driven, fits MA-context replies"
+    },
+    {
+      "handle": "JohnMuchow",
+      "foundAt": "2026-09-17T20:55:00Z",
+      "status": "evaluate",
+      "why": "Relative-strength education (RS line vs risk-adjusted RS Alpha for TradingView); 125 bookmarks on 9.8K views - indicator/education audience, similar profile to 1769_alex."
+    },
+    {
+      "handle": "CaseyVSilver",
+      "foundAt": "2026-09-17T20:55:00Z",
+      "status": "evaluate",
+      "why": "Post-close leadership scans naming themes and names after FOMC (114 likes / 5.5K views); chart-driven but emoji/hype heavy - check whether posts carry real levels before replying."
+    },
+    {
+      "handle": "SamanthaLaDuc",
+      "foundAt": "2026-09-18",
+      "status": "evaluate",
+      "why": "Posts specific index levels tied to event-vol days (QQQ 700 / SPY 750) rather than commentary; real replies, no promo in the sampled posts."
+    },
+    {
+      "handle": "crossvol_x",
+      "foundAt": "2026-09-18",
+      "status": "evaluate",
+      "why": "Daily aggressive options-flow snapshots with named tickers, premium and unusual-contract counts - the data-driven flow lane we have no core account for."
+    },
+    {
+      "handle": "kurtsaltrichter",
+      "foundAt": "2026-09-24",
+      "status": "evaluate",
+      "why": "Posts chart-driven breadth/relative-strength calls (IWM broke its uptrend, bearish double top) - directly on the small-cap theme our best reply of 2026-09-24 landed on."
+    },
+    {
+      "handle": "Basssem666",
+      "foundAt": "2026-09-24",
+      "status": "evaluate",
+      "why": "Weekly $SPY framework posts that lay out the bigger picture before the week, decent engagement and no promo in the sampled post."
+    },
+    {
+      "handle": "GAndersonTrades",
+      "foundAt": "2026-09-24",
+      "status": "evaluate",
+      "why": "Level-and-structure intraday posts on the index ETFs; worth watching for crowding profile before promoting."
+    },
+    {
+      "handle": "HostileCharts",
+      "foundAt": "2026-09-25",
+      "status": "evaluate",
+      "why": "Posts directly on the breadth debate with charts rather than commentary - the exact lane where our highest-capture reply landed."
+    },
+    {
+      "handle": "RealSimpleAriel",
+      "foundAt": "2026-09-25",
+      "status": "evaluate",
+      "why": "Daily yields-and-breadth read on SPY/QQQ with real conversation (27 replies on a 21K-view post); chart-driven, not promo."
+    },
+    {
+      "handle": "blondebroker1",
+      "foundAt": "2026-09-25",
+      "status": "evaluate",
+      "why": "Volume-profile level calls on SPY with specific numbers, the kind of post where a prior-session level adds cleanly."
+    }
+  ]
+}

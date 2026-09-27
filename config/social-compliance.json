@@ -153,7 +153,12 @@
     }
   },
   "hashtags": {
-    "$comment": "Sweep setup format: 0-2 tags — the cashtag as a hashtag (#ETH) plus one asset-class tag. maxTotal is the cap for SETUP posts; educational posts have their own, larger cap (education.maxTags) because the video and intro posts carry the #AITradeSchool archive tag on top of their reach tags; explainer lessons end on exactly the two tags in education.hashtags. No required marker tags: the disclosure lives in the bio AND on every chart, which is why charts.requireForPublish must be true (config loader enforces it). Put #NFA #DYOR back in required to restore the in-post marker.",
+    "$tagLine": "Setup-family posts (setup, thread reply, follow-up, close check) end on exactly this line; the ticker appears in the text as $TICKER, not as a hashtag. Compliance blocks a setup-family post that does not end on it (hashtag_line). Remove tagLine (or empty it) to fall back to symbolTag + assetTag.",
+    "tagLine": [
+      "#TechnicalAnalysis",
+      "#TradingEducation"
+    ],
+    "$comment": "Sweep setup format: the fixed tagLine below (was: the cashtag as a hashtag plus one asset-class tag). maxTotal is the cap for SETUP posts; educational posts have their own, larger cap (education.maxTags) because the video and intro posts carry the #AITradeSchool archive tag on top of their reach tags; explainer lessons end on exactly the two tags in education.hashtags. No required marker tags: the disclosure lives in the bio AND on every chart, which is why charts.requireForPublish must be true (config loader enforces it). Put #NFA #DYOR back in required to restore the in-post marker.",
     "required": [],
     "engagement": {
       "default": [
@@ -187,8 +192,8 @@
       "#Pump",
       "#Signals"
     ],
-    "symbolTag": true,
-    "assetTag": "#Stocks"
+    "symbolTag": false,
+    "assetTag": null
   },
   "cta": {
     "enabled": true,
@@ -207,8 +212,8 @@
   },
   "$charLimit": "X Premium account: long posts allowed. Set 280 for a non-Premium account (the fit ladder trims CTA → extra hashtags → narrative → …).",
   "postFormat": "sweep",
-  "plainLanguage": true,
-  "$plainLanguage": "Adds the one-sentence \"In plain terms:\" reading of the setup (src/social/sweep-labels.js) under the indicator line, so a reader who does not know CMF or RSI still gets the point.",
+  "plainLanguage": false,
+  "$plainLanguage": "true adds the one-sentence \"In plain terms:\" reading of the setup (src/social/sweep-labels.js) under the indicator line. Off since 2026-09-11: it restated the chart card's subtitle, and the caption now leaves the details to the card (hook, interpretation, levels, question only).",
   "$postFormat": "\"sweep\" = the Daily Setup Sweep layout (headline verb, two levels, RVOL/score line, level-question CTA, 0-2 hashtags). \"classic\" restores the previous multi-line layout without a code change.",
   "priceDisplay": "compact",
   "$priceDisplay": "\"compact\" shows whole dollars once a price is in the thousands ($2,579). Compliance accepts any value a report level rounds to at the precision shown. \"exact\" keeps full precision.",
@@ -234,10 +239,10 @@
     "weekday": 5,
     "queue": "stocks",
     "hashtags": [
-      "#Stocks",
-      "#Crypto"
+      "#TechnicalAnalysis",
+      "#TradingEducation"
     ],
-    "$comment": "Weekly Setup Scorecard (tv social scorecard): counts from docs/social/setups.jsonl across BOTH queues, queued on the stocks queue every Friday. Only one config should have this enabled or the account posts two scorecards."
+    "$comment": "Weekly Setup Scorecard (tv social scorecard): counts ONLY the stocks queue from docs/social/setups.jsonl, queued on the stocks queue every Friday. @DailySetupSweep is stocks-only — crypto setups are scored separately on the crypto queue for @GameSol404. Only one config should have this enabled per account."
   },
   "premarket": {
     "enabled": true,

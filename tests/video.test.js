@@ -102,7 +102,7 @@ describe('chart-education video library', () => {
     assert.match(videoAltText(t, cfg), /Educational only\. Not financial advice\.$/);
   });
 
-  it('queueVideo: one per day on the stocks queue, rotation advances after publication, skips today\'s explainer topic, crypto config refuses', async () => {
+  it('queueVideo: one per day per queue, rotation advances after publication, skips today\'s explainer topic, crypto config films its own library', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'vid-'));
     const cfg = load(STOCK_CFG);
     cfg.posting = { ...cfg.posting, autoPublish: { ...cfg.posting.autoPublish, enabled: true, via: 'browser' } };
@@ -131,8 +131,16 @@ describe('chart-education video library', () => {
     assert.equal(s2.record.day, 2);
     const unknown = await next.queueVideo({ topic: 'nope' });
     assert.match(unknown.refused, /unknown topic/);
-    const crypto = new SocialWorkflow({ config: load(CRYPTO_CFG), audit: new AuditStore(join(dir, 'c.jsonl')), insights: null });
-    assert.match((await crypto.queueVideo({})).refused, /disabled/);
+    // Same audit, same day as the stock video above: the crypto queue has its
+    // own once-a-day guard, rotation (crypto library) and day counter.
+    const ccfg = load(CRYPTO_CFG);
+    ccfg.posting = { ...ccfg.posting, autoPublish: { ...ccfg.posting.autoPublish, enabled: true, via: 'browser' } };
+    const crypto = new SocialWorkflow({ config: ccfg, audit, insights: null, now });
+    const c = await crypto.queueVideo({ dryRun: true, chartOpts: { dir: join(dir, 'videos'), python: PYTHON, timing: { hook: 0.3, chart: 0.6, takeaway: 0.3, end: 0.3 } } });
+    assert.equal(c.refused, null, c.refused);
+    assert.equal(c.topic, 'l2-rollups');
+    assert.equal(c.record.day, 1);
+    assert.match(c.record.text, /^🎬 Crypto Explained: Layer 2 Rollups\n/);
   });
 
   it('renderer: a short real render produces an MP4 with the expected frame count (skipped without Pillow/ffmpeg)', () => {

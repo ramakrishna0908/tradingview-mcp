@@ -60,7 +60,7 @@ const FALLBACK = {
   // Lifecycle follow-ups (tv social track): detected on daily closes.
   followUps: { enabled: true, maxAgeSessions: 15, postLevelTests: true, maxEventAgeHours: 96, maxUpdatesPerRun: 2 },
   // Weekly scorecard (tv social scorecard): counts from the tracker, posted on `weekday` (1=Mon … 5=Fri).
-  scorecard: { enabled: true, weekday: 5, queue: 'stocks', hashtags: ['#Stocks', '#Crypto'] },
+  scorecard: { enabled: true, weekday: 5, queue: 'stocks', hashtags: ['#TechnicalAnalysis', '#TradingEducation'] },
   // Educational explainers (tv social educate): one topic per post, rotated,
   // published as a numbered "AI Trade School" lesson. `hashtags` is the exact
   // tag line a lesson ends on — the archive tag is not appended to it.
@@ -69,6 +69,8 @@ const FALLBACK = {
   launch: { enabled: false, queue: 'stocks' },
   // Premarket market-direction post (tv social premarket): built from docs/reports/premarket/<date>.json, once per session.
   premarket: { enabled: false, queue: 'stocks', hashtags: ['#Stocks', '#Premarket'] },
+  // Daily crypto market read (tv social cryptomarket): built from the nightly crypto sweep, once per report, ahead of the setup.
+  cryptoMarket: { enabled: false, queue: 'crypto', hashtags: ['#Crypto', '#Bitcoin'] },
   // Daily chart-education video (tv social video): one topic per day from src/social/video.js, 9:16 MP4.
   video: { enabled: false, queue: 'stocks', hashtags: ['#TechnicalAnalysis', '#ChartEducation'], footer: 'Educational only. Not financial advice.', width: 1080, height: 1920, fps: 30 },
   postFormat: 'classic',
@@ -107,6 +109,7 @@ export function loadConfig(path = process.env.SOCIAL_COMPLIANCE_CONFIG || DEFAUL
     education: { ...FALLBACK.education, ...(parsed.education || {}) },
     launch: { ...FALLBACK.launch, ...(parsed.launch || {}) },
     premarket: { ...FALLBACK.premarket, ...(parsed.premarket || {}) },
+    cryptoMarket: { ...FALLBACK.cryptoMarket, ...(parsed.cryptoMarket || {}) },
     video: { ...FALLBACK.video, ...(parsed.video || {}) },
   };
   // autoPublish: a bare boolean is not enough — it must be the full policy object,

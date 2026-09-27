@@ -333,14 +333,14 @@ subcommands.set('track', {
 
 subcommands.set('scorecard', {
   description: 'Build, validate and queue the Weekly Setup Scorecard for the week containing --date (default today)',
-  options: { date: { type: 'string', description: 'YYYY-MM-DD inside the week to score' }, 'dry-run': { type: 'boolean', description: 'Show the scorecard without queueing it' }, ...jsonOpt },
+  options: { date: { type: 'string', description: 'YYYY-MM-DD inside the week to score' }, lesson: { type: 'string', description: 'Lesson of the Week text (default: picked from the week\'s results)' }, 'dry-run': { type: 'boolean', description: 'Show the scorecard without queueing it' }, ...jsonOpt },
   handler: async (values) => {
     const wf = new SocialWorkflow();
-    const summary = await wf.queueScorecard({ date: values.date, dryRun: !!values['dry-run'] });
+    const summary = await wf.queueScorecard({ date: values.date, lesson: values.lesson ?? null, dryRun: !!values['dry-run'] });
     if (values.json) return out(summary);
     const st = summary.stats;
     console.log(`scorecard · week ${summary.from} → ${summary.to}${summary.dryRun ? ' · DRY RUN' : ''}`);
-    console.log(`posted ${st.posted} · breakouts ${st.breakouts} · invalidated ${st.invalidated} · expired ${st.expired} · active ${st.active} · hit rate ${st.hitRate ?? '—'}% · all-time ${st.allTime.hitRate ?? '—'}% of ${st.allTime.resolved}`);
+    console.log(`tracked ${st.posted} · active ${st.active} · targets hit ${st.breakouts} · invalidated ${st.invalidated} · expired ${st.expired} · hit rate ${st.hitRate == null ? 'pending' : st.hitRate + '%'} · all-time ${st.allTime.hitRate == null ? 'pending' : st.allTime.hitRate + '%'} of ${st.allTime.resolved}`);
     if (summary.refused) { console.log(`refused: ${summary.refused}`); done(2); }
     if (summary.record) console.log(`\n${summary.record.dryRun ? 'WOULD QUEUE' : summary.record.ready ? 'READY (browser)' : 'POSTED'} (${summary.record.id})${summary.record.url ? ' → ' + summary.record.url : ''}\n${summary.record.text}\nchart: ${summary.record.chart ?? 'none'}`);
     done(0);
@@ -460,6 +460,21 @@ subcommands.set('premarket', {
     console.log(`premarket · ${summary.sessionDate ?? '—'} · ${summary.bias ?? '—'}${summary.dryRun ? ' · DRY RUN' : ''}`);
     if (summary.refused) { console.log(`refused: ${summary.refused}`); done(2); }
     if (summary.record) console.log(`\n${summary.record.dryRun ? 'WOULD QUEUE' : summary.record.ready ? 'READY (browser)' : 'POSTED'} (${summary.record.id})${summary.record.url ? ' → ' + summary.record.url : ''}\n${summary.record.text}\ncard: ${summary.record.chart ?? 'none'}`);
+    done(0);
+  },
+});
+
+subcommands.set('cryptomarket', {
+  description: 'Build, render, validate and queue the daily crypto market-read post from a crypto sweep report',
+  options: { ...reportOpt, 'dry-run': { type: 'boolean', description: 'Show the post without queueing it' }, ...jsonOpt },
+  handler: async (values) => {
+    if (!values.report) { console.error('--report docs/reports/crypto/daily-<date>.html is required'); done(1); }
+    const wf = new SocialWorkflow();
+    const summary = await wf.queueCryptoMarket({ reportPath: values.report, dryRun: !!values['dry-run'], chartOpts: { python: process.env.SOCIAL_PYTHON } });
+    if (values.json) return out(summary);
+    console.log(`cryptomarket · ${summary.reportDate ?? '—'} · ${summary.tone ?? '—'}${summary.dryRun ? ' · DRY RUN' : ''}`);
+    if (summary.refused) { console.log(`refused: ${summary.refused}`); done(2); }
+    if (summary.record) console.log(`\n${summary.record.dryRun ? 'WOULD QUEUE' : 'READY (browser)'} (${summary.record.id})\n${summary.record.text}\ncard: ${summary.record.chart ?? 'none'}`);
     done(0);
   },
 });

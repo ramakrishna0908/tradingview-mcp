@@ -15,6 +15,8 @@
  */
 import { spawnSync } from 'node:child_process';
 import { educationalTags } from './education.js';
+import { CRYPTO_VIDEO_TOPICS } from './crypto-video.js';
+import { xWeightedLength } from './compliance.js';
 import { existsSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -190,24 +192,34 @@ export const VIDEO_TOPICS = [
   },
 ];
 
-export function getVideoTopic(id) {
-  return VIDEO_TOPICS.find(t => t.id === id) ?? null;
+/**
+ * The topic library the config selects: the chart topics (default) or the
+ * crypto network / narrative explainers (`video.library: "crypto"`).
+ */
+export function videoLibrary(config) {
+  return config?.video?.library === 'crypto' ? CRYPTO_VIDEO_TOPICS : VIDEO_TOPICS;
+}
+
+export function getVideoTopic(id, topics = VIDEO_TOPICS) {
+  return topics.find(t => t.id === id) ?? null;
 }
 
 /**
  * Next topic to film: never-posted first (library order), then the one
  * posted longest ago — so the series cycles without repeating until every
- * topic has run. `auditRecords` are `AuditStore#latest()`.
+ * topic has run. `auditRecords` are `AuditStore#latest()`. With `queue`, only
+ * that queue's videos count, so each account's series rotates on its own.
  */
-export function nextVideoTopic(auditRecords, { exclude = [] } = {}) {
+export function nextVideoTopic(auditRecords, { exclude = [], topics = VIDEO_TOPICS, queue = null } = {}) {
   const last = new Map();
   for (const r of auditRecords) {
     if (r.kind !== 'video' || !r.topic) continue;
+    if (queue && (r.queue ?? 'stocks') !== queue) continue;
     if (!['published', 'ready_to_post', 'approved', 'publishing'].includes(r.status)) continue;
     const at = r.publication?.at ?? r.createdAt ?? '';
     if (!last.has(r.topic) || at > last.get(r.topic)) last.set(r.topic, at);
   }
-  const pool = VIDEO_TOPICS.filter(t => !exclude.includes(t.id));
+  const pool = topics.filter(t => !exclude.includes(t.id));
   const never = pool.find(t => !last.has(t.id));
   if (never) return never;
   return [...pool].sort((a, b) => last.get(a.id).localeCompare(last.get(b.id)))[0] ?? null;
@@ -228,16 +240,31 @@ export function generateVideoPost(topic, config) {
   const v = config.video ?? {};
   const tags = educationalTags(v.hashtags, config);
   const lc = s => s.charAt(0).toLowerCase() + s.slice(1);
-  const lines = [
-    `🎬 Chart Education: ${topic.title}`,
-    topic.hook,
-    `What it means: ${lc(topic.means)}`,
-    `How traders use it: ${lc(topic.use)}`,
-    topic.question,
-    VIDEO_CTA,
-    config.disclosurePlacement === 'bio' ? null : config.disclosure.trim(),
-    tags.length ? tags.join(' ') : null,
+  const labels = { means: 'What it means', use: 'How traders use it', ...(v.labels ?? {}) };
+  const parts = {
+    title: `${v.titlePrefix ?? '🎬 Chart Education'}: ${topic.title}`,
+    hook: topic.hook,
+    means: `${labels.means}: ${lc(topic.means)}`,
+    use: `${labels.use}: ${lc(topic.use)}`,
+    question: topic.question,
+    cta: v.cta ?? VIDEO_CTA,
+    disclosure: config.disclosurePlacement === 'bio' ? null : config.disclosure.trim(),
+    tags: tags.length ? tags.join(' ') : null,
+  };
+  const assemble = ({ cta = true, question = true, use = true } = {}) => [
+    parts.title, parts.hook, parts.means, use ? parts.use : null, question ? parts.question : null,
+    cta ? parts.cta : null, parts.disclosure, parts.tags,
   ].filter(Boolean);
+  // Fit ladder (charLimit — 280 on an account without long posts): drop the
+  // CTA; then keep the second takeaway line if it fits without the question,
+  // otherwise keep the question (it drives replies) without the takeaway; then
+  // drop both. The video carries all of it.
+  const ladder = [{}, { cta: false }, { cta: false, question: false }, { cta: false, use: false }, { cta: false, use: false, question: false }];
+  let lines = assemble();
+  for (const step of ladder) {
+    lines = assemble(step);
+    if (xWeightedLength(lines.join('\n')) <= config.charLimit) break;
+  }
   return { text: lines.join('\n'), lines };
 }
 
@@ -253,14 +280,16 @@ export function buildVideoSpec(topic, config, outPath, { day = null } = {}) {
     timing: { hook: 1.6, chart: 7.4, takeaway: 3.0, end: 1.6, ...(v.timing ?? {}) },
     brand: config.brand?.name || 'Daily Setup Sweep',
     tagline: config.brand?.tagline || null,
-    series: `CHART EDUCATION${day ? ` · DAY ${day}` : ''}`,
+    series: `${v.seriesName ?? 'CHART EDUCATION'}${day ? ` · DAY ${day}` : ''}`,
     topicSeries: topic.series.toUpperCase(),
     title: topic.title,
     hook: topic.hook,
     captions: topic.captions,
     means: topic.means,
     use: topic.use,
-    cta: VIDEO_CTA,
+    labels: v.labels ? { means: (v.labels.means ?? 'What it means').toUpperCase(), use: (v.labels.use ?? 'How traders use it').toUpperCase() } : null,
+    cta: v.cta ?? VIDEO_CTA,
+    endLine: v.endLine ?? null,
     footer: v.footer ?? VIDEO_FOOTER,
     art: topic.art,
   };
@@ -269,7 +298,9 @@ export function buildVideoSpec(topic, config, outPath, { day = null } = {}) {
 /** Alt text / accessibility description for the video (X media description). */
 export function videoAltText(topic, config) {
   const v = config.video ?? {};
-  const bits = [`Chart education, ${topic.series}: ${topic.title}.`, topic.hook, ...topic.captions, `What it means: ${topic.means}`, `How traders use it: ${topic.use}`, VIDEO_CTA, v.footer ?? VIDEO_FOOTER];
+  const labels = { means: 'What it means', use: 'How traders use it', ...(v.labels ?? {}) };
+  const kindWord = v.library === 'crypto' ? 'Crypto education' : 'Chart education';
+  const bits = [`${kindWord}, ${topic.series}: ${topic.title}.`, topic.hook, ...topic.captions, `${labels.means}: ${topic.means}`, `${labels.use}: ${topic.use}`, v.cta ?? VIDEO_CTA, v.footer ?? VIDEO_FOOTER];
   return bits.join(' ').slice(0, 1000);
 }
 

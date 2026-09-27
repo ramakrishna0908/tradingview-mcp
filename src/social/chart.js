@@ -15,7 +15,7 @@ import { SIGNAL, fmtCmf } from './setup.js';
 import { formatDataTimestamp, cmfDeltaNote } from './generate.js';
 import { fetchDailyCandles } from './chart-data.js';
 import { fmtPrice } from './money.js';
-import { sweepLabels, sweepLevels, rsiTile, cmfTile, rvolTile } from './sweep-labels.js';
+import { sweepLabels, sweepLevels, rsiTile, cmfTile, rvolTile, lowParticipation } from './sweep-labels.js';
 
 const ROOT = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 export const RENDERER = join(ROOT, 'scripts', 'render-chart.py');
@@ -61,7 +61,7 @@ export function buildChartSpec(setup, model, candles, config, outPath) {
     stats: `RSI ${setup.rsi.toFixed(0)} · CMF ${fmtCmf(setup.cmf)}${cmfDeltaNote(setup)}${trend} · daily`,
     footer: `Data: daily · ${stamp} · levels from the daily report`,
     source: 'Price history: Yahoo Finance daily bars',
-    disclosure: config.disclosure.trim(),
+    disclosure: (config.cardDisclosure ?? config.disclosure).trim(),
   };
 }
 
@@ -122,7 +122,8 @@ export function buildSweepChartSpec(setup, model, candles, config, outPath, over
 
   // A follow-up has no fresh RSI/CMF reading; it supplies its own tiles, with
   // `{ rvol: true }` standing in for the RVOL tile computed here.
-  const rvolTileSpec = { label: 'Volume (RVOL)', value: vol?.ratio != null ? `${vol.ratio.toFixed(1)}×` : '—', sub: rvolTile(vol?.ratio ?? null) ?? 'No volume data' };
+  // Under 1.0× the tile carries the same low-participation warning as the post, in amber.
+  const rvolTileSpec = { label: 'Volume (RVOL)', value: vol?.ratio != null ? `${vol.ratio.toFixed(1)}×` : '—', sub: rvolTile(vol?.ratio ?? null) ?? 'No volume data', warn: lowParticipation(vol?.ratio ?? null) };
   const tiles = overrides.tiles
     ? overrides.tiles.map(t => (t.rvol ? rvolTileSpec : t))
     : [
@@ -144,6 +145,7 @@ export function buildSweepChartSpec(setup, model, candles, config, outPath, over
     chip: words.chip ?? 'TECHNICAL SETUP',
     badge: words.badge,
     confirmed: words.confirmed,
+    mark: words.mark ?? null,   // 'dot' suppresses the ✓ on a confirmed-colour badge
     verdictColor: words.verdictColor ?? null,
     stage: words.stage ?? null,
     direction: setup.direction,
@@ -159,7 +161,7 @@ export function buildSweepChartSpec(setup, model, candles, config, outPath, over
     bottom,
     footer: `Data: daily · ${stamp}`,
     source: 'Price history: Yahoo Finance daily bars · 20-day MA from those closes · levels from the daily report',
-    disclosure: config.disclosure.trim(),
+    disclosure: (config.cardDisclosure ?? config.disclosure).trim(),
   };
 }
 
@@ -175,7 +177,7 @@ export function volumeStats(candles, window = 20) {
 }
 
 /** Alt text for accessibility — restates what the chart shows, nothing more. */
-export function sweepChartAltText(setup, model, config) {
+export function sweepChartAltText(setup, model, config, { volumeRatio = null } = {}) {
   const mo = { grouping: !!config.priceGrouping, compact: config.priceDisplay === 'compact' };
   const $ = v => fmtPrice(v, mo);
   const words = sweepLabels(setup);
@@ -184,7 +186,8 @@ export function sweepChartAltText(setup, model, config) {
   if (target) bits.push(`${target.tile} ${$(target.value)}.`);
   if (stop) bits.push(`${stop.tile} ${$(stop.value)}.`);
   if (setup.rsi != null && setup.cmf != null) bits.push(`RSI ${setup.rsi.toFixed(0)}, CMF ${fmtCmf(setup.cmf)}.`);
-  bits.push(`Data as of ${formatDataTimestamp(model.dataAsOf)}. ${config.disclosure.trim()}`);
+  if (lowParticipation(volumeRatio)) bits.push(`RVOL ${volumeRatio.toFixed(1)}×: low-volume move, confirmation weaker.`);
+  bits.push(`Data as of ${formatDataTimestamp(model.dataAsOf)}. ${(config.cardDisclosure ?? config.disclosure).trim()}`);
   return bits.join(' ').slice(0, 1000);
 }
 
@@ -224,7 +227,7 @@ export async function makeChart(setup, model, config, { dir = DEFAULT_CHART_DIR,
     const spec = sweep ? buildSweepChartSpec(setup, model, data, config, out, overrides ?? {}) : buildChartSpec(setup, model, data, config, out);
     renderChartSpec(spec, { python });
     const vol = volumeStats(data);
-    const altText = sweep ? sweepChartAltText(setup, model, config) : chartAltText(setup, model);
+    const altText = sweep ? sweepChartAltText(setup, model, config, { volumeRatio: vol?.ratio ?? null }) : chartAltText(setup, model);
     return { path: out, altText, bars: data.length, lastBar: data.at(-1).t, volumeRatio: vol?.ratio ?? null, volumeAvg: vol?.avg ?? null };
   } catch (err) {
     return { error: err.message };

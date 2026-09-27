@@ -8,6 +8,11 @@
 import { createHash } from 'node:crypto';
 import { SIGNAL } from './setup.js';
 import { priceDecimals, roundPrice } from './money.js';
+import { setupTags } from './sweep-labels.js';
+
+// "Breakdown confirmed" asserts a daily close below the downside confirmation
+// level. Only the tracker's BREAKOUT event (bearish) has seen that close.
+const BREAKDOWN_CONFIRMED = /\bbreakdown confirmed\b/i;
 
 // ─── X weighted length ───────────────────────────────────────────────────────
 // X counts code points in a few "cheap" ranges as 1 and everything else
@@ -124,7 +129,7 @@ export function allowedNumbers(setup, row) {
  */
 export function validatePost(text, ctx) {
   const { setup, row, model, config } = ctx;
-  const kind = ctx.kind ?? 'setup'; // 'setup' | 'thread' | 'closeupdate' | 'followup' | 'scorecard' | 'education' | 'video' | 'premarket' | 'intro'
+  const kind = ctx.kind ?? 'setup'; // 'setup' | 'thread' | 'closeupdate' | 'followup' | 'scorecard' | 'education' | 'video' | 'premarket' | 'cryptomarket' | 'intro'
   // Concept posts: no ticker, no levels, no data line. 'intro' is the pinned
   // account introduction — it describes what the account teaches and cites no
   // market data at all, so it is held to the same rules as a lesson.
@@ -175,6 +180,11 @@ export function validatePost(text, ctx) {
   if (tagCap && tags.length > tagCap) {
     push('too_many_hashtags', 'warn', `${tags.length} hashtags (max ${tagCap})`);
   }
+  // A configured setup tag line is the sweep format: setup-family posts end on exactly it.
+  if (config.postFormat === 'sweep' && config.hashtags?.tagLine?.length && ['setup', 'thread', 'followup', 'closeupdate'].includes(kind)) {
+    const want = setupTags(setup?.symbol ?? '', config).join(' ');
+    if ((lines.at(-1) ?? '').trim() !== want) push('hashtag_line', 'block', `Post must end with the tag line "${want}"`);
+  }
 
   // 4. stale data
   const asOf = model?.dataAsOf ? new Date(model.dataAsOf) : null;
@@ -194,8 +204,13 @@ export function validatePost(text, ctx) {
   }
 
   // 5. unsupported claims / projections presented as fact
+  // A scorecard's "Targets Hit" count (and "targets hit ÷ resolved") reports how
+  // many already-posted 🎯 levels were reached on a daily close — a past
+  // outcome, not a forecast. Exactly that phrase is exempt, on scorecards only;
+  // "price target", "targets" on their own, or any other kind still block.
+  const claimText = kind === 'scorecard' ? t.replace(/\btargets? hit\b/gi, '') : t;
   for (const pat of config.unsupportedClaimPatterns ?? []) {
-    if (new RegExp(pat, 'i').test(t)) push('unsupported_claim', 'block', `Unsupported/forward-looking claim (pattern ${pat})`);
+    if (new RegExp(pat, 'i').test(claimText)) push('unsupported_claim', 'block', `Unsupported/forward-looking claim (pattern ${pat})`);
   }
 
   // 6. duplicates
@@ -225,6 +240,7 @@ export function validatePost(text, ctx) {
   // keeps its own structural test so neither is loosened for the other.
   const namesLevel = kind === 'scorecard' || educational ? true
     : kind === 'premarket' ? /\b\d[\d,]*(?:\.\d+)? above \(.+?\) · \d[\d,]*(?:\.\d+)? below \(/.test(t)
+    : kind === 'cryptomarket' ? /BTC levels: \$[\d,]+(?:\.\d+)? above \(.+?\) · \$[\d,]+(?:\.\d+)? below \(/.test(t)
     : kind === 'followup' ? /\$[\d,]+(?:\.\d+)? (cleared|lost|intraday)|\b(Above|Below|above|below) \$[\d,]+(?:\.\d+)?/.test(t)
     : kind === 'closeupdate' ? /[🎯🛑] \$[\d,]+(?:\.\d+)?: (not reached|tagged intraday|trading through|intact)/u.test(t)
     : config.postFormat === 'sweep'
@@ -275,6 +291,8 @@ export function validatePost(text, ctx) {
       const v = Number(volMatch[1]);
       if (ctx.chart?.volumeRatio == null) push('value_mismatch', 'block', 'Post cites a volume ratio but no chart data backs it');
       else if (Math.abs(v - ctx.chart.volumeRatio) > 0.06) push('value_mismatch', 'block', `Volume ratio ${v}× does not match the chart data ${ctx.chart.volumeRatio}×`);
+      // A sub-1.0× reading is a thin move: citing it without saying so overstates the read.
+      if (v < 1 && !/\blow participation\b/i.test(t)) push('missing_participation_note', 'block', `RVOL ${v}× is below 1.0× — the post must note low participation / weaker confirmation`);
     }
 
     const scoreMatch = t.match(/Setup score:?\s*([+\-−]?\d+(?:\.\d+)?)/i);
@@ -292,21 +310,32 @@ export function validatePost(text, ctx) {
       if (!/\bCLOSE CHECK\b/.test(headline)) push('signal_label', 'block', 'Close check headline must carry "CLOSE CHECK"');
       const stage = setup.stage ?? ctx.stage ?? null;
       if (claimsConfirmed && !['CONFIRMED', 'BREAKOUT'].includes(stage)) push('signal_upgraded', 'block', `Close check at stage ${stage} may not say "confirmed"`);
+      if (BREAKDOWN_CONFIRMED.test(headline) && stage !== 'BREAKOUT') push('signal_upgraded', 'block', `Close check at stage ${stage} may not say "breakdown confirmed" — no daily close below the downside confirmation level yet`);
     } else if (kind === 'followup') {
       // A follow-up is labelled by its lifecycle stage; "confirmed" may appear
-      // only once the setup has actually reached CONFIRMED or BREAKOUT.
+      // only once the setup has actually reached CONFIRMED or BREAKOUT, and
+      // "breakdown confirmed" only at BREAKOUT (the close below 🎯).
       const stage = setup.stage ?? ctx.stage ?? null;
       if (claimsConfirmed && !['CONFIRMED', 'BREAKOUT'].includes(stage)) {
         push('signal_upgraded', 'block', `Follow-up at stage ${stage} may not say "confirmed"`);
       }
-      if (!/\b(DEVELOPING|CONFIRMED|BREAKOUT UPDATE|BREAKDOWN UPDATE|LEVEL TEST|INVALIDATED)\b/.test(headline)) {
+      if (BREAKDOWN_CONFIRMED.test(headline) && stage !== 'BREAKOUT') {
+        push('signal_upgraded', 'block', `Follow-up at stage ${stage} may not say "breakdown confirmed" — no daily close below the downside confirmation level yet`);
+      }
+      if (!/\b(DEVELOPING|CONFIRMED|SETUP ACTIVE|BREAKOUT UPDATE|BREAKDOWN UPDATE|LEVEL TEST|INVALIDATED)\b/.test(headline)) {
         push('signal_label', 'block', 'Follow-up headline must carry its lifecycle label');
       }
     } else {
       if (setup.signal === SIGNAL.WATCH && claimsConfirmed) {
         push('signal_upgraded', 'block', 'Post labels a WATCH as confirmed — signal may not be upgraded');
       }
-      if (setup.signal === SIGNAL.CONFIRMED && !/\bconfirmed\b/i.test(t)) {
+      // A setup post is written before any close below the downside
+      // confirmation level (that level sits below price by construction), so
+      // a base loss reads "bearish setup active" / "breakdown watch" — never this.
+      if (BREAKDOWN_CONFIRMED.test(t)) {
+        push('signal_upgraded', 'block', 'A setup post may not say "breakdown confirmed" — price has not closed below the downside confirmation level');
+      }
+      if (setup.signal === SIGNAL.CONFIRMED && !/\bconfirmed\b|\bsetup active\b/i.test(t)) {
         push('signal_label', 'warn', 'Confirmed setup is not labelled as such');
       }
       if (setup.signal === SIGNAL.WATCH && !/\bwatch\b/i.test(t)) {
@@ -315,7 +344,9 @@ export function validatePost(text, ctx) {
     }
   }
 
-  // 9c. scorecard integrity — every published count must equal the tracker's.
+  // 9c. scorecard integrity — every published count must equal the tracker's,
+  // every still-active ticker must be on the watch list (no quietly dropped
+  // losers), expiries must be shown, and the accountability line must be there.
   if (kind === 'scorecard' && ctx.scorecard) {
     const st = ctx.scorecard;
     const check = (label, re, expected) => {
@@ -323,12 +354,26 @@ export function validatePost(text, ctx) {
       if (!m) { push('value_mismatch', 'block', `Scorecard is missing "${label}"`); return; }
       if (Number(m[1]) !== Number(expected)) push('value_mismatch', 'block', `Scorecard ${label} ${m[1]} does not match the tracker (${expected})`);
     };
-    check('Setups posted', /Setups posted:\s*(\d+)/, st.posted);
-    check('Breakouts', /levels reached:\s*(\d+)/, st.breakouts);
+    check('Setups Tracked', /Setups Tracked:\s*(\d+)/, st.posted);
+    check('Active', /Active:\s*(\d+)/, st.active);
+    check('Targets Hit', /Targets Hit:\s*(\d+)/, st.breakouts);
     check('Invalidated', /Invalidated:\s*(\d+)/, st.invalidated);
-    check('Still active', /Still active:\s*(\d+)/, st.active);
-    if (st.hitRate != null) check('Hit rate', /Hit rate this week:\s*(\d+)%/, st.hitRate);
-    if (st.allTime?.hitRate != null) check('All-time hit rate', /All-time: \d+ setups · (\d+)% hit rate/, st.allTime.hitRate);
+    if (st.expired > 0) check('Expired', /Expired \(not scored\):\s*(\d+)/, st.expired);
+    if (st.hitRate != null) check('Hit Rate', /Hit Rate:\s*(\d+)%/, st.hitRate);
+    else if (!/Hit Rate: Pending\b/.test(t)) push('value_mismatch', 'block', 'Nothing has resolved, so the scorecard must show "Hit Rate: Pending"');
+    const expected = [...new Set(st.symbols?.active ?? [])];
+    const wl = t.match(/Watching Next Week: (.*)$/m);
+    if (!wl) push('value_mismatch', 'block', 'Scorecard is missing "Watching Next Week"');
+    else {
+      const listed = [...wl[1].matchAll(/\$([A-Z][A-Z0-9.]{0,9})\b/g)].map(m => m[1]);
+      const more = Number(wl[1].match(/\+(\d+) more\b/)?.[1] ?? 0);
+      const countOnly = wl[1].match(/^(\d+) open setups$/);
+      const stray = listed.filter(sym => !expected.includes(sym));
+      if (stray.length) push('value_mismatch', 'block', `Watching Next Week lists ${stray.map(x => '$' + x).join(' ')}, which ${stray.length > 1 ? 'are' : 'is'} not an active setup`);
+      const shown = countOnly ? Number(countOnly[1]) : new Set(listed).size + more;
+      if (shown !== expected.length) push('value_mismatch', 'block', `Watching Next Week covers ${shown} ticker(s) but ${expected.length} setup(s) are still active`);
+    }
+    if (!t.includes('No deleting losers. No cherry-picking winners.')) push('value_mismatch', 'block', 'Scorecard is missing the accountability line');
   }
 
   // 9d. premarket integrity — the bias word, the confidence score and the
@@ -349,6 +394,26 @@ export function validatePost(text, ctx) {
       if (Math.abs(Number(lm[1].replace(/,/g, '')) - r) > 0.011 || Math.abs(Number(lm[2].replace(/,/g, '')) - sp) > 0.011) push('value_mismatch', 'block', `SPY levels ${lm[1]}/${lm[2]} do not match the report (${r}/${sp})`);
     }
     if (!t.includes('Educational market analysis only. Not investment advice.')) push('missing_disclosure', 'block', 'Premarket post must carry "Educational market analysis only. Not investment advice."');
+  }
+
+  // 9e. crypto market-read integrity — the tone word, the breadth count and
+  // the BTC levels must be the report's; the short disclaimer is part of the format.
+  if (kind === 'cryptomarket' && ctx.cryptoMarket) {
+    const cm = ctx.cryptoMarket;
+    const headline = t.split('\n')[0] ?? '';
+    const want = String(cm.tone ?? '');
+    if (!headline.includes(want)) push('value_mismatch', 'block', `Headline does not carry the report tone ${want}`);
+    for (const w of ['RISK-ON', 'RISK-OFF', 'MIXED']) if (w !== want && headline.includes(w)) push('value_mismatch', 'block', `Headline names ${w} but the report tone is ${want}`);
+    const bm = headline.match(/breadth (\d+)\/(\d+)/);
+    if (!bm) push('value_mismatch', 'block', 'Missing "breadth N/M" in the headline');
+    else if (Number(bm[1]) !== Number(cm.above) || Number(bm[2]) !== Number(cm.n)) push('value_mismatch', 'block', `Breadth ${bm[1]}/${bm[2]} does not match the report (${cm.above}/${cm.n})`);
+    const lm = t.match(/BTC levels: \$([\d,.]+) above .*? · \$([\d,.]+) below/);
+    if (lm && Array.isArray(cm.levels) && cm.levels.length === 2) {
+      const [hi, lo] = cm.levels.map(Number);
+      if (Number(lm[1].replace(/,/g, '')) !== hi || Number(lm[2].replace(/,/g, '')) !== lo) push('value_mismatch', 'block', `BTC levels ${lm[1]}/${lm[2]} do not match the report (${hi}/${lo})`);
+    }
+    // With the disclosure in the post, rule 3 already requires the policy line.
+    if (config.disclosurePlacement === 'bio' && !t.includes('Educational market analysis only. Not investment advice.')) push('missing_disclosure', 'block', 'Crypto market post must carry "Educational market analysis only. Not investment advice."');
   }
 
   // 9b. the chart is part of the post when the policy says so. With the

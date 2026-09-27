@@ -175,7 +175,7 @@ class Chart:
             h = (self.py2 - self.py1 - gap)
             self.price_box = (self.py1, self.py1 + h * 0.58)
             self.osc_box = (self.py1 + h * 0.58 + gap, self.py2)
-        if self.kind == 'osc':
+        if self.kind in ('osc', 'diagram'):
             self.lo, self.hi = 0.0, 100.0
         else:
             vals = []
@@ -212,8 +212,8 @@ class Chart:
     def draw(self, d, p):
         art = self.art
         d.rounded_rectangle(self.box, radius=28, fill=PANEL2, outline=GRID, width=2)
-        # faint grid
-        for i in range(1, 4):
+        # faint grid (a diagram has no value axis)
+        for i in range(1, 4 if self.kind != 'diagram' else 1):
             y = self.py1 + (self.py2 - self.py1) * i / 4
             d.line((self.px1, y, self.px2, y), fill=(26, 34, 52), width=1)
         prog = ease_in_out(p / self.DRAW_END)
@@ -232,6 +232,8 @@ class Chart:
             self._line(d, p, prog)
         elif self.kind == 'divergence':
             self._divergence(d, p, prog)
+        elif self.kind == 'diagram':
+            self._diagram(d, p)
         for lv in art.get('levels', []):
             self._level(d, p, lv)
         for lb in art.get('labels', []):
@@ -386,6 +388,72 @@ class Chart:
             else:
                 triangle(d, self.X(m['x']), self.Y(m['y']) - 12, False, RED, s)
 
+    def _node_box(self, nd):
+        w, h = nd.get('w', 34), nd.get('h', 14)
+        return (self.X(nd['x'] - w / 2), self.Y(nd['y'] + h / 2), self.X(nd['x'] + w / 2), self.Y(nd['y'] - h / 2))
+
+    def _anchor(self, box, towards):
+        # Where an edge leaves/enters a box: the midpoint of the side facing the other box.
+        x1, y1, x2, y2 = box
+        cx, cy = (x1 + x2) / 2, (y1 + y2) / 2
+        dx, dy = towards[0] - cx, towards[1] - cy
+        if abs(dy) * (x2 - x1) >= abs(dx) * (y2 - y1):
+            return (cx, y2 + 6) if dy > 0 else (cx, y1 - 6)
+        return (x2 + 6, cy) if dx > 0 else (x1 - 6, cy)
+
+    def _diagram(self, d, p):
+        """Boxes, arrows and labelled bands, each fading in at its own `at`
+        (fractions of the chart phase), for network / technology explainers."""
+        art = self.art
+        nodes = {nd['id']: nd for nd in art.get('nodes', [])}
+        for gr in art.get('groups', []):
+            a = clamp((p - gr.get('at', 0.0)) / 0.3, 0, 1)
+            if a <= 0: continue
+            col = COLOR.get(gr.get('color'), BLUE)
+            box = (self.X(gr['x1']), self.Y(gr['y2']), self.X(gr['x2']), self.Y(gr['y1']))
+            d.rounded_rectangle(box, radius=22, fill=mix(PANEL2, col, 0.10 * a), outline=mix(PANEL2, col, 0.55 * a), width=2)
+            if gr.get('label'):
+                d.text((box[0] + 18, box[1] + 10), gr['label'], font=font(22, True), fill=mix(PANEL2, col, a))
+        for ed in art.get('edges', []):
+            a = clamp((p - ed.get('at', 0.3)) / 0.25, 0, 1)
+            if a <= 0: continue
+            A, B = nodes.get(ed['from']), nodes.get(ed['to'])
+            if not A or not B: continue
+            ba, bb = self._node_box(A), self._node_box(B)
+            ca, cb = ((ba[0] + ba[2]) / 2, (ba[1] + ba[3]) / 2), ((bb[0] + bb[2]) / 2, (bb[1] + bb[3]) / 2)
+            P, Q = self._anchor(ba, cb), self._anchor(bb, ca)
+            col = COLOR.get(ed.get('color'), MUTED) if ed.get('color') else MUTED
+            e_ = ease_out(a)
+            R = (P[0] + (Q[0] - P[0]) * e_, P[1] + (Q[1] - P[1]) * e_)
+            if ed.get('dashed'):
+                dashed_seg(d, P, Q, col, progress=e_, width=4)
+            else:
+                d.line((P, R), fill=col, width=4)
+            if a >= 0.95:
+                ang = math.atan2(Q[1] - P[1], Q[0] - P[0])
+                s = 16
+                d.polygon([Q, (Q[0] - s * math.cos(ang - 0.45), Q[1] - s * math.sin(ang - 0.45)), (Q[0] - s * math.cos(ang + 0.45), Q[1] - s * math.sin(ang + 0.45))], fill=col)
+                if ed.get('label'):
+                    pill(d, (P[0] + Q[0]) / 2, (P[1] + Q[1]) / 2 - 20, ed['label'], font(22, True), col, bg=PANEL2, anchor='center')
+        for nd in nodes.values():
+            a = clamp((p - nd.get('at', 0.1)) / 0.25, 0, 1)
+            if a <= 0: continue
+            col = COLOR.get(nd.get('color'), BLUE)
+            x1, y1, x2, y2 = self._node_box(nd)
+            rise = (1 - ease_out(a)) * 14
+            y1, y2 = y1 + rise, y2 + rise
+            d.rounded_rectangle((x1, y1, x2, y2), radius=18, fill=mix(PANEL2, mix(PANEL, col, 0.16), a), outline=mix(PANEL2, col, a), width=3)
+            f_l, f_s = font(30, True), font(22)
+            lines = wrap_text(d, nd.get('label', ''), f_l, x2 - x1 - 20)[:2]
+            sub = nd.get('sub')
+            th = len(lines) * 36 + (28 if sub else 0)
+            yy = (y1 + y2) / 2 - th / 2
+            for ln in lines:
+                d.text(((x1 + x2) / 2 - d.textlength(ln, font=f_l) / 2, yy), ln, font=f_l, fill=mix(PANEL2, TEXT, a)); yy += 36
+            if sub:
+                sl = wrap_text(d, sub, f_s, x2 - x1 - 16)[0]
+                d.text(((x1 + x2) / 2 - d.textlength(sl, font=f_s) / 2, yy), sl, font=f_s, fill=mix(PANEL2, MUTED, a))
+
     def _divergence(self, d, p, prog):
         art = self.art
         ptop, pbot = self.price_box
@@ -467,12 +535,13 @@ def render(spec):
         col = mix(BG, TEXT, a); mcol = mix(BG, MUTED, a)
         y = 1372 + rise
         d.rounded_rectangle((M, y - 20, W - M, y + 400), radius=24, fill=mix(BG, PANEL, a), outline=mix(BG, GRID, a))
-        d.text((M + 28, y), 'WHAT IT MEANS', font=f_lab, fill=mix(BG, GREEN, a))
+        labels = spec.get('labels') or {}
+        d.text((M + 28, y), labels.get('means', 'WHAT IT MEANS'), font=f_lab, fill=mix(BG, GREEN, a))
         yy = y + 40
         for ln in wrap_text(d, spec.get('means', ''), f_body, W - 2 * M - 56)[:3]:
             d.text((M + 28, yy), ln, font=f_body, fill=col); yy += 48
         yy += 22
-        d.text((M + 28, yy), 'HOW TRADERS USE IT', font=f_lab, fill=mix(BG, BLUE, a))
+        d.text((M + 28, yy), labels.get('use', 'HOW TRADERS USE IT'), font=f_lab, fill=mix(BG, BLUE, a))
         yy += 40
         for ln in wrap_text(d, spec.get('use', ''), f_body, W - 2 * M - 56)[:3]:
             d.text((M + 28, yy), ln, font=f_body, fill=col); yy += 48
@@ -487,7 +556,8 @@ def render(spec):
         draw_centered(d, y + 130, '•', f_cta2, mix(BG, MUTED, a), W)
         draw_centered(d, y + 210, rest.strip(), f_cta2, col, W, W - 2 * M, gap=14)
         pill(d, W / 2, y + 420, brand.upper(), f_brand, mix(BG, AMBER, a), bg=mix(BG, PANEL, a), anchor='center')
-        d.text(((W - d.textlength('Every weekday · one concept · one chart', font=font(30))) / 2, y + 500), 'Every weekday · one concept · one chart', font=font(30), fill=mix(BG, MUTED, a))
+        end_line = spec.get('endLine') or 'Every weekday · one concept · one chart'
+        d.text(((W - d.textlength(end_line, font=font(30))) / 2, y + 500), end_line, font=font(30), fill=mix(BG, MUTED, a))
 
     def frame(i):
         t = i / fps
