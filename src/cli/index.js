@@ -28,6 +28,7 @@ import './commands/stream.js';
 import './commands/social.js';
 import './commands/premarket.js';
 import './commands/publish.js';
+import './commands/desk.js';
 
 // Run
 import { run } from './router.js';

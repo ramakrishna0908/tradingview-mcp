@@ -1,0 +1,286 @@
+{
+  "note": "Universe and sector taxonomy for the decision-support report. Mirrors the daily sweep so sector maths and the sweep table agree.",
+  "updated": "2026-09-28",
+  "universe": [
+    {
+      "symbol": "CRWD",
+      "sector": "Cybersecurity",
+      "group": "main"
+    },
+    {
+      "symbol": "PANW",
+      "sector": "Cybersecurity",
+      "group": "main"
+    },
+    {
+      "symbol": "ZS",
+      "sector": "Cybersecurity",
+      "group": "main"
+    },
+    {
+      "symbol": "FTNT",
+      "sector": "Cybersecurity",
+      "group": "main"
+    },
+    {
+      "symbol": "NET",
+      "sector": "Cybersecurity",
+      "group": "main"
+    },
+    {
+      "symbol": "AMD",
+      "sector": "Semiconductors",
+      "group": "main"
+    },
+    {
+      "symbol": "MU",
+      "sector": "Semiconductors",
+      "group": "main"
+    },
+    {
+      "symbol": "INTC",
+      "sector": "Semiconductors",
+      "group": "main"
+    },
+    {
+      "symbol": "SNDK",
+      "sector": "Semiconductors",
+      "group": "main"
+    },
+    {
+      "symbol": "NVDA",
+      "sector": "Semiconductors",
+      "group": "main"
+    },
+    {
+      "symbol": "MRVL",
+      "sector": "Semiconductors",
+      "group": "main"
+    },
+    {
+      "symbol": "ARM",
+      "sector": "Semiconductors",
+      "group": "main"
+    },
+    {
+      "symbol": "AVGO",
+      "sector": "Semiconductors",
+      "group": "main"
+    },
+    {
+      "symbol": "LUNR",
+      "sector": "Space",
+      "group": "main"
+    },
+    {
+      "symbol": "SPCX",
+      "sector": "Space",
+      "group": "main"
+    },
+    {
+      "symbol": "RKLB",
+      "sector": "Space",
+      "group": "main"
+    },
+    {
+      "symbol": "MRNA",
+      "sector": "Healthcare",
+      "group": "main"
+    },
+    {
+      "symbol": "ISRG",
+      "sector": "Healthcare",
+      "group": "main"
+    },
+    {
+      "symbol": "LLY",
+      "sector": "Healthcare",
+      "group": "main"
+    },
+    {
+      "symbol": "HIMS",
+      "sector": "Healthcare",
+      "group": "main"
+    },
+    {
+      "symbol": "UNH",
+      "sector": "Healthcare",
+      "group": "main"
+    },
+    {
+      "symbol": "QQQ",
+      "sector": "Index/ETF",
+      "group": "main"
+    },
+    {
+      "symbol": "SMH",
+      "sector": "Index/ETF",
+      "group": "main"
+    },
+    {
+      "symbol": "IWM",
+      "sector": "Index/ETF",
+      "group": "main"
+    },
+    {
+      "symbol": "MSTR",
+      "sector": "Crypto/Fintech",
+      "group": "main"
+    },
+    {
+      "symbol": "BMNR",
+      "sector": "Crypto/Fintech",
+      "group": "main"
+    },
+    {
+      "symbol": "HOOD",
+      "sector": "Crypto/Fintech",
+      "group": "main"
+    },
+    {
+      "symbol": "COIN",
+      "sector": "Crypto/Fintech",
+      "group": "main"
+    },
+    {
+      "symbol": "CRCL",
+      "sector": "Crypto/Fintech",
+      "group": "main"
+    },
+    {
+      "symbol": "SOFI",
+      "sector": "Crypto/Fintech",
+      "group": "main"
+    },
+    {
+      "symbol": "IONQ",
+      "sector": "Quantum",
+      "group": "main"
+    },
+    {
+      "symbol": "RGTI",
+      "sector": "Quantum",
+      "group": "main"
+    },
+    {
+      "symbol": "ARQQ",
+      "sector": "Quantum",
+      "group": "main"
+    },
+    {
+      "symbol": "QUBT",
+      "sector": "Quantum",
+      "group": "main"
+    },
+    {
+      "symbol": "QBTS",
+      "sector": "Quantum",
+      "group": "main"
+    },
+    {
+      "symbol": "LAES",
+      "sector": "Quantum",
+      "group": "main"
+    },
+    {
+      "symbol": "CRWV",
+      "sector": "AI Infra/DC",
+      "group": "main"
+    },
+    {
+      "symbol": "DELL",
+      "sector": "AI Infra/DC",
+      "group": "main"
+    },
+    {
+      "symbol": "NBIS",
+      "sector": "AI Infra/DC",
+      "group": "main"
+    },
+    {
+      "symbol": "IREN",
+      "sector": "AI Infra/DC",
+      "group": "main"
+    },
+    {
+      "symbol": "APLD",
+      "sector": "AI Infra/DC",
+      "group": "main"
+    },
+    {
+      "symbol": "AAPL",
+      "sector": "Software/Megacap",
+      "group": "main"
+    },
+    {
+      "symbol": "PLTR",
+      "sector": "Software/Megacap",
+      "group": "main"
+    },
+    {
+      "symbol": "META",
+      "sector": "Software/Megacap",
+      "group": "main"
+    },
+    {
+      "symbol": "MSFT",
+      "sector": "Software/Megacap",
+      "group": "main"
+    },
+    {
+      "symbol": "GOOGL",
+      "sector": "Software/Megacap",
+      "group": "main"
+    },
+    {
+      "symbol": "AMZN",
+      "sector": "Software/Megacap",
+      "group": "main"
+    },
+    {
+      "symbol": "NFLX",
+      "sector": "Software/Megacap",
+      "group": "main"
+    },
+    {
+      "symbol": "SNOW",
+      "sector": "Software/Megacap",
+      "group": "main"
+    },
+    {
+      "symbol": "ACN",
+      "sector": "Software/Megacap",
+      "group": "main"
+    },
+    {
+      "symbol": "ORCL",
+      "sector": "Software/Megacap",
+      "group": "main"
+    },
+    {
+      "symbol": "TSLA",
+      "sector": "Consumer/Other",
+      "group": "main"
+    },
+    {
+      "symbol": "BABA",
+      "sector": "Consumer/Other",
+      "group": "main"
+    },
+    {
+      "symbol": "MCD",
+      "sector": "Consumer/Other",
+      "group": "main"
+    },
+    {
+      "symbol": "SOUN",
+      "sector": "Consumer/Other",
+      "group": "main"
+    },
+    {
+      "symbol": "USO",
+      "sector": "Macro (x-check)",
+      "group": "main"
+    }
+  ]
+}
