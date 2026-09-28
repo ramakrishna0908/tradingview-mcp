@@ -8,11 +8,17 @@ import { atr, cmf, cmfTrend, maStructure, rsi } from './indicators.js';
 import { aggregate } from './data.js';
 
 /** Yahoo tickers for the instruments the spec names. */
+/**
+ * `intraday: true` marks the instruments whose session behaviour is actually
+ * read — opening range and VWAP. The rest inform the regime through their
+ * daily change alone, so fetching intraday bars for them would be a request
+ * spent on a number nothing consults.
+ */
 export const INDEX_SET = Object.freeze([
-  { key: 'spy', symbol: 'SPY', label: 'S&P 500 (SPY)', role: 'broad' },
-  { key: 'qqq', symbol: 'QQQ', label: 'Nasdaq 100 (QQQ)', role: 'growth' },
-  { key: 'iwm', symbol: 'IWM', label: 'Russell 2000 (IWM)', role: 'smallcap' },
-  { key: 'smh', symbol: 'SMH', label: 'Semiconductors (SMH)', role: 'semis' },
+  { key: 'spy', symbol: 'SPY', label: 'S&P 500 (SPY)', role: 'broad', intraday: true },
+  { key: 'qqq', symbol: 'QQQ', label: 'Nasdaq 100 (QQQ)', role: 'growth', intraday: true },
+  { key: 'iwm', symbol: 'IWM', label: 'Russell 2000 (IWM)', role: 'smallcap', intraday: true },
+  { key: 'smh', symbol: 'SMH', label: 'Semiconductors (SMH)', role: 'semis', intraday: true },
   { key: 'vix', symbol: '^VIX', label: 'Volatility (VIX)', role: 'volatility' },
   { key: 'tnx', symbol: '^TNX', label: 'US 10Y yield', role: 'rates' },
   { key: 'dxy', symbol: 'DX-Y.NYB', label: 'US dollar (DXY)', role: 'dollar' },
@@ -40,6 +46,8 @@ export async function readInstrument(inst, { fetchImpl = fetch, now = new Date()
       return { ma: maStructure(w), rsi: rsi(w), bars: w.length, lastBar: w.length ? w[w.length - 1].t : null };
     })();
   } catch (err) { out.errors.push(`daily: ${err.message}`); }
+
+  if (!inst.intraday) return out;
 
   try {
     const intra = await fetchBars(inst.symbol, { interval: '15m', range: '1mo', prePost: true, fetchImpl, now });
@@ -155,13 +163,15 @@ export function swingRegime(instruments) {
  * index alone when a handful of megacaps carry the tape.
  */
 export function breadth(rows) {
-  const withMa = rows.filter((r) => r.daily?.ma?.aboveEma21 != null);
-  const withFlow = rows.filter((r) => r.daily?.cmfTrend?.direction);
+  // Reads the sweep's own columns so breadth covers the whole universe rather
+  // than only the names that earned a bar fetch.
+  const withMa = rows.filter((r) => r.cloud != null);
+  const withFlow = rows.filter((r) => r.flow?.direction);
   if (!withMa.length) return { complete: false, note: 'No universe rows with sufficient history for a breadth read.' };
-  const aboveEma21 = withMa.filter((r) => r.daily.ma.aboveEma21).length;
-  const above200 = withMa.filter((r) => r.daily.ma.aboveSma200).length;
-  const improving = withFlow.filter((r) => r.daily.cmfTrend.direction === 'improving').length;
-  const deteriorating = withFlow.filter((r) => r.daily.cmfTrend.direction === 'deteriorating').length;
+  const aboveEma21 = rows.filter((r) => r.bb?.basis != null && r.price != null && r.price > r.bb.basis).length;
+  const above200 = withMa.filter((r) => r.cloud === 'above_cloud').length;
+  const improving = withFlow.filter((r) => r.flow.direction === 'improving').length;
+  const deteriorating = withFlow.filter((r) => r.flow.direction === 'deteriorating').length;
   return {
     complete: true,
     universe: rows.length,

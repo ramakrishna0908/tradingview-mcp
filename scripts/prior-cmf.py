@@ -26,9 +26,13 @@ def parse_report(path):
     try:
         s = open(path, encoding="utf-8").read()
         head = re.search(r"<thead.*?</thead>", s, re.S)
-        body = re.search(r"<tbody.*?</tbody>", s, re.S)
-        if not head or not body:
+        # The report groups rows into one <tbody> per sector, so a single
+        # search finds only the first sector and silently drops the rest —
+        # which left the CMF trend blank for every name outside it.
+        bodies = re.findall(r"<tbody.*?</tbody>", s, re.S)
+        if not head or not bodies:
             return {}
+        body = "".join(bodies)
         hdr = [
             _norm(html.unescape(re.sub(r"<[^>]+>", "", c)))
             for c in re.findall(r"<th.*?</th>", head.group(0), re.S)
@@ -36,7 +40,7 @@ def parse_report(path):
         if "CMF" not in hdr or "Sym" not in hdr:
             return {}
         out = {}
-        for row in re.findall(r"<tr.*?</tr>", body.group(0), re.S):
+        for row in re.findall(r"<tr.*?</tr>", body, re.S):
             cells = [
                 html.unescape(re.sub(r"<[^>]+>", "", c)).strip()
                 for c in re.findall(r"<t[dh].*?</t[dh]>", row, re.S)

@@ -23,18 +23,22 @@ export function sectorRotation(rows, { benchmarkChangePct = null, previous = nul
   }
 
   const table = [...groups.entries()].map(([name, members]) => {
-    const withFlow = members.filter((m) => m.daily?.cmfTrend?.direction);
-    const improving = withFlow.filter((m) => m.daily.cmfTrend.direction === 'improving').length;
-    const deteriorating = withFlow.filter((m) => m.daily.cmfTrend.direction === 'deteriorating').length;
-    const cmfValues = members.map((m) => m.daily?.cmf).filter((v) => v != null);
+    const withFlow = members.filter((m) => m.flow?.direction);
+    const improving = withFlow.filter((m) => m.flow.direction === 'improving').length;
+    const deteriorating = withFlow.filter((m) => m.flow.direction === 'deteriorating').length;
+    const cmfValues = members.map((m) => m.cmf).filter((v) => v != null);
     const avgCmf = cmfValues.length ? cmfValues.reduce((a, b) => a + b, 0) / cmfValues.length : null;
 
     const changes = members.map((m) => m.changePct).filter((v) => v != null);
     const avgChange = changes.length ? changes.reduce((a, b) => a + b, 0) / changes.length : null;
 
-    const withMa = members.filter((m) => m.daily?.ma?.aboveEma21 != null);
-    const aboveEma21 = withMa.filter((m) => m.daily.ma.aboveEma21).length;
-    const above200 = withMa.filter((m) => m.daily.ma.aboveSma200).length;
+    // Trend and location from the sweep's own columns: the cloud stands in for
+    // the long trend and the Bollinger basis for the mean. The exact moving
+    // averages are computed later, on survivors only, where they change an
+    // answer — a sector average does not need that precision.
+    const withMa = members.filter((m) => m.cloud != null);
+    const aboveEma21 = members.filter((m) => m.bb?.basis != null && m.price != null && m.price > m.bb.basis).length;
+    const above200 = withMa.filter((m) => m.cloud === 'above_cloud').length;
 
     // A composite of participation, not an opinion: each component is a plain
     // proportion and the report shows them alongside the total.
@@ -65,9 +69,9 @@ export function sectorRotation(rows, { benchmarkChangePct = null, previous = nul
       improving, deteriorating, flowSample: withFlow.length,
       avgChangePct: avgChange != null ? Number(avgChange.toFixed(2)) : null,
       relativeStrength,
-      structure: above200 === withMa.length && withMa.length ? 'all above 200 SMA'
-        : above200 === 0 && withMa.length ? 'all below 200 SMA'
-        : `${above200}/${withMa.length} above 200 SMA`,
+      structure: above200 === withMa.length && withMa.length ? 'all above cloud'
+        : above200 === 0 && withMa.length ? 'all below cloud'
+        : `${above200}/${withMa.length} above cloud`,
       symbols: members.map((m) => m.symbol),
     };
   });

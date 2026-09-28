@@ -70,13 +70,17 @@ function writeCache(url, json) {
  * 429 midway through the run costs the whole report. Pacing the calls is the
  * difference between a slow report and no report.
  */
-const HOST_GAP_MS = Number(process.env.DESK_REQUEST_GAP_MS ?? 350);
+// Read per call rather than at import: ES module imports are hoisted, so a
+// caller setting this in its own module body would otherwise be ignored.
+const hostGapMs = () => Number(process.env.DESK_REQUEST_GAP_MS ?? 350);
 const lastRequestAt = new Map();
 
 async function pace(url) {
+  const gap = hostGapMs();
+  if (!gap) return;
   const host = new URL(url).hostname;
   const previous = lastRequestAt.get(host) ?? 0;
-  const wait = previous + HOST_GAP_MS - Date.now();
+  const wait = previous + gap - Date.now();
   if (wait > 0) await new Promise((r) => setTimeout(r, wait));
   lastRequestAt.set(host, Date.now());
 }

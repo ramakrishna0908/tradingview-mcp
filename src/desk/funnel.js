@@ -1,102 +1,161 @@
 /**
- * The two shortlists.
+ * The two shortlists, built from the daily sweep.
  *
- * Both start from the same 56 names and neither is a ranking of one number.
- * Each candidate accumulates named confluence factors, and the report can show
- * exactly which ones it has — a name carried by trend, flow and sector is a
- * different proposition from one carried by a single stretched oscillator even
- * when a scalar would score them alike.
+ * Neither list is a ranking of one number. Each candidate accumulates named
+ * confluence factors, and the report can show exactly which it has — a name
+ * carried by trend, flow and sector is a different proposition from one
+ * carried by a single stretched oscillator, even when a scalar scores them
+ * alike.
  *
- * The two lists are computed independently and are expected to differ: a name
- * can be a poor intraday vehicle and an excellent three-month one.
+ * The lists are computed independently and are expected to differ: a name can
+ * be a poor intraday vehicle and an excellent three-month one.
  */
 
 const MAX_CANDIDATES = 12;
 
-/** A factor is only counted when its input actually exists. */
-function factor(list, condition, text) {
-  if (condition === true) list.push(text);
+/**
+ * Record a factor with the direction it argues for.
+ *
+ * Polarity matters: counting a deteriorating flow reading as "confluence" for
+ * a long simply because it is a fact about the name would rank the most
+ * conflicted candidates highest. Factors are tallied against the direction
+ * actually taken, and the ones that argue the other way are kept as
+ * counterpoints rather than quietly dropped.
+ */
+function factor(list, condition, text, polarity = 'neutral') {
+  if (condition === true && text) list.push({ text, polarity });
   return condition === true;
 }
 
+/** Split factors into those supporting a direction and those opposing it. */
+function split(factors, direction) {
+  const want = direction === 'bullish' ? 'bull' : 'bear';
+  const other = direction === 'bullish' ? 'bear' : 'bull';
+  return {
+    supporting: factors.filter((f) => f.polarity === want || f.polarity === 'neutral').map((f) => f.text),
+    opposing: factors.filter((f) => f.polarity === other).map((f) => f.text),
+  };
+}
+
+/** Trend read from the sweep's own cloud and swing-structure columns. */
+function sweepTrend(r) {
+  const up = r.cloud === 'above_cloud';
+  const down = r.cloud === 'below_cloud';
+  return {
+    up, down,
+    makingHighs: r.structure === 'HH-up',
+    makingLows: r.structure === 'LL-down',
+  };
+}
+
 /**
- * Stage 1, intraday. Cheap: daily context, flow, sector and the session's gap
- * and relative volume. No 1H, no 15m, no options — those come after the cut.
+ * Stage 1, intraday. Daily context, flow, sector and location only. No 1H, no
+ * 15m, no options — those are what the survivors earn.
  */
 export function intradayShortlist(rows, { sectorTable = [], regime = null, limit = MAX_CANDIDATES } = {}) {
   const sectorClass = new Map(sectorTable.map((s) => [s.name, s.classification]));
+
   const scored = rows.map((r) => {
     const why = [];
-    const ma = r.daily?.ma ?? {};
-    const flow = r.daily?.cmfTrend ?? {};
+    const t = sweepTrend(r);
     const sector = sectorClass.get(r.sector) ?? null;
+    const flow = r.flow ?? {};
 
-    const bullish = ma.aboveSma200 === true && ma.aboveEma21 === true;
-    const bearish = ma.aboveSma200 === false && ma.aboveEma21 === false;
-    factor(why, bullish, 'Above both the 200 SMA and the 21 EMA.');
-    factor(why, bearish, 'Below both the 200 SMA and the 21 EMA.');
-    factor(why, flow.direction === 'improving', 'Money flow improving over the last five sessions.');
-    factor(why, flow.direction === 'deteriorating', 'Money flow deteriorating over the last five sessions.');
-    factor(why, sector === 'LEADING' || sector === 'IMPROVING', `Sector is ${sector?.toLowerCase()}.`);
-    factor(why, sector === 'LAGGING' || sector === 'WEAKENING', `Sector is ${sector?.toLowerCase()}.`);
-    factor(why, r.rvol != null && r.rvol >= 1.2, r.rvol != null ? `Relative volume ${r.rvol}x — participation above its own norm.` : '');
-    factor(why, r.gapPct != null && Math.abs(r.gapPct) >= 1, r.gapPct != null ? `Gapped ${r.gapPct >= 0 ? '+' : ''}${r.gapPct.toFixed(1)}% into the session.` : '');
+    factor(why, t.up && t.makingHighs, 'Above the cloud and making higher highs.', 'bull');
+    factor(why, t.down && t.makingLows, 'Below the cloud and making lower lows.', 'bear');
+    factor(why, flow.direction === 'improving', 'Money flow improving against the prior session.', 'bull');
+    factor(why, flow.direction === 'deteriorating', 'Money flow deteriorating against the prior session.', 'bear');
+    // When the sweep had no prior session to compare against, the CMF level is
+    // still a real observation — but a weaker one, and it is named as such so
+    // the card never implies a trend that was not measured.
+    factor(why, !flow.complete && r.cmf != null && r.cmf > 0.05, `Money flow positive at ${r.cmf} (trend unavailable this run).`, 'bull');
+    factor(why, !flow.complete && r.cmf != null && r.cmf < -0.05, `Money flow negative at ${r.cmf} (trend unavailable this run).`, 'bear');
+    factor(why, sector === 'LEADING' || sector === 'IMPROVING', sector ? `Sector is ${sector.toLowerCase()}.` : '', 'bull');
+    factor(why, sector === 'LAGGING' || sector === 'WEAKENING', sector ? `Sector is ${sector.toLowerCase()}.` : '', 'bear');
+    factor(why, r.rsi != null && r.rsiMa != null && r.rsi > r.rsiMa, 'RSI above its own moving average — momentum turning up.', 'bull');
+    factor(why, r.rsi != null && r.rsiMa != null && r.rsi < r.rsiMa, 'RSI below its own moving average — momentum turning down.', 'bear');
+    factor(why, r.changePct != null && r.changePct >= 1.5, `Up ${r.changePct}% by the sweep snapshot.`, 'bull');
+    factor(why, r.changePct != null && r.changePct <= -1.5, `Down ${r.changePct}% by the sweep snapshot.`, 'bear');
 
-    // Direction must be coherent before a name is worth expensive analysis.
-    const direction = bullish ? 'bullish' : bearish ? 'bearish' : null;
-    // Alignment with the session's own regime, when the regime is decisive.
+    const direction = (t.up && (t.makingHighs || flow.direction === 'improving')) ? 'bullish'
+      : (t.down && (t.makingLows || flow.direction === 'deteriorating')) ? 'bearish'
+      : t.up && r.cmf > 0 ? 'bullish'
+      : t.down && r.cmf < 0 ? 'bearish'
+      : null;
+
     const withRegime = regime === 'TREND UP' ? direction === 'bullish'
       : regime === 'TREND DOWN' ? direction === 'bearish' : null;
-    factor(why, withRegime === true, 'Direction agrees with the session regime.');
+    factor(why, withRegime === true, 'Direction agrees with the session regime.',
+      direction === 'bullish' ? 'bull' : 'bear');
 
-    return { ...r, direction, confluence: why, confluenceCount: why.length, sectorClass: sector };
+    const { supporting, opposing } = direction ? split(why, direction) : { supporting: [], opposing: [] };
+    return {
+      ...r, direction,
+      confluence: supporting, counterpoints: opposing,
+      confluenceCount: supporting.length, sectorClass: sector,
+    };
   });
 
-  // A candidate needs a coherent direction and more than one reason. The floor
-  // is what stops the list filling with names that merely scored well.
+  // A candidate needs real agreement, not merely a lot of remarks: at least
+  // three supporting factors and no more than one arguing the other way.
   return scored
-    .filter((r) => r.direction && r.confluenceCount >= 2 && r.sector !== 'Macro (x-check)')
-    .sort((a, b) => b.confluenceCount - a.confluenceCount || Math.abs(b.gapPct ?? 0) - Math.abs(a.gapPct ?? 0))
+    .filter((r) => r.direction && r.confluenceCount >= 3 && r.counterpoints.length <= 1 && r.sector !== 'Macro (x-check)')
+    .sort((a, b) => b.confluenceCount - a.confluenceCount
+      || a.counterpoints.length - b.counterpoints.length
+      || Math.abs(b.changePct ?? 0) - Math.abs(a.changePct ?? 0))
     .slice(0, limit);
 }
 
 /**
- * Stage 1, swing. Weekly and daily only — deliberately blind to the opening
- * range, VWAP and today's relative volume, none of which say anything about a
- * three-month thesis.
+ * Stage 1, swing. Deliberately blind to today's session move: a gap says
+ * nothing about a three-month thesis. Location matters more here than for
+ * intraday — an entry far above the Bollinger basis is a chase whatever the
+ * trend looks like.
  */
 export function swingShortlist(rows, { sectorTable = [], limit = MAX_CANDIDATES } = {}) {
   const sectorClass = new Map(sectorTable.map((s) => [s.name, s.classification]));
+
   const scored = rows.map((r) => {
     const why = [];
-    const ma = r.daily?.ma ?? {};
-    const weekly = r.weekly?.ma ?? {};
-    const flow = r.daily?.cmfTrend ?? {};
+    const t = sweepTrend(r);
     const sector = sectorClass.get(r.sector) ?? null;
+    const flow = r.flow ?? {};
 
-    const bullStack = ma.aboveSma200 === true && ma.goldenCross === true;
-    const bearStack = ma.aboveSma200 === false && ma.goldenCross === false;
-    factor(why, bullStack, '50 SMA above the 200 with price above both.');
-    factor(why, bearStack, '50 SMA below the 200 with price beneath both.');
-    factor(why, ma.sma50Slope != null && ma.sma50Slope > 0.5, 'The 50 SMA is rising.');
-    factor(why, ma.sma50Slope != null && ma.sma50Slope < -0.5, 'The 50 SMA is falling.');
-    factor(why, weekly.aboveSma200 === true, 'Weekly close above its 200-period average.');
-    factor(why, flow.direction === 'improving', 'Daily money flow improving.');
-    factor(why, sector === 'LEADING' || sector === 'IMPROVING', `Sector is ${sector?.toLowerCase()}.`);
+    factor(why, t.up, 'Trading above the cloud.', 'bull');
+    factor(why, t.down, 'Trading below the cloud.', 'bear');
+    factor(why, t.makingHighs, 'Daily structure is making higher highs.', 'bull');
+    factor(why, t.makingLows, 'Daily structure is making lower lows.', 'bear');
+    factor(why, flow.direction === 'improving', 'Money flow improving.', 'bull');
+    factor(why, flow.direction === 'deteriorating', 'Money flow deteriorating.', 'bear');
+    factor(why, !flow.complete && r.cmf != null && r.cmf > 0.05, `Money flow positive at ${r.cmf} (trend unavailable this run).`, 'bull');
+    factor(why, !flow.complete && r.cmf != null && r.cmf < -0.05, `Money flow negative at ${r.cmf} (trend unavailable this run).`, 'bear');
+    factor(why, sector === 'LEADING' || sector === 'IMPROVING', sector ? `Sector is ${sector.toLowerCase()}.` : '', 'bull');
+    factor(why, sector === 'LAGGING' || sector === 'WEAKENING', sector ? `Sector is ${sector.toLowerCase()}.` : '', 'bear');
 
-    // Location matters more for swing than for intraday: an entry 20% above
-    // the 21 EMA is a chase whatever the trend looks like.
-    const dist = ma.distanceToEma21Pct;
-    const nearZone = dist != null && Math.abs(dist) <= 6;
-    factor(why, nearZone, dist != null ? `Within ${Math.abs(dist).toFixed(1)}% of the 21 EMA — near the preferred entry zone.` : '');
-    const extended = dist != null && Math.abs(dist) > 12;
+    // Distance from the Bollinger basis stands in for distance from the mean
+    // at this stage; the 21 EMA zone is computed exactly, from bars, once the
+    // name survives.
+    const basis = r.bb?.basis;
+    const distPct = basis && r.price ? ((r.price - basis) / basis) * 100 : null;
+    const nearBasis = distPct != null && Math.abs(distPct) <= 8;
+    factor(why, nearBasis, distPct != null ? `Within ${Math.abs(distPct).toFixed(1)}% of the Bollinger basis — not extended.` : '');
+    const extended = distPct != null && Math.abs(distPct) > 18;
 
-    const direction = bullStack ? 'bullish' : bearStack ? 'bearish' : null;
-    return { ...r, swingDirection: direction, swingConfluence: why, swingConfluenceCount: why.length, extended, sectorClass: sector };
+    const direction = t.up && (t.makingHighs || r.cmf > 0) ? 'bullish'
+      : t.down && (t.makingLows || r.cmf < 0) ? 'bearish' : null;
+
+    const { supporting, opposing } = direction ? split(why, direction) : { supporting: [], opposing: [] };
+    return {
+      ...r, swingDirection: direction,
+      swingConfluence: supporting, swingCounterpoints: opposing,
+      swingConfluenceCount: supporting.length, extended, distanceToBasisPct: distPct, sectorClass: sector,
+    };
   });
 
   return scored
-    .filter((r) => r.swingDirection && r.swingConfluenceCount >= 3 && !r.extended && r.sector !== 'Macro (x-check)')
-    .sort((a, b) => b.swingConfluenceCount - a.swingConfluenceCount)
+    .filter((r) => r.swingDirection && r.swingConfluenceCount >= 3 && r.swingCounterpoints.length <= 1
+      && !r.extended && r.sector !== 'Macro (x-check)')
+    .sort((a, b) => b.swingConfluenceCount - a.swingConfluenceCount
+      || a.swingCounterpoints.length - b.swingCounterpoints.length)
     .slice(0, limit);
 }

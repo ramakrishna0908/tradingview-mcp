@@ -1,3 +1,7 @@
+// Pacing exists to be kind to live endpoints; against a mock it only makes
+// the suite slow, so it is disabled before the data layer is imported.
+process.env.DESK_REQUEST_GAP_MS = '0';
+
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { sessionSlices, rangeOf, vwap, relativeVolume, fetchBars, parseOsi } from '../src/desk/data.js';
@@ -13,8 +17,35 @@ const START = sessionStart(DAY_UTC);
 const NOW = new Date((START + 40 * 60) * 1000);     // 10:10 ET
 const REG_END = START + 6.5 * 3600;
 
-function makeFetch({ liquid = true, symbols = ['AAA'] } = {}) {
+/** A sweep stage-1 payload, so tests never depend on a report on disk. */
+function makeSweep(symbols) {
+  return {
+    reportDate: '2026-09-28',
+    rows: symbols.map((symbol, i) => ({
+      symbol,
+      sector: i < 3 ? 'Semiconductors' : 'Healthcare',
+      group: 'main',
+      price: 120,
+      changePct: 2.1,
+      rsi: 62, rsiMa: 58,
+      cmf: 0.18,
+      flow: { current: 0.18, previous: 0.10, delta: 0.08, direction: 'improving', complete: true },
+      atr: 3,
+      bb: { lower: 100, basis: 118, upper: 136 },
+      cloud: 'above_cloud',
+      structure: 'HH-up',
+      score: 2.5,
+      source: 'daily sweep',
+    })),
+  };
+}
+
+function makeFetch({ liquid = true, counter = null } = {}) {
   return async (url) => {
+    if (counter) {
+      const host = new URL(url).hostname.includes('cboe') ? 'cboe' : 'yahoo';
+      counter[host] = (counter[host] ?? 0) + 1;
+    }
     const u = new URL(url);
     if (u.hostname.includes('cboe')) {
       const symbol = u.pathname.split('/').pop().replace('.json', '');
@@ -205,8 +236,9 @@ describe('swing rules', () => {
 
 describe('full run', () => {
   test('produces both horizons, honours the funnel and never contradicts itself', async () => {
-    const universe = ['AAA', 'BBB', 'CCC', 'DDD'].map((s, i) => ({ symbol: s, sector: i < 2 ? 'Semiconductors' : 'Healthcare' }));
-    const model = await runDesk({ fetchImpl: makeFetch(), now: NOW, universe });
+    const symbols = ['AAA', 'BBB', 'CCC', 'DDD'];
+    const universe = symbols.map((s, i) => ({ symbol: s, sector: i < 2 ? 'Semiconductors' : 'Healthcare' }));
+    const model = await runDesk({ fetchImpl: makeFetch(), now: NOW, universe, sweepRows: makeSweep(symbols) });
 
     assert.equal(model.reportType, 'DESK');
     assert.equal(model.date, '2026-09-28');
@@ -243,9 +275,46 @@ describe('full run', () => {
     assert.ok(model.intraday.candidates.length <= universe.length);
   });
 
+  test('stage 1 spends no requests on names the funnel will discard', async () => {
+    // Twenty names, of which the fixture sweep makes every one a candidate;
+    // the funnel caps the shortlist at twelve, so bars are fetched for twelve
+    // rather than twenty. Without the sweep this would be twenty daily fetches
+    // before a single name had been rejected.
+    const symbols = Array.from({ length: 20 }, (_, i) => `S${String(i).padStart(2, '0')}`);
+    const universe = symbols.map((s) => ({ symbol: s, sector: 'Semiconductors' }));
+    const counter = {};
+    const model = await runDesk({
+      fetchImpl: makeFetch({ counter }), now: NOW, universe, sweepRows: makeSweep(symbols),
+    });
+
+    assert.equal(model.sweep.length, 20, 'the full universe is still reported');
+    assert.ok(model.intraday.candidates.length <= 12, 'shortlist is capped');
+
+    // Index instruments cost 2 requests each; everything else is survivors.
+    const indexCalls = 8 * 2;
+    const perSurvivor = counter.yahoo - indexCalls;
+    assert.ok(perSurvivor > 0);
+    assert.ok(
+      perSurvivor < 20 * 4,
+      `survivor fetches (${perSurvivor}) must be far below what scanning all 20 names deeply would cost`,
+    );
+  });
+
+  test('a missing sweep degrades to bars rather than using stale measurements', async () => {
+    const symbols = ['AAA', 'BBB'];
+    const universe = symbols.map((s) => ({ symbol: s, sector: 'Semiconductors' }));
+    // `false` states there is no sweep, rather than letting the run find the
+    // real report that happens to sit on disk for this date.
+    const model = await runDesk({ fetchImpl: makeFetch(), now: NOW, universe, sweepRows: false });
+    assert.equal(model.sweep.length, 2);
+    assert.ok(model.errors.sweep, 'the fallback is recorded rather than hidden');
+    assert.match(model.errors.sweep, /fell back/i);
+  });
+
   test('illiquid options keep a setup out of CONFIRMED', async () => {
-    const universe = [{ symbol: 'AAA', sector: 'Semiconductors' }, { symbol: 'BBB', sector: 'Semiconductors' }];
-    const model = await runDesk({ fetchImpl: makeFetch({ liquid: false }), now: NOW, universe });
+    const symbols = ['AAA', 'BBB'];
+    const universe = symbols.map((s) => ({ symbol: s, sector: 'Semiconductors' }));
+    const model = await runDesk({ fetchImpl: makeFetch({ liquid: false }), now: NOW, universe, sweepRows: makeSweep(symbols) });
     for (const r of model.intraday.candidates) {
       if (r.options?.grade === 'POOR') assert.notEqual(r.status, 'CONFIRMED');
     }

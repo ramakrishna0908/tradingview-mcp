@@ -24,6 +24,7 @@ import { analyzeStructure } from './structure.js';
 import { INDEX_SET, readInstrument, intradayRegime, swingRegime, breadth } from './regime.js';
 import { sectorRotation } from './sectors.js';
 import { intradayShortlist, swingShortlist } from './funnel.js';
+import { rowsFromSweep } from './sweep.js';
 import { classifyIntradaySetup, intradayConfirmation, classifySwingSetup, swingConfirmation, resolveStatus, horizonLabel } from './setups.js';
 import { buildTradePlan, targetVsExpectedMove } from './risk.js';
 import { assessOptions } from './options.js';
@@ -51,26 +52,40 @@ const etTime = (t) => (t == null ? null : new Intl.DateTimeFormat('en-US', {
 }).format(new Date(t * 1000)));
 const etDate = (d = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(d);
 
-/** Daily and weekly context for one name. The cheap stage, run on all 56. */
-async function cheapRead(entry, { fetchImpl, now }) {
-  const daily = await fetchBars(entry.symbol, { interval: '1d', range: '2y', fetchImpl, now });
+/**
+ * Daily and weekly bars for one name.
+ *
+ * Run only on names that survived the cheap filter. This is where the exact
+ * moving-average stack, ATR and a dependable money-flow trend come from — the
+ * figures that gate a status, as opposed to the ones that merely rank a
+ * shortlist. Fetching it for all 56 would cost 56 requests against a feed that
+ * rate limits a burst, to refine names that are about to be discarded.
+ */
+async function enrich(row, { fetchImpl, now }) {
+  const daily = await fetchBars(row.symbol, { interval: '1d', range: '2y', fetchImpl, now });
+  // Fetched once here and shared: the intraday pass wants recent 1H structure
+  // and the swing pass aggregates the same series into 4H. A name on both
+  // shortlists otherwise paid for the identical bars twice.
+  const hourly = await fetchBars(row.symbol, { interval: '1h', range: '2y', fetchImpl, now });
   const closed = daily.closedBars;
   const weeklyBars = aggregate(closed, 5);
-  const price = closed.length ? closed[closed.length - 1].c : null;
-  const previousClose = closed.length > 1 ? closed[closed.length - 2].c : null;
+  const lastClose = closed.length ? closed[closed.length - 1].c : null;
   return {
-    symbol: entry.symbol,
-    sector: entry.sector,
-    price,
-    previousClose,
-    changePct: price != null && previousClose ? Number((((price - previousClose) / previousClose) * 100).toFixed(2)) : null,
+    ...row,
+    // The sweep's price is its own snapshot; the daily close is the reference
+    // for swing work. Intraday overwrites this again with the live print.
+    price: row.price ?? lastClose,
+    dailyClose: lastClose,
     dailyBars: closed,
     weeklyBars,
+    hourlyBars: hourly.closedBars,
     daily: {
       ma: maStructure(closed),
       rsi: rsi(closed),
       atr: atr(closed),
       cmf: cmf(closed),
+      // Computed from bars, so it is available even when the sweep had no
+      // prior session to difference against.
       cmfTrend: cmfTrend(closed),
       bollinger: bollinger(closed),
       lastBar: closed.length ? closed[closed.length - 1].t : null,
@@ -97,7 +112,7 @@ async function intradayRead(row, { fetchImpl, now }) {
   if (rv.rvol == null) gaps.push(`relative volume unavailable (${rv.reason})`);
   if (or.high == null) gaps.push('opening range incomplete');
 
-  const hourly = await fetchBars(row.symbol, { interval: '1h', range: '3mo', fetchImpl, now });
+  const hourlyClosed = row.hourlyBars ?? (await fetchBars(row.symbol, { interval: '1h', range: '3mo', fetchImpl, now })).closedBars;
   const closed15 = fifteen.closedBars.filter((b) => slices.regularStart == null || b.t >= slices.regularStart - 5 * 86400);
   const live = fifteen.bars[fifteen.bars.length - 1] ?? null;
   const price = live?.c ?? row.price;
@@ -109,9 +124,9 @@ async function intradayRead(row, { fetchImpl, now }) {
     { price: pre.high, kind: 'premarket high' },
     { price: pre.low, kind: 'premarket low' },
   ];
-  const structure1h = analyzeStructure(hourly.closedBars, { lookback: 3, price, extraLevels: extra });
+  const structure1h = analyzeStructure(hourlyClosed.slice(-500), { lookback: 3, price, extraLevels: extra });
   const structure15m = analyzeStructure(closed15, { lookback: 2, price, extraLevels: extra });
-  const atr1h = atr(hourly.closedBars);
+  const atr1h = atr(hourlyClosed.slice(-500));
   const atr15 = atr(closed15);
 
   const classified = classifyIntradaySetup({ structure1h, price, or, vwap: sessionVwap, premarket: pre, atr1h });
@@ -151,8 +166,8 @@ async function intradayRead(row, { fetchImpl, now }) {
 /** The expensive swing pass. Daily and 4H only — no intraday input reaches it. */
 async function swingRead(row, { fetchImpl, now }) {
   const gaps = [];
-  const hourly = await fetchBars(row.symbol, { interval: '1h', range: '2y', fetchImpl, now });
-  const fourHour = aggregate(hourly.closedBars, 4);
+  const hourlyClosed = row.hourlyBars ?? (await fetchBars(row.symbol, { interval: '1h', range: '2y', fetchImpl, now })).closedBars;
+  const fourHour = aggregate(hourlyClosed, 4);
   if (fourHour.length < 30) gaps.push('4H history short');
 
   const structure4h = analyzeStructure(fourHour, { lookback: 3, price: row.price });
@@ -196,7 +211,17 @@ async function optionsFor(row, direction, { fetchImpl, now }) {
   }
 }
 
-export async function runDesk({ fetchImpl = fetch, now = new Date(), universe = loadUniverse(), log = () => {}, previousSectors = null } = {}) {
+/** Fields the funnel decided that enrichment must not overwrite. */
+function pickFunnelFields(c) {
+  return {
+    direction: c.direction, swingDirection: c.swingDirection,
+    confluence: c.confluence, counterpoints: c.counterpoints,
+    swingConfluence: c.swingConfluence, swingCounterpoints: c.swingCounterpoints,
+    sectorClass: c.sectorClass, distanceToBasisPct: c.distanceToBasisPct,
+  };
+}
+
+export async function runDesk({ fetchImpl = fetch, now = new Date(), universe = loadUniverse(), log = () => {}, previousSectors = null, sweepRows = null } = {}) {
   const startedAt = new Date(now);
   const errors = {};
 
@@ -213,12 +238,38 @@ export async function runDesk({ fetchImpl = fetch, now = new Date(), universe = 
   const benchmarkChangePct = spy?.daily?.price != null && spy?.daily?.previousClose
     ? ((spy.daily.price - spy.daily.previousClose) / spy.daily.previousClose) * 100 : null;
 
-  log(`cheap scan across ${universe.length} names`);
-  const { results: cheapResults, errors: cheapErrors } = await pool(
-    universe, (e) => cheapRead(e, { fetchImpl, now }), { concurrency: CHEAP_CONCURRENCY },
-  );
-  for (const [e, msg] of cheapErrors) errors[e.symbol] = msg;
-  const rows = universe.map((e) => cheapResults.get(e)).filter(Boolean);
+  // Stage 1 reads the morning sweep rather than the network: it already
+  // measured every name, and re-deriving it would cost one request per symbol
+  // to rank a list that is about to be cut to twelve.
+  const date = etDate(startedAt);
+  // `sweepRows: false` is an explicit "there is no sweep", distinct from
+  // omitting it, which means "look for one on disk".
+  const sweep = sweepRows ?? rowsFromSweep(REPO, date);
+  let rows;
+  if (sweep?.rows?.length) {
+    rows = sweep.rows;
+    log(`stage 1 from the ${sweep.reportDate} sweep — ${rows.length} names, no network`);
+  } else {
+    // No sweep for today: fall back to bars so a missing upstream job degrades
+    // the run rather than publishing yesterday's measurements as today's.
+    log(`no sweep for ${date}; falling back to daily bars for ${universe.length} names`);
+    const { results, errors: cheapErrors } = await pool(
+      universe, (e) => enrich({ symbol: e.symbol, sector: e.sector }, { fetchImpl, now }),
+      { concurrency: CHEAP_CONCURRENCY },
+    );
+    for (const [e, msg] of cheapErrors) errors[e.symbol] = msg;
+    rows = universe.map((e) => results.get(e)).filter(Boolean).map((r) => ({
+      ...r,
+      cmf: r.daily.cmf,
+      flow: r.daily.cmfTrend,
+      bb: r.daily.bollinger,
+      cloud: r.daily.ma.aboveSma200 ? 'above_cloud' : 'below_cloud',
+      structure: r.daily.structure.trend === 'up' ? 'HH-up' : r.daily.structure.trend === 'down' ? 'LL-down' : 'range',
+      rsiMa: null,
+      source: 'daily bars',
+    }));
+    errors.sweep = `No daily sweep found for ${date}; stage 1 fell back to fetching bars.`;
+  }
   if (!rows.length) throw new Error('no universe rows could be read');
 
   const sectors = sectorRotation(rows, { benchmarkChangePct, previous: previousSectors });
@@ -228,35 +279,51 @@ export async function runDesk({ fetchImpl = fetch, now = new Date(), universe = 
   const swingCandidates = swingShortlist(rows, { sectorTable: sectors });
   log(`shortlists: ${intraCandidates.length} intraday, ${swingCandidates.length} swing`);
 
+  // Bars for the survivors only, fetched once per symbol and shared by both
+  // horizons even when a name appears on both lists.
+  const survivors = [...new Set([...intraCandidates, ...swingCandidates].map((r) => r.symbol))];
+  log(`enriching ${survivors.length} survivors with daily and weekly bars`);
+  const bySweepRow = new Map(rows.map((r) => [r.symbol, r]));
+  const { results: enriched, errors: enrichErrors } = await pool(
+    survivors,
+    (sym) => (bySweepRow.get(sym).dailyBars ? bySweepRow.get(sym) : enrich(bySweepRow.get(sym), { fetchImpl, now })),
+    { concurrency: CHEAP_CONCURRENCY },
+  );
+  for (const [sym, msg] of enrichErrors) errors[sym] = msg;
+  const merge = (c) => enriched.get(c.symbol) ? { ...c, ...enriched.get(c.symbol), ...pickFunnelFields(c) } : null;
+
+  const intraReady = intraCandidates.map(merge).filter(Boolean);
+  const swingReady = swingCandidates.map(merge).filter(Boolean);
+
   log('intraday deep pass');
   const { results: intraDeep, errors: intraErrs } = await pool(
-    intraCandidates, (r) => intradayRead(r, { fetchImpl, now }), { concurrency: DEEP_CONCURRENCY },
+    intraReady, (r) => intradayRead(r, { fetchImpl, now }), { concurrency: DEEP_CONCURRENCY },
   );
   for (const [r, msg] of intraErrs) errors[`${r.symbol} intraday`] = msg;
 
   log('swing deep pass');
   const { results: swingDeep, errors: swingErrs } = await pool(
-    swingCandidates, (r) => swingRead(r, { fetchImpl, now }), { concurrency: DEEP_CONCURRENCY },
+    swingReady, (r) => swingRead(r, { fetchImpl, now }), { concurrency: DEEP_CONCURRENCY },
   );
   for (const [r, msg] of swingErrs) errors[`${r.symbol} swing`] = msg;
 
   // One chain per name covers both horizons.
   const needChains = [...new Set([
-    ...intraCandidates.map((r) => r.symbol),
-    ...swingCandidates.map((r) => r.symbol),
+    ...intraReady.map((r) => r.symbol),
+    ...swingReady.map((r) => r.symbol),
   ])];
   log(`option chains for ${needChains.length} names`);
-  const bySymbol = new Map(rows.map((r) => [r.symbol, r]));
+  const bySymbol = new Map([...rows, ...intraReady, ...swingReady].map((r) => [r.symbol, r]));
   const directionFor = (sym) => {
-    const i = intraCandidates.find((r) => r.symbol === sym);
-    const s = swingCandidates.find((r) => r.symbol === sym);
+    const i = intraReady.find((r) => r.symbol === sym);
+    const s = swingReady.find((r) => r.symbol === sym);
     return i?.direction ?? s?.swingDirection ?? 'bullish';
   };
   const { results: chainResults } = await pool(
     needChains, (sym) => optionsFor(bySymbol.get(sym), directionFor(sym), { fetchImpl, now }), { concurrency: DEEP_CONCURRENCY },
   );
 
-  const intraday = intraCandidates.map((c) => intraDeep.get(c)).filter(Boolean).map((r) => {
+  const intraday = intraReady.map((c) => intraDeep.get(c)).filter(Boolean).map((r) => {
     const opts = chainResults.get(r.symbol) ?? null;
     const grade = opts?.intraday?.grade ?? 'N/A';
     const emCheck = r.plan ? targetVsExpectedMove(r.plan, opts?.intraday?.expectedMove, r.price) : null;
@@ -269,7 +336,7 @@ export async function runDesk({ fetchImpl = fetch, now = new Date(), universe = 
     return { ...r, options: opts?.intraday ?? null, expectedMoveCheck: emCheck, ...status, label: horizonLabel('intraday', r.direction, status.status) };
   });
 
-  const swing = swingCandidates.map((c) => swingDeep.get(c)).filter(Boolean).map((r) => {
+  const swing = swingReady.map((c) => swingDeep.get(c)).filter(Boolean).map((r) => {
     const opts = chainResults.get(r.symbol) ?? null;
     const grade = opts?.swing?.grade ?? 'N/A';
     const status = resolveStatus({
@@ -302,7 +369,7 @@ export async function runDesk({ fetchImpl = fetch, now = new Date(), universe = 
   return {
     modelVersion: MODEL_VERSION,
     reportType: 'DESK',
-    date: etDate(startedAt),
+    date,
     generatedAt: startedAt.toISOString(),
     generatedAtEt: etStamp(startedAt),
     horizons: {
@@ -331,15 +398,25 @@ export async function runDesk({ fetchImpl = fetch, now = new Date(), universe = 
     intraday: { candidates: intraday, top: topIntraday },
     swing: { candidates: swing, top: topSwing },
     conflicts,
-    sweep: rows.map((r) => ({
-      symbol: r.symbol, sector: r.sector, price: r.price, changePct: r.changePct,
-      rsi: r.daily.rsi != null ? Number(r.daily.rsi.toFixed(1)) : null,
-      cmf: r.daily.cmf != null ? Number(r.daily.cmf.toFixed(3)) : null,
-      cmfTrend: r.daily.cmfTrend.direction,
-      structure: r.daily.structure.structure ?? r.daily.structure.trend,
-      aboveSma200: r.daily.ma.aboveSma200, aboveSma50: r.daily.ma.aboveSma50, aboveEma21: r.daily.ma.aboveEma21,
-      sma50Slope: r.daily.ma.sma50Slope != null ? Number(r.daily.ma.sma50Slope.toFixed(2)) : null,
-    })),
+    // The full table covers every name from the cheap stage. Moving-average
+    // columns are filled only for names that earned a bar fetch; the rest are
+    // null and render as N/A rather than implying a measurement never taken.
+    sweep: rows.map((r) => {
+      const deep = enriched?.get?.(r.symbol) ?? null;
+      return {
+        symbol: r.symbol, sector: r.sector, price: r.price, changePct: r.changePct,
+        rsi: r.rsi != null ? Number(r.rsi.toFixed(1)) : null,
+        cmf: r.cmf != null ? Number(r.cmf.toFixed(3)) : null,
+        cmfTrend: deep?.daily?.cmfTrend?.direction ?? r.flow?.direction ?? null,
+        structure: r.structure ?? null,
+        cloud: r.cloud ?? null,
+        aboveSma200: deep?.daily?.ma?.aboveSma200 ?? null,
+        aboveSma50: deep?.daily?.ma?.aboveSma50 ?? null,
+        aboveEma21: deep?.daily?.ma?.aboveEma21 ?? null,
+        sma50Slope: deep?.daily?.ma?.sma50Slope != null ? Number(deep.daily.ma.sma50Slope.toFixed(2)) : null,
+        analysed: Boolean(deep),
+      };
+    }),
     freshness: {
       note: 'Single intraday snapshot generated around 10:10 AM ET. Conditions may change after publication.',
       reportSnapshot: startedAt.toISOString(),
