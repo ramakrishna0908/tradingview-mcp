@@ -21,7 +21,16 @@ import { join } from 'node:path';
 
 const YAHOO_HOSTS = ['https://query2.finance.yahoo.com', 'https://query1.finance.yahoo.com'];
 const CBOE = 'https://cdn.cboe.com/api/global/delayed_quotes/options';
-const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36';
+/**
+ * Identify the client honestly.
+ *
+ * This is not cosmetic. Yahoo rate limits per User-Agent, and the generic
+ * Chrome string every scraper defaults to is throttled hard — it returned 429
+ * for five hours straight while a distinctive agent was served normally from
+ * the same address. The premarket job has used its own agent since it was
+ * written, which is why it kept working throughout.
+ */
+const UA = 'Mozilla/5.0 (tradingview-mcp desk; +https://github.com/ramakrishna0908/tradingview-mcp)';
 
 export const INTERVAL_SECONDS = Object.freeze({
   '5m': 300, '15m': 900, '30m': 1800, '1h': 3600, '60m': 3600, '1d': 86400, '1wk': 604800,

@@ -120,6 +120,39 @@ describe('risk model', () => {
     assert.match(plan.reason, /no structural level ahead/i);
   });
 
+  test('the stop sits behind the entry even when the trigger is past the level', () => {
+    // A short triggered ABOVE the current price: levels sorted around price put
+    // 101 in "resistance", but it is below an entry of 105, so using it as the
+    // stop would place the invalidation on the profit side of the trade.
+    const plan = buildTradePlan({
+      direction: 'bearish', price: 100, trigger: 105, atr: 2,
+      levels: { support: [{ price: 95, kind: 'swing low' }], resistance: [{ price: 101, kind: 'swing high' }, { price: 110, kind: 'swing high' }] },
+    });
+    assert.ok(plan.invalidation > plan.entry.high, `short stop ${plan.invalidation} must sit above entry ${plan.entry.high}`);
+    assert.ok(plan.targets[0].price < plan.entry.low, 'short target must sit below the entry');
+
+    const long = buildTradePlan({
+      direction: 'bullish', price: 100, trigger: 95, atr: 2,
+      levels: { support: [{ price: 99, kind: 'swing low' }, { price: 90, kind: 'swing low' }], resistance: [{ price: 105, kind: 'swing high' }] },
+    });
+    assert.ok(long.invalidation < long.entry.low, `long stop ${long.invalidation} must sit below entry ${long.entry.low}`);
+    assert.ok(long.targets[0].price > long.entry.high, 'long target must sit above the entry');
+  });
+
+  test('levels that round to the same tick are not a trade', () => {
+    // A low-priced name with a tiny range: entry, band and first level all
+    // collapse to the same cent once rounded.
+    // The target is genuinely below the entry in floating point, but both
+    // round to 5.89 — the number a human would actually be given.
+    const plan = buildTradePlan({
+      direction: 'bearish', price: 5.89, trigger: 5.89, atr: 0.02,
+      levels: { support: [{ price: 5.8874, kind: 'swing low' }], resistance: [{ price: 5.93, kind: 'swing high' }] },
+    });
+    assert.equal(plan.targets[0].price, plan.entry.low, 'fixture must produce the collapse');
+    assert.equal(plan.actionable, false);
+    assert.match(plan.reason, /round to the same tick/);
+  });
+
   test('every actionable plan carries entry, invalidation and a target', () => {
     const plan = buildTradePlan({
       direction: 'bullish', price: 100, trigger: 100, atr: 2,

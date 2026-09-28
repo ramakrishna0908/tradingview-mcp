@@ -43,27 +43,39 @@ export function buildTradePlan({
     ? { low: round(entryAnchor), high: round(entryAnchor + band) }
     : { low: round(entryAnchor - band), high: round(entryAnchor) };
 
-  // Invalidation: the first structural level behind the trade, buffered.
-  const behind = long ? levels.support : levels.resistance;
-  const structural = behind?.[0]?.price ?? null;
+  // Levels are sorted around the CURRENT price, but the trade is entered at the
+  // trigger, which often sits on the other side of some of them. Choosing the
+  // stop from "first support below price" therefore placed it the wrong side of
+  // the entry whenever the trigger had moved past that level — a short stopped
+  // out by a fall, which is the direction it profits from. Both stop and target
+  // are selected relative to the entry itself, from the combined level set.
+  const riskFrom = long ? entry.high : entry.low;
+  const stopAnchor = long ? entry.low : entry.high;
+  const allLevels = [...(levels.support ?? []), ...(levels.resistance ?? [])];
+
+  const behind = allLevels
+    .filter((l) => (long ? l.price < stopAnchor : l.price > stopAnchor))
+    .sort((a, b) => (long ? b.price - a.price : a.price - b.price));
+
+  const structural = behind[0]?.price ?? null;
   const invalidation = structural != null
     ? round(long ? structural - atr * INVALIDATION_ATR : structural + atr * INVALIDATION_ATR)
-    : round(long ? entryAnchor - atr : entryAnchor + atr);
+    : round(long ? stopAnchor - atr : stopAnchor + atr);
   const invalidationBasis = structural != null
-    ? `${behind[0].kind} at ${round(structural)} less a ${INVALIDATION_ATR} ATR buffer`
+    ? `${behind[0].kind} at ${round(structural)} ${long ? 'less' : 'plus'} a ${INVALIDATION_ATR} ATR buffer`
     : 'no structural level behind the entry — one ATR used instead';
-
-  const riskFrom = long ? entry.high : entry.low;
   const risk = Math.abs(riskFrom - invalidation);
   if (!(risk > 0)) {
     return { actionable: false, reason: 'Invalidation sits inside the entry zone — no definable risk.' };
   }
 
-  // Targets from structure ahead of the trade, in order.
-  const ahead = (long ? levels.resistance : levels.support) ?? [];
-  const structuralTargets = ahead
+  // Targets from structure ahead of the entry, nearest first, for the same
+  // reason: what counts as "ahead" is measured from the entry, not from where
+  // the stock happens to be trading now.
+  const structuralTargets = allLevels
+    .filter((l) => (long ? l.price > riskFrom : l.price < riskFrom))
+    .sort((a, b) => (long ? a.price - b.price : b.price - a.price))
     .map((l) => ({ price: round(l.price), basis: l.kind }))
-    .filter((t) => (long ? t.price > riskFrom : t.price < riskFrom))
     .slice(0, 3);
 
   const targets = [...structuralTargets];
@@ -79,6 +91,15 @@ export function buildTradePlan({
   const reward = Math.abs(targets[0].price - riskFrom);
   const rr = risk > 0 ? reward / risk : null;
 
+  // Validate at the resolution a human actually trades at. On a low-priced
+  // name with a small range, the entry, its band and the first level can all
+  // round to the same cent — arithmetic that is fine in floating point but
+  // describes a trade with no distance in it. Reject rather than print an
+  // entry and a target that read as the same number.
+  const indistinguishable = targets[0].price === riskFrom
+    || round(reward) === 0
+    || invalidation === riskFrom;
+
   // A projected target is context, never a qualification. Letting one satisfy
   // the reward-to-risk test would manufacture exactly the flattering ratio this
   // module exists to prevent: stretch the projection far enough and every setup
@@ -86,8 +107,9 @@ export function buildTradePlan({
   const projectedOnly = Boolean(targets[0].projected);
 
   return {
-    actionable: rr != null && rr >= minRR && !projectedOnly,
+    actionable: rr != null && rr >= minRR && !projectedOnly && !indistinguishable,
     projectedOnly,
+    indistinguishable,
     direction,
     horizon,
     trigger: trigger != null ? round(trigger) : null,
@@ -99,7 +121,9 @@ export function buildTradePlan({
     reward: round(reward),
     rr: rr == null ? null : Number(rr.toFixed(2)),
     minRR,
-    reason: projectedOnly
+    reason: indistinguishable
+      ? 'Entry, invalidation and target are not separable at this price — the levels round to the same tick, so there is no trade to describe.'
+      : projectedOnly
       ? 'No structural level ahead of the entry, so no target the market has actually reacted to. Reward-to-risk cannot be assessed against a projection.'
       : rr != null && rr < minRR
         ? `Reward-to-risk is ${rr.toFixed(2)}:1 against a ${minRR}:1 minimum — the first real level ahead is too close to the invalidation to pay for the risk.`
