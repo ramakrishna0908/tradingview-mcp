@@ -311,6 +311,23 @@ describe('full run', () => {
     assert.match(model.errors.sweep, /fell back/i);
   });
 
+  test('the freshness note states when the run actually happened', async () => {
+    const symbols = ['AAA', 'BBB'];
+    const universe = symbols.map((s) => ({ symbol: s, sector: 'Semiconductors' }));
+
+    const onTime = await runDesk({ fetchImpl: makeFetch(), now: NOW, universe, sweepRows: makeSweep(symbols) });
+    assert.equal(onTime.freshness.onSchedule, true);
+    assert.doesNotMatch(onTime.freshness.note, /outside the usual/);
+
+    // Same session, but taken in the afternoon: the note must not claim a
+    // 10:10 snapshot, and must say the intraday references have aged.
+    const late = new Date((START + 4 * 3600) * 1000);
+    const lateModel = await runDesk({ fetchImpl: makeFetch(), now: late, universe, sweepRows: makeSweep(symbols) });
+    assert.equal(lateModel.freshness.onSchedule, false);
+    assert.match(lateModel.freshness.note, /outside the usual 10:10 AM window/);
+    assert.doesNotMatch(lateModel.freshness.note, /generated at 10:10/);
+  });
+
   test('illiquid options keep a setup out of CONFIRMED', async () => {
     const symbols = ['AAA', 'BBB'];
     const universe = symbols.map((s) => ({ symbol: s, sector: 'Semiconductors' }));

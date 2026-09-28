@@ -158,7 +158,7 @@ export function deskToCanonical(model) {
   sections.push({
     key: 'intraday-top', kind: 'setups', horizon: 'intraday',
     title: 'Top intraday / 0DTE setups',
-    intro: `Status reflects the market snapshot around ${statusAsOf} ET and is not continuously updated. A WATCH setup will not change on its own — the trigger is stated so it can be followed manually.`,
+    intro: `Status reflects the market snapshot at ${statusAsOf} ET and is not continuously updated. A WATCH setup will not change on its own — the trigger is stated so it can be followed manually.${model.freshness.onSchedule === false ? ' This run was taken outside the usual 10:10 AM window.' : ''}`,
     items: model.intraday.top.map((r) => toSetup(stamp(r), 'intraday')),
   });
 

@@ -53,6 +53,20 @@ const etTime = (t) => (t == null ? null : new Intl.DateTimeFormat('en-US', {
 const etDate = (d = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(d);
 
 /**
+ * True when the run is far enough from the 10:10 slot that the intraday half
+ * should say so. The opening range is fixed at 09:30-10:00 whenever the report
+ * runs, but a snapshot taken hours later describes a session that has moved on.
+ */
+function offSchedule(d, toleranceMinutes = 45) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(d);
+  const hour = Number(parts.find((p) => p.type === 'hour').value);
+  const minute = Number(parts.find((p) => p.type === 'minute').value);
+  return Math.abs((hour * 60 + minute) - (10 * 60 + 10)) > toleranceMinutes;
+}
+
+/**
  * Daily and weekly bars for one name.
  *
  * Run only on names that survived the cheap filter. This is where the exact
@@ -373,7 +387,7 @@ export async function runDesk({ fetchImpl = fetch, now = new Date(), universe = 
     generatedAt: startedAt.toISOString(),
     generatedAtEt: etStamp(startedAt),
     horizons: {
-      intraday: { label: 'INTRADAY / 0DTE', holding: 'Minutes to approximately one trading day', timeframes: 'Daily → 1H → 15m (5m optional)', reportType: '10:10 AM ET morning execution snapshot' },
+      intraday: { label: 'INTRADAY / 0DTE', holding: 'Minutes to approximately one trading day', timeframes: 'Daily → 1H → 15m (5m optional)', reportType: `${etStamp(startedAt)} ET execution snapshot` },
       swing: { label: 'SWING / 90–120 DTE', holding: 'Several weeks to approximately three months', timeframes: 'Weekly → Daily → 4H' },
     },
     market: {
@@ -418,7 +432,11 @@ export async function runDesk({ fetchImpl = fetch, now = new Date(), universe = 
       };
     }),
     freshness: {
-      note: 'Single intraday snapshot generated around 10:10 AM ET. Conditions may change after publication.',
+      // States the time the run actually happened rather than the time it is
+      // scheduled for. A launchd job that fires late after the Mac wakes, or a
+      // manual run, must not publish a note claiming a 10:10 snapshot.
+      note: `Single intraday snapshot generated at ${etStamp(startedAt)} ET. Conditions may change after publication.${offSchedule(startedAt) ? ' This run was taken outside the usual 10:10 AM window, so the opening range and the intraday references it produced are older relative to the session than in a scheduled report.' : ''}`,
+      onSchedule: !offSchedule(startedAt),
       reportSnapshot: startedAt.toISOString(),
       openingRangeWindow: '09:30–10:00 ET',
       lastClosed15m: etTime(intraday.find((r) => r.lastClosed15m)?.lastClosed15m ?? null),
