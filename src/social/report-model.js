@@ -13,7 +13,7 @@
 import { readFileSync, writeFileSync, existsSync, statSync, readdirSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 
-export const MODEL_VERSION = 3; // 3: rows carry the report's own data-sector label
+export const MODEL_VERSION = 4; // 4: price cell split into price + stated changePct
 
 // ─── text helpers ────────────────────────────────────────────────────────────
 
@@ -40,6 +40,23 @@ export function num(s) {
   if (cleaned === '' || /^(n\/a|na|-|—)$/i.test(cleaned)) return null;
   const v = Number(cleaned);
   return Number.isFinite(v) ? v : null;
+}
+
+/**
+ * Price cell. The daily report is LLM-authored HTML, so this column drifts
+ * between runs: some write a bare "257.70", others fold the day's move in as
+ * "252.24 +1.3%", which num() alone turns into NaN and drops the whole row.
+ *
+ * Take the first numeric token as the price, and lift the percentage only
+ * when the report actually prints one with a sign. Nothing is derived here —
+ * an unstated change stays null rather than being back-computed.
+ */
+export function parsePriceCell(text) {
+  const s = String(text ?? '').replace(/[\u2212\u2013]/g, '-');
+  const first = s.match(/^[^\d+-]*([+-]?[\d,]*\d(?:\.\d+)?)\s*(%?)/);
+  const price = first && first[2] !== '%' ? num(first[1]) : null;
+  const pct = s.match(/([+-]\d+(?:\.\d+)?)\s*%/);
+  return { price, changePct: pct ? num(pct[1]) : null };
 }
 
 function splitSlash(s) {
@@ -108,7 +125,7 @@ function parseRow(cells, keys, sectionGroup, sector = null) {
   const [rsi, rsiMa] = splitSlash(rec.rsi ?? '');
   const bb = splitSlash(rec.bb ?? '');
   const cloud = splitSlash(rec.cloud ?? '');
-  const price = num(rec.price);
+  const { price, changePct } = parsePriceCell(rec.price);
   if (price == null) return null;
 
   const group = sym.group !== 'main' ? sym.group : sectionGroup;
@@ -122,6 +139,9 @@ function parseRow(cells, keys, sectionGroup, sector = null) {
     sector,
     flags: sym.flags,
     price,
+    // Only ever what the report itself printed beside the price; null when it
+    // printed none. Never computed from a previous close.
+    changePct,
     rsi: num(rsi),
     rsiMa: num(rsiMa),
     cmf: num(rec.cmf),

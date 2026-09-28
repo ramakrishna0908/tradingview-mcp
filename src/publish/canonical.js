@@ -286,10 +286,10 @@ const COHORT_TITLES = {
 };
 
 /**
- * Cohort members → movers. The daily model carries a price and the report's
- * own forward-looking note per name, but no percentage change (the sweep is a
- * technical snapshot, not a quote feed), so `changePct` stays null rather than
- * being back-computed from anything.
+ * Cohort members → movers. Price and the report's own forward-looking note per
+ * name. `changePct` is whatever the report printed beside the price and null
+ * when it printed none — some runs of the sweep show the session move, others
+ * only the level. It is never back-computed from a previous close.
  */
 function cohortMovers(symbols, rowsBySymbol, direction) {
   return symbols
@@ -301,7 +301,7 @@ function cohortMovers(symbols, rowsBySymbol, direction) {
         symbol,
         name: row.sector ?? undefined,
         price: nz(row.price),
-        changePct: null,
+        changePct: nz(row.changePct),
         direction,
         reason: row.biasNext || undefined,
         level: row.bbBasis != null ? `BB basis ${row.bbBasis}` : undefined,
@@ -383,9 +383,9 @@ function dailyMetrics(rowsBySymbol) {
       label: symbol,
       value: nz(row.price),
       unit: 'price',
-      // The daily sweep records levels, not session changes. Leaving these
-      // null is the honest answer — a percentage here would be fabricated.
-      changePct: null,
+      // Only what the report printed beside the price. Runs that show a level
+      // and no session move leave this null rather than inventing one.
+      changePct: nz(row.changePct),
       symbol,
       note: row.structure ? `Structure ${row.structure}` : undefined,
       concept: 'etf',
