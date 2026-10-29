@@ -369,6 +369,11 @@ launchd job runs after each report. Posts carry `#NFA #DYOR`. See
 [docs/SOCIAL-POSTING.md](docs/SOCIAL-POSTING.md); rules live in
 `config/social-compliance.json`.
 
+All of the recurring jobs (Claude desktop poster tasks + launchd report jobs)
+are versioned under [`scheduled-tasks/`](scheduled-tasks/README.md):
+`npm run tasks -- install` restores them on any Mac, `npm run tasks -- export`
+captures live edits back into the repo.
+
 ## Architecture
 
 ```

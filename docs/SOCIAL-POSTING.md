@@ -80,6 +80,19 @@ tag can never upgrade a signal). `hashtags.prohibited` blocks promotional tags
 hashtag spam. The hashtag line sits after the disclosure; validation allows a
 trailing hashtag-only line but nothing else after the disclosure.
 
+## Restoring the scheduled jobs
+
+Every poster is a Claude desktop **local** task and every report is a launchd
+job; both live only on the Mac and the desktop app has lost its task registry
+on updates before. The repo now carries all of them under
+[`scheduled-tasks/`](../scheduled-tasks/README.md). On any Mac:
+
+```bash
+npm run tasks -- install    # task folders + launchd jobs, then paste the printed prompt into a Code-tab session
+npm run tasks -- status     # what is installed and loaded
+npm run tasks -- export     # capture live edits from this Mac back into the repo
+```
+
 ## Auto-publish (`tv social auto`)
 
 **When it runs.** The launchd report job starts at 9:35 AM ET on weekdays and

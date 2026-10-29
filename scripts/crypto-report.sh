@@ -14,10 +14,10 @@
 set -u
 
 # launchd runs with a minimal environment — set PATH explicitly.
-export PATH="/Users/ramakrishna0908/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
-REPO="/Users/ramakrishna0908/MyProjects/trading/tradingview-mcp"
-CLAUDE="/Users/ramakrishna0908/.local/bin/claude"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+CLAUDE="${CLAUDE_BIN:-$HOME/.local/bin/claude}"
 DATE="${1:-$(date +%F)}"
 REPORT_DIR="$REPO/docs/reports/crypto"
 REPORT="$REPORT_DIR/daily-$DATE.html"

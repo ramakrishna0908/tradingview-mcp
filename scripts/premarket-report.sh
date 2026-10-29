@@ -12,9 +12,9 @@
 # `tv premarket --news <file>` after this job.
 
 set -u
-export PATH="/Users/ramakrishna0908/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+export PATH="$HOME/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
-REPO="/Users/ramakrishna0908/MyProjects/trading/tradingview-mcp"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DATE="${1:-$(TZ=America/New_York date +%F)}"
 OUT_DIR="$REPO/docs/reports/premarket"
 LOG="$OUT_DIR/run-$DATE.log"

@@ -1,0 +1,94 @@
+{
+  "$comment": "Source of truth for every scheduled job this repo owns. `npm run tasks -- install` restores the Claude desktop tasks (folders under $CLAUDE_CONFIG_DIR/scheduled-tasks) and the launchd jobs; `npm run tasks -- export` captures the live ones from a Mac back into the repo. Schedules are 5-field cron in the Mac's local time (ET).",
+  "tasks": [
+    {
+      "name": "premarket-market-direction",
+      "schedule": "0 8 * * 1-5",
+      "scheduleText": "weekdays 8:00 AM ET",
+      "folder": ".",
+      "permissionMode": "auto",
+      "queue": "stocks",
+      "docs": "docs/PREMARKET-REPORT.md#schedule"
+    },
+    {
+      "name": "post-daily-setups-to-x",
+      "schedule": "0 11 * * 1-5",
+      "scheduleText": "weekdays 11:00 AM ET",
+      "folder": ".",
+      "permissionMode": "auto",
+      "queue": "stocks",
+      "docs": "docs/SOCIAL-POSTING.md#auto-publish-tv-social-auto"
+    },
+    {
+      "name": "post-close-check-to-x",
+      "schedule": "50 15 * * 1-5",
+      "scheduleText": "weekdays 3:50 PM ET",
+      "folder": ".",
+      "permissionMode": "auto",
+      "queue": "stocks",
+      "docs": "docs/SOCIAL-POSTING.md#one-hero-a-thread-for-the-rest-a-close-check-before-the-bell"
+    },
+    {
+      "name": "post-daily-chart-video",
+      "schedule": "30 12 * * *",
+      "scheduleText": "every day 12:30 PM ET",
+      "folder": ".",
+      "permissionMode": "auto",
+      "queue": "stocks",
+      "docs": "docs/CHART-EDUCATION-VIDEO.md#schedule"
+    },
+    {
+      "name": "post-education-explainer",
+      "schedule": "0 19 * * *",
+      "scheduleText": "every day 7:00 PM ET",
+      "folder": ".",
+      "permissionMode": "auto",
+      "queue": "stocks",
+      "docs": "docs/SOCIAL-POSTING.md#educational-explainers-tv-social-educate"
+    },
+    {
+      "name": "post-daily-crypto-to-x",
+      "schedule": "15 1 * * *",
+      "scheduleText": "every day 1:15 AM ET",
+      "folder": ".",
+      "permissionMode": "auto",
+      "queue": "crypto",
+      "docs": "docs/SOCIAL-POSTING.md#crypto-pipeline"
+    },
+    {
+      "name": "post-weekly-scorecard",
+      "schedule": "30 16 * * 5",
+      "scheduleText": "Fridays 4:30 PM ET (after the close)",
+      "folder": ".",
+      "permissionMode": "auto",
+      "queue": "stocks",
+      "docs": "docs/SOCIAL-POSTING.md#weekly-setup-scorecard-tv-social-scorecard"
+    }
+  ],
+  "launchd": [
+    {
+      "label": "com.ramakrishna.tvpremarket",
+      "plist": "scripts/com.ramakrishna.tvpremarket.plist",
+      "scheduleText": "weekdays 7:45 AM ET — premarket data report",
+      "install": true
+    },
+    {
+      "label": "com.ramakrishna.tvdailyreport",
+      "plist": "scripts/com.ramakrishna.tvdailyreport.plist",
+      "scheduleText": "weekdays 9:35 AM ET — daily stock sweep report",
+      "install": true
+    },
+    {
+      "label": "com.ramakrishna.tvcryptoreport",
+      "plist": "scripts/com.ramakrishna.tvcryptoreport.plist",
+      "scheduleText": "every day 1:00 AM — nightly crypto sweep report",
+      "install": true
+    },
+    {
+      "label": "com.ramakrishna.tvsocialauto",
+      "plist": "scripts/com.ramakrishna.tvsocialauto.plist",
+      "scheduleText": "weekdays 10:30 AM ET — API-mode auto-publish fallback (only when posting.autoPublish.via = \"api\")",
+      "install": false
+    }
+  ]
+}
