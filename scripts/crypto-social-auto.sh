@@ -16,7 +16,7 @@
 #   SOCIAL_AUTO_PUBLISH=0   -> block all unattended posting
 set -u
 export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
-REPO="/Users/ramakrishna0908/MyProjects/trading/tradingview-mcp"
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DATE="${1:-$(date +%F)}"
 REPORT="$REPO/docs/reports/crypto/daily-$DATE.html"
 LOG="$REPO/docs/reports/crypto/social-$DATE.log"
